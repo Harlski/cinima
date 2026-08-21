@@ -1,0 +1,20 @@
+{
+  "name": "nimcharts",
+  "private": true,
+  "version": "0.1.0",
+  "description": "NimCharts — social taste discovery Mini App for Nimiq Pay (Cycle 2)",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @nimcharts/api --filter @nimcharts/web run dev",
+    "dev:web": "pnpm --filter @nimcharts/web dev",
+    "dev:api": "pnpm --filter @nimcharts/api dev",
+    "dev:shared": "pnpm --filter @nimcharts/shared dev",
+    "build": "pnpm --filter @nimcharts/shared build && pnpm --filter @nimcharts/api build && pnpm --filter @nimcharts/web build",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm --filter @nimcharts/api test",
+    "db:push": "pnpm --filter @nimcharts/api db:push"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@9.15.0"
+}
