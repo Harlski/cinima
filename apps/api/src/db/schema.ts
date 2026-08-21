@@ -71,6 +71,8 @@ export const favorites = sqliteTable(
     walletAddress: text("wallet_address").notNull(),
     titleId: text("title_id").notNull(),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    /** When set, this Favorite is also a Recommend (gold-star upgrade) */
+    recommendedAt: integer("recommended_at", { mode: "timestamp_ms" }),
   },
   (t) => [uniqueIndex("favorites_unique").on(t.walletAddress, t.titleId)]
 );

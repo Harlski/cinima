@@ -34,6 +34,16 @@
           </button>
 
           <button
+            v-if="title.favorited"
+            type="button"
+            class="action-button recommend-button"
+            :class="{ recommended: title.recommended }"
+            @click="toggleRecommend"
+          >
+            {{ title.recommended ? "Recommended ★" : "Recommend ★" }}
+          </button>
+
+          <button
             v-if="!title.unlocked"
             type="button"
             class="action-button unlock-cta"
@@ -190,8 +200,26 @@ const loadSuggesters = async () => {
 
 const toggleFavorite = async () => {
   if (!title.value) return;
+  const wasFavorited = title.value.favorited;
   await favoritesStore.toggle(title.value.id);
-  title.value.favorited = !title.value.favorited;
+  title.value.favorited = !wasFavorited;
+  if (wasFavorited) title.value.recommended = false;
+};
+
+const toggleRecommend = async () => {
+  if (!title.value?.favorited) return;
+  try {
+    if (title.value.recommended) {
+      await favoritesStore.clearRecommend(title.value.id);
+      title.value.recommended = false;
+    } else {
+      await favoritesStore.setRecommend(title.value.id);
+      title.value.recommended = true;
+    }
+  } catch (err) {
+    console.error("Recommend failed:", err);
+    alert(err instanceof Error ? err.message : "Could not update Recommend");
+  }
 };
 
 const handleUnlock = async () => {
@@ -425,6 +453,17 @@ onMounted(() => {
 }
 
 .action-button.favorited,
+.action-button.recommended {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.recommend-button.recommended {
+  background: #c9a227;
+  border-color: #c9a227;
+  color: #0a0a0f;
+}
 .action-button.unlock-cta {
   background: var(--primary);
   color: white;

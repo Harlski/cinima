@@ -4,10 +4,8 @@
 
 **Blocked by:** 02 — Recommend on a Favorite (title slice)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Me response/UI presents Recommends distinctly from the full Favorites batch
-- [ ] Peer user profile presents Recommends distinctly
-- [ ] Public profile presents Recommends distinctly
-- [ ] Favorited titles that are Recommended carry a gold/standout cue in those surfaces
-- [ ] HTTP API contract tests assert Recommend payloads on Me and profile endpoints
+## Answer
+
+Me/peer/public payloads include `recommends` plus `recommended` on favorite summaries; Me, User, and PublicProfile UIs show a distinct Recommends section and gold badges.

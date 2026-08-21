@@ -34,12 +34,17 @@ import {
   unfollowUser,
 } from "./services/follow.js";
 import {
+  SocialTasteError,
   addFavorite,
+  clearRecommend,
   discoverFor,
   favoriteCount,
   isFavorited,
+  isRecommended,
   listFavorites,
+  listRecommends,
   removeFavorite,
+  setRecommend,
 } from "./services/favorites.js";
 import type { FollowingFeedResponse } from "@nimcharts/shared";
 
@@ -256,6 +261,7 @@ app.post("/api/auth/verify", requirePay, async (c) => {
 app.get("/api/me", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
   const favoritesList = await listFavorites(user.walletAddress);
+  const recommendsList = await listRecommends(user.walletAddress);
   const unlockRows = await db
     .select()
     .from(schema.unlocks)
@@ -266,6 +272,7 @@ app.get("/api/me", requirePay, requireAuth, async (c) => {
   const response: MeResponse = {
     user: c.get("sessionUser"),
     favorites: favoritesList,
+    recommends: recommendsList,
     unlocks: unlockRows.map((r) => toTitleSummary(r.titles)),
     shareUrl: user.handle ? `${config.webOrigin}/${user.handle}` : null,
     needsHandlePrompt: !user.handle,
@@ -337,6 +344,7 @@ app.get("/api/titles/:id", requirePay, requireAuth, async (c) => {
       where: and(eq(schema.unlocks.walletAddress, user.walletAddress), eq(schema.unlocks.titleId, id)),
     }));
   const favorited = await isFavorited(user.walletAddress, id);
+  const recommended = favorited ? await isRecommended(user.walletAddress, id) : false;
 
   let episodeCells: EpisodeCell[] = [];
   if (unlocked) {
@@ -371,6 +379,7 @@ app.get("/api/titles/:id", requirePay, requireAuth, async (c) => {
     ...summary,
     unlocked,
     favorited,
+    recommended,
     episodes: episodeCells,
     commentCount,
     imdbRating: unlocked ? summary.imdbRating : null,
@@ -421,6 +430,35 @@ app.delete("/api/favorites/:titleId", requirePay, requireAuth, async (c) => {
   const titleId = decodeURIComponent(c.req.param("titleId"));
   const user = c.get("user");
   await removeFavorite(user.walletAddress, titleId);
+  return c.json({ ok: true, user: await sessionUserFor(user.walletAddress) });
+});
+
+app.post("/api/recommends/:titleId", requirePay, requireAuth, async (c) => {
+  const titleId = decodeURIComponent(c.req.param("titleId"));
+  const user = c.get("user");
+  try {
+    await setRecommend(user.walletAddress, titleId);
+  } catch (e) {
+    if (e instanceof SocialTasteError) {
+      const status = e.code === "recommend_cap" ? 409 : 400;
+      return c.json({ error: e.code, message: e.message }, status);
+    }
+    throw e;
+  }
+  return c.json({ ok: true, user: await sessionUserFor(user.walletAddress) });
+});
+
+app.delete("/api/recommends/:titleId", requirePay, requireAuth, async (c) => {
+  const titleId = decodeURIComponent(c.req.param("titleId"));
+  const user = c.get("user");
+  try {
+    await clearRecommend(user.walletAddress, titleId);
+  } catch (e) {
+    if (e instanceof SocialTasteError) {
+      return c.json({ error: e.code, message: e.message }, 400);
+    }
+    throw e;
+  }
   return c.json({ ok: true, user: await sessionUserFor(user.walletAddress) });
 });
 
@@ -566,6 +604,7 @@ app.get("/api/users/:wallet", requirePay, requireAuth, async (c) => {
     handle: user.handle || walletAddress.slice(0, 8).toLowerCase(),
     walletAddress: user.walletAddress,
     favorites: await listFavorites(walletAddress),
+    recommends: await listRecommends(walletAddress),
     followerCount: counts.followerCount,
     followingCount: counts.followingCount,
     isFollowing: me === walletAddress ? false : await isFollowing(me, walletAddress),
@@ -725,6 +764,7 @@ app.get("/api/public/:username", async (c) => {
     handle: user.handle,
     walletAddress: user.walletAddress,
     favorites: await listFavorites(user.walletAddress),
+    recommends: await listRecommends(user.walletAddress),
     followerCount: counts.followerCount,
     followingCount: counts.followingCount,
     isFollowing: false,

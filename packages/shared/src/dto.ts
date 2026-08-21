@@ -46,6 +46,8 @@ export type TitleSummary = {
   overview: string | null;
   imdbRating: number | null;
   tmdbRating: number | null;
+  /** Present when this title is a Recommend for the profile/owner context */
+  recommended?: boolean;
 };
 
 export type EpisodeCell = {
@@ -58,6 +60,7 @@ export type EpisodeCell = {
 export type TitleDetail = TitleSummary & {
   unlocked: boolean;
   favorited: boolean;
+  recommended: boolean;
   episodes: EpisodeCell[];
   commentCount: number;
 };
@@ -88,6 +91,7 @@ export type PublicProfile = {
   handle: string;
   walletAddress: string;
   favorites: TitleSummary[];
+  recommends: TitleSummary[];
   followerCount: number;
   followingCount: number;
   isFollowing: boolean;
@@ -148,6 +152,7 @@ export type ActivityItem =
 export type MeResponse = {
   user: SessionUser;
   favorites: TitleSummary[];
+  recommends: TitleSummary[];
   unlocks: TitleSummary[];
   shareUrl: string | null;
   needsHandlePrompt: boolean;

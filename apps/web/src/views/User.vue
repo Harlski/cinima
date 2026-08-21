@@ -36,6 +36,31 @@
       <ActivityHeatmap :days="profile.heatmap" title="Activity" />
 
       <section class="favorites-section">
+        <h3>Recommends ({{ profile.recommends?.length || 0 }})</h3>
+        <div v-if="!(profile.recommends && profile.recommends.length)" class="empty">
+          No Recommends yet
+        </div>
+        <div v-else class="media-grid">
+          <div
+            v-for="title in profile.recommends"
+            :key="title.id"
+            class="media-item poster-press"
+            @click="goToTitle(title.id)"
+          >
+            <span class="gold-badge" aria-hidden="true">★</span>
+            <img
+              v-if="title.posterUrl"
+              :src="title.posterUrl"
+              :alt="title.title"
+            />
+            <div v-else class="poster-placeholder">
+              {{ title.title }}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="favorites-section">
         <h3>Favorites ({{ profile.favorites.length }})</h3>
         <div v-if="profile.favorites.length === 0" class="empty">
           No favorites yet
@@ -47,6 +72,7 @@
             class="media-item poster-press"
             @click="goToTitle(title.id)"
           >
+            <span v-if="title.recommended" class="gold-badge" aria-hidden="true">★</span>
             <img
               v-if="title.posterUrl"
               :src="title.posterUrl"
@@ -264,6 +290,22 @@ watch(wallet, loadProfile);
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.gold-badge {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  z-index: 2;
+  width: 1.4rem;
+  height: 1.4rem;
+  display: grid;
+  place-content: center;
+  border-radius: 999px;
+  background: #c9a227;
+  color: #0a0a0f;
+  font-size: 0.75rem;
+  line-height: 1;
 }
 
 .poster-placeholder {

@@ -16,6 +16,31 @@
       </div>
 
       <section class="favorites-section">
+        <h2>Recommends ({{ profile.recommends?.length || 0 }})</h2>
+        <div v-if="!(profile.recommends && profile.recommends.length)" class="empty">
+          No Recommends yet
+        </div>
+        <div v-else class="media-grid">
+          <div
+            v-for="title in profile.recommends"
+            :key="title.id"
+            class="media-item"
+          >
+            <span class="gold-badge" aria-hidden="true">★</span>
+            <img
+              v-if="title.posterUrl"
+              :src="title.posterUrl"
+              :alt="title.title"
+            />
+            <div v-else class="poster-placeholder">
+              {{ title.title }}
+            </div>
+            <div class="media-title">{{ title.title }}</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="favorites-section">
         <h2>Favorites ({{ profile.favorites.length }})</h2>
         <div v-if="profile.favorites.length === 0" class="empty">
           No favorites yet
@@ -26,6 +51,7 @@
             :key="title.id"
             class="media-item"
           >
+            <span v-if="title.recommended" class="gold-badge" aria-hidden="true">★</span>
             <img
               v-if="title.posterUrl"
               :src="title.posterUrl"
@@ -153,6 +179,7 @@ onMounted(loadProfile);
 }
 
 .media-item {
+  position: relative;
   background: var(--bg-surface);
   border-radius: 10px;
   overflow: hidden;
@@ -163,6 +190,22 @@ onMounted(loadProfile);
   aspect-ratio: 2/3;
   object-fit: cover;
   display: block;
+}
+
+.gold-badge {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  z-index: 2;
+  width: 1.4rem;
+  height: 1.4rem;
+  display: grid;
+  place-content: center;
+  border-radius: 999px;
+  background: #c9a227;
+  color: #0a0a0f;
+  font-size: 0.75rem;
+  line-height: 1;
 }
 
 .poster-placeholder {

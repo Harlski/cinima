@@ -18,6 +18,13 @@ export const AMOUNTS = {
 
 export const MIN_FAVORITES_FOR_DISCOVER = 3;
 
+/** Max gold-star Recommends a user may hold at once */
+export const MAX_RECOMMENDS = 5;
+
+/** Discover scoring: a shared Recommend outranks a plain shared Favorite */
+export const DISCOVER_FAVORITE_WEIGHT = 1;
+export const DISCOVER_RECOMMEND_WEIGHT = 3;
+
 /** Re-fetch cached catalog rows after this many days */
 export const CATALOG_TTL_DAYS = 10;
 

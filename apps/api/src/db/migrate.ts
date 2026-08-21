@@ -55,7 +55,8 @@ const statements = [
   `CREATE TABLE IF NOT EXISTS favorites (
     wallet_address TEXT NOT NULL,
     title_id TEXT NOT NULL,
-    created_at INTEGER NOT NULL
+    created_at INTEGER NOT NULL,
+    recommended_at INTEGER
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS favorites_unique ON favorites(wallet_address, title_id)`,
   `CREATE TABLE IF NOT EXISTS unlocks (
@@ -95,6 +96,12 @@ const statements = [
 export async function migrate() {
   for (const sql of statements) {
     await client.execute(sql);
+  }
+  // Expand older favorites tables that predate Recommend
+  try {
+    await client.execute(`ALTER TABLE favorites ADD COLUMN recommended_at INTEGER`);
+  } catch {
+    /* column already exists */
   }
 }
 

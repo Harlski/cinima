@@ -40,7 +40,7 @@ export function useApi() {
       }
 
       if (!response.ok) {
-        const msg = String(data.error || "");
+        const msg = String(data.message || data.error || "");
         if (msg) throw new Error(msg);
         if (response.status >= 500) {
           throw new Error("API unavailable — wait a second and tap Retry (dev server may be restarting)");

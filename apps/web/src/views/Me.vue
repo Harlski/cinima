@@ -51,6 +51,31 @@
       </div>
 
       <section class="media-section">
+        <h3>Recommends ({{ recommends.length }}/5)</h3>
+        <div v-if="recommends.length === 0" class="empty">
+          No gold Recommends yet — star standouts from a title
+        </div>
+        <div v-else class="media-grid">
+          <div
+            v-for="title in recommends"
+            :key="title.id"
+            class="media-item poster-press"
+            @click="goToTitle(title.id)"
+          >
+            <span class="gold-badge" aria-hidden="true">★</span>
+            <img
+              v-if="title.posterUrl"
+              :src="title.posterUrl"
+              :alt="title.title"
+            />
+            <div v-else class="poster-placeholder">
+              {{ title.title }}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="media-section">
         <h3>Favorites ({{ favorites.length }})</h3>
         <div v-if="favorites.length === 0" class="empty">
           No favorites yet
@@ -62,6 +87,7 @@
             class="media-item poster-press"
             @click="goToTitle(title.id)"
           >
+            <span v-if="title.recommended" class="gold-badge" aria-hidden="true">★</span>
             <img
               v-if="title.posterUrl"
               :src="title.posterUrl"
@@ -121,6 +147,7 @@ const loading = ref(true);
 const purchasing = ref(false);
 const user = computed(() => authStore.user);
 const favorites = ref<TitleSummary[]>([]);
+const recommends = ref<TitleSummary[]>([]);
 const unlocks = ref<TitleSummary[]>([]);
 const shareUrl = ref<string | null>(null);
 const needsHandlePrompt = ref(false);
@@ -135,6 +162,7 @@ const loadMe = async () => {
   try {
     const data = await request<MeResponse>("/me");
     favorites.value = data.favorites;
+    recommends.value = data.recommends || [];
     unlocks.value = data.unlocks;
     shareUrl.value = data.shareUrl;
     needsHandlePrompt.value = data.needsHandlePrompt;
@@ -407,6 +435,23 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.gold-badge {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  z-index: 2;
+  width: 1.4rem;
+  height: 1.4rem;
+  display: grid;
+  place-content: center;
+  border-radius: 999px;
+  background: #c9a227;
+  color: #0a0a0f;
+  font-size: 0.75rem;
+  line-height: 1;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
 .poster-placeholder {

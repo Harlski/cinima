@@ -4,9 +4,8 @@
 
 **Blocked by:** 02 — Recommend on a Favorite (title slice)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Overlap scoring weights a shared Recommend more heavily than a shared Favorite alone
-- [ ] Favorite-only overlap still surfaces titles when Recommends are sparse (Discover does not go empty solely due to weighting)
-- [ ] HTTP API tests with controlled fixtures assert Recommend-overlap ranks above Favorite-only overlap ceteris paribus
-- [ ] Discover UI continues to present results coherently (badge/cue optional if already on cards)
+## Answer
+
+Discover peer + suggestion scoring weights Recommend (3) over Favorite (1). Proven in `tests/discover-recommend.http.test.ts`.

@@ -4,11 +4,8 @@
 
 **Blocked by:** 01 — HTTP test harness + social-taste module prefactor
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Recommend requires Favorite; cannot Recommend a non-favorite
-- [ ] User may hold at most five Recommends; sixth attempt returns a clear error (no auto-demote)
-- [ ] Clearing Recommend keeps Favorite
-- [ ] Unfavoriting clears Recommend
-- [ ] Title detail exposes favorited + recommended state and controls
-- [ ] HTTP API tests cover the above at the primary seam (ADR-0002)
+## Answer
+
+`POST/DELETE /api/recommends/:titleId` with Favorites `recommended_at`, cap of 5, title detail flags, and title UI gold control. Covered in `tests/recommend.http.test.ts`.
