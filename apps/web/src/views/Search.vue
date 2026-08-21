@@ -27,7 +27,8 @@
       </div>
     </div>
 
-    <div ref="searchDockEl" class="search-dock" :style="searchDockStyle">      <div class="search-dock-inner">
+    <div ref="searchDockEl" class="search-dock" :style="searchDockStyle">
+      <div class="search-dock-inner">
         <div v-if="showHistory" class="history">
           <div class="history-head">
             <h2>Recent searches</h2>
@@ -125,7 +126,8 @@ const history = ref<string[]>(loadSearchHistory());
 const searchDockBottom = ref("var(--bottom-tabs-height)");
 const searchStageStyle = ref<Record<string, string>>({
   top: "var(--app-brand-row)",
-  height: "50%",
+  height:
+    "calc(100dvh - var(--app-brand-row) - var(--bottom-tabs-height) - 4.5rem)",
 });
 const searchDockEl = ref<HTMLElement | null>(null);
 const historyListEl = ref<HTMLUListElement | null>(null);
@@ -171,6 +173,7 @@ async function scrollHistoryToThumb() {
 
 watch([showHistory, historyOldestFirst], () => {
   if (showHistory.value) void scrollHistoryToThumb();
+  void nextTick().then(syncSearchLayout);
 });
 
 let searchTimeout: ReturnType<typeof setTimeout>;
@@ -241,23 +244,23 @@ const clearQuery = () => {
 };
 
 onMounted(() => {
-  syncSearchBarToViewport();
-  window.visualViewport?.addEventListener("resize", syncSearchBarToViewport);
-  window.visualViewport?.addEventListener("scroll", syncSearchBarToViewport);
+  void nextTick().then(syncSearchLayout);
+  window.visualViewport?.addEventListener("resize", syncSearchLayout);
+  window.visualViewport?.addEventListener("scroll", syncSearchLayout);
+  window.addEventListener("resize", syncSearchLayout);
   void scrollHistoryToThumb();
 });
 
 onUnmounted(() => {
-  window.visualViewport?.removeEventListener("resize", syncSearchBarToViewport);
-  window.visualViewport?.removeEventListener("scroll", syncSearchBarToViewport);
+  window.visualViewport?.removeEventListener("resize", syncSearchLayout);
+  window.visualViewport?.removeEventListener("scroll", syncSearchLayout);
+  window.removeEventListener("resize", syncSearchLayout);
 });
 </script>
 
 <style scoped>
 .search {
-  --search-bar-height: 4.35rem;
   min-height: 100%;
-  padding-bottom: calc(var(--search-bar-height) + 0.5rem);
 }
 
 .search-dock {
@@ -363,18 +366,49 @@ onUnmounted(() => {
   background: color-mix(in oklch, var(--text-primary) 10%, transparent);
 }
 
+.search-stage {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.search-stage-inner {
+  width: 100%;
+  max-width: var(--column-max);
+  height: 100%;
+  min-height: 0;
+  padding: 0 var(--column-pad);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
 .loading,
 .empty {
-  text-align: center;
-  padding: 3rem 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--text-secondary);
 }
 
 .results {
+  pointer-events: auto;
+  width: 100%;
+  margin-top: auto;
+  max-height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
-  padding: 1rem 0;
+  padding: 0.75rem 0 0.35rem;
 }
 
 .history {

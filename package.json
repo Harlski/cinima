@@ -10,7 +10,7 @@
     "dev:shared": "pnpm --filter @nimcharts/shared dev",
     "build": "pnpm --filter @nimcharts/shared build && pnpm --filter @nimcharts/api build && pnpm --filter @nimcharts/web build",
     "typecheck": "pnpm -r run typecheck",
-    "test": "pnpm --filter @nimcharts/api test",
+    "test": "pnpm --filter @nimcharts/api test && pnpm --filter @nimcharts/web test",
     "db:push": "pnpm --filter @nimcharts/api db:push"
   },
   "engines": {
