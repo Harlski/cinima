@@ -12,77 +12,34 @@
     </div>
 
     <div v-else-if="profile" class="content">
-      <div class="profile-section nq-card">
-        <Identicon :address="profile.walletAddress" :size="64" alt="Identicon" />
-        <div class="profile-info">
-          <h2>{{ displayName(profile.handle, profile.walletAddress) }}</h2>
-          <p v-if="profile.handle" class="wallet">{{ abbreviateWallet(profile.walletAddress) }}</p>
-          <p class="stats">
-            {{ profile.followerCount }} followers · {{ profile.followingCount }} following
-          </p>
-        </div>
-        <button
-          v-if="!profile.isSelf"
-          type="button"
-          :class="profile.isFollowing ? 'nq-pill-secondary' : 'nq-pill-blue'"
-          :disabled="followBusy"
-          @click="toggleFollow"
-        >
-          {{ profile.isFollowing ? "Following" : "Follow" }}
-        </button>
-      </div>
+      <UserCard
+        :wallet-address="profile.walletAddress"
+        :handle="displayName(profile.handle, profile.walletAddress)"
+        :x-handle="profile.xHandle"
+        :follower-count="profile.followerCount"
+        :following-count="profile.followingCount"
+        wallet-display="abbrev"
+        :avatar-size="64"
+      >
+        <template v-if="!profile.isSelf" #actions>
+          <button
+            type="button"
+            :class="profile.isFollowing ? 'nq-pill-secondary' : 'nq-pill-blue'"
+            :disabled="followBusy"
+            @click="toggleFollow"
+          >
+            {{ profile.isFollowing ? "Following" : "Follow" }}
+          </button>
+        </template>
+      </UserCard>
 
       <ActivityHeatmap :days="profile.heatmap" title="Activity" />
 
-      <section class="favorites-section">
-        <h3>Recommends ({{ profile.recommends?.length || 0 }})</h3>
-        <div v-if="!(profile.recommends && profile.recommends.length)" class="empty">
-          No Recommends yet
-        </div>
-        <div v-else class="media-grid">
-          <div
-            v-for="title in profile.recommends"
-            :key="title.id"
-            class="media-item poster-press"
-            @click="goToTitle(title.id)"
-          >
-            <span class="gold-badge" aria-hidden="true">★</span>
-            <img
-              v-if="title.posterUrl"
-              :src="title.posterUrl"
-              :alt="title.title"
-            />
-            <div v-else class="poster-placeholder">
-              {{ title.title }}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="favorites-section">
-        <h3>Favorites ({{ profile.favorites.length }})</h3>
-        <div v-if="profile.favorites.length === 0" class="empty">
-          No favorites yet
-        </div>
-        <div v-else class="media-grid">
-          <div
-            v-for="title in profile.favorites"
-            :key="title.id"
-            class="media-item poster-press"
-            @click="goToTitle(title.id)"
-          >
-            <span v-if="title.recommended" class="gold-badge" aria-hidden="true">★</span>
-            <img
-              v-if="title.posterUrl"
-              :src="title.posterUrl"
-              :alt="title.title"
-            />
-            <div v-else class="poster-placeholder">
-              {{ title.title }}
-            </div>
-          </div>
-        </div>
-      </section>
+      <ProfileTaste
+        :favorites="profile.favorites"
+        :recommends="profile.recommends || []"
+        @select="(title) => goToTitle(title.id)"
+      />
     </div>
   </div>
 </template>
@@ -91,12 +48,13 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
-import { displayName, abbreviateWallet } from "@nimcharts/shared";
+import { displayName } from "@nimcharts/shared";
 import type { PublicProfile } from "@nimcharts/shared";
-import Identicon from "@/components/Identicon.vue";
 import ActivityHeatmap from "@/components/ActivityHeatmap.vue";
 import NqIcon from "@/components/NqIcon.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
+import ProfileTaste from "@/components/ProfileTaste.vue";
+import UserCard from "@/components/UserCard.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -207,81 +165,5 @@ watch(wallet, loadProfile);
   display: flex;
   flex-direction: column;
   gap: 1rem;
-}
-
-.profile-section {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  align-items: center;
-}
-
-.profile-info {
-  flex: 1;
-  min-width: 140px;
-}
-
-.profile-info h2 {
-  margin: 0 0 0.35rem 0;
-  font-size: 1.25rem;
-  color: var(--text-primary);
-}
-
-.wallet {
-  margin: 0 0 0.35rem 0;
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  font-family: monospace;
-}
-
-.stats {
-  margin: 0;
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-}
-
-.favorites-section h3 {
-  margin: 0 0 1rem 0;
-  font-size: 1.1rem;
-  color: var(--text-primary);
-}
-
-.empty {
-  text-align: center;
-  padding: 2rem;
-  color: var(--text-secondary);
-}
-
-.media-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 0.75rem;
-}
-
-.media-item {
-  position: relative;
-  aspect-ratio: 2/3;
-  background: var(--bg-surface);
-  border-radius: 8px;
-  overflow: hidden;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.media-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.poster-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  padding: 0.5rem;
-  text-align: center;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
 }
 </style>

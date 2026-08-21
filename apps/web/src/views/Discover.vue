@@ -85,7 +85,7 @@
             @click="handleSuggestionClick(suggestion)"
           >
             <div class="card-poster poster-press">
-              <img
+              <PosterImg
                 v-if="suggestion.title.posterUrl"
                 :src="suggestion.title.posterUrl"
                 :alt="suggestion.title.title"
@@ -139,10 +139,11 @@
             <div v-if="card.titles.length === 1" class="feed-single">
               <button type="button" class="feed-title" @click="goToTitle(card.titles[0]!.id)">
                 <div class="feed-thumb poster-press">
-                  <img
+                  <PosterImg
                     v-if="card.titles[0]!.posterUrl"
                     :src="card.titles[0]!.posterUrl"
                     :alt="card.titles[0]!.title"
+                    :spinner-size="22"
                   />
                   <div v-else class="poster-fallback">{{ card.titles[0]!.title }}</div>
                 </div>
@@ -162,7 +163,12 @@
                 :title="title.title"
                 @click="goToTitle(title.id)"
               >
-                <img v-if="title.posterUrl" :src="title.posterUrl" :alt="title.title" />
+                <PosterImg
+                  v-if="title.posterUrl"
+                  :src="title.posterUrl"
+                  :alt="title.title"
+                  :spinner-size="22"
+                />
                 <span v-else>{{ title.title.slice(0, 1) }}</span>
               </button>
             </div>
@@ -191,6 +197,7 @@ import TitleCard from "@/components/TitleCard.vue";
 import Identicon from "@/components/Identicon.vue";
 import NqIcon from "@/components/NqIcon.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
+import PosterImg from "@/components/PosterImg.vue";
 
 type FeedCard = {
   key: string;

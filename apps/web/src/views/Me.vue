@@ -9,31 +9,18 @@
     </div>
 
     <div v-else class="content">
-      <div class="profile-section nq-card">
-        <Identicon
-          class="profile-avatar"
-          :address="user?.walletAddress"
-          :size="64"
-          alt="Your Nimiq identicon"
-        />
-        <div class="profile-info">
-          <h2>{{ displayName(user?.handle, user?.walletAddress || "") }}</h2>
-          <p v-if="user?.handle" class="wallet">{{ abbreviateWallet(user.walletAddress) }}</p>
-          <p v-if="heatmapMeta" class="stats">
-            {{ heatmapMeta.followerCount }} followers · {{ heatmapMeta.followingCount }} following
-          </p>
-        </div>
-      </div>
+      <UserCard
+        v-if="user?.walletAddress"
+        :wallet-address="user.walletAddress"
+        :handle="displayName(user.handle, user.walletAddress)"
+        :x-handle="xHandle"
+        :follower-count="heatmapMeta?.followerCount"
+        :following-count="heatmapMeta?.followingCount"
+        wallet-display="abbrev"
+        :avatar-size="64"
+      />
 
       <ActivityHeatmap v-if="heatmap.length" :days="heatmap" title="Your activity" />
-
-      <div v-if="!user?.lifetimeUnlocked" class="lifetime-banner nq-card">
-        <h3>Lifetime Unlock</h3>
-        <p>Unlock all titles forever for {{ lifetimeNim }} NIM</p>
-        <button @click="purchaseLifetime" :disabled="purchasing" class="nq-pill-white">
-          {{ purchasing ? "Processing..." : "Unlock Lifetime" }}
-        </button>
-      </div>
 
       <div v-if="shareUrl" class="share-section nq-card">
         <h3>Your Public Profile</h3>
@@ -52,78 +39,31 @@
         </div>
       </div>
 
-      <section class="media-section">
-        <h3>Recommends ({{ recommends.length }}/5)</h3>
-        <div v-if="recommends.length === 0" class="empty">
-          No gold Recommends yet — star standouts from a title
+      <div v-if="shareUrl" class="share-section nq-card">
+        <h3>X</h3>
+        <p class="x-hint">Optional public link on your share page.</p>
+        <div class="share-link">
+          <input
+            v-model="xDraft"
+            class="nq-input-box"
+            placeholder="@handle"
+            maxlength="16"
+            autocomplete="off"
+          />
+          <button type="button" class="nq-pill-blue" @click="saveXHandle">Save</button>
         </div>
-        <div v-else class="media-grid">
-          <div
-            v-for="title in recommends"
-            :key="title.id"
-            class="media-item poster-press"
-            @click="goToTitle(title.id)"
-          >
-            <span class="gold-badge" aria-hidden="true">★</span>
-            <img
-              v-if="title.posterUrl"
-              :src="title.posterUrl"
-              :alt="title.title"
-            />
-            <div v-else class="poster-placeholder">
-              {{ title.title }}
-            </div>
-          </div>
-        </div>
-      </section>
+      </div>
 
-      <section class="media-section">
-        <h3>Favorites ({{ favorites.length }})</h3>
-        <div v-if="favorites.length === 0" class="empty">
-          No favorites yet
-        </div>
-        <div v-else class="media-grid">
-          <div
-            v-for="title in favorites"
-            :key="title.id"
-            class="media-item poster-press"
-            @click="goToTitle(title.id)"
-          >
-            <span v-if="title.recommended" class="gold-badge" aria-hidden="true">★</span>
-            <img
-              v-if="title.posterUrl"
-              :src="title.posterUrl"
-              :alt="title.title"
-            />
-            <div v-else class="poster-placeholder">
-              {{ title.title }}
-            </div>
-          </div>
-        </div>
-      </section>
+      <ProfileTaste
+        :favorites="favorites"
+        :recommends="recommends"
+        :recommend-count-label="recommendCountLabel"
+        @select="(title) => goToTitle(title.id)"
+      />
 
-      <section class="media-section">
-        <h3>Unlocked ({{ unlocks.length }})</h3>
-        <div v-if="unlocks.length === 0" class="empty">
-          No unlocks yet
-        </div>
-        <div v-else class="media-grid">
-          <div
-            v-for="title in unlocks"
-            :key="title.id"
-            class="media-item poster-press"
-            @click="goToTitle(title.id)"
-          >
-            <img
-              v-if="title.posterUrl"
-              :src="title.posterUrl"
-              :alt="title.title"
-            />
-            <div v-else class="poster-placeholder">
-              {{ title.title }}
-            </div>
-          </div>
-        </div>
+      <section class="sources-section nq-card">
+        <h3>Sources & terms</h3>
+        <TmdbAttribution variant="legal" />
       </section>
     </div>
   </div>
@@ -133,32 +73,41 @@
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
-import { usePayments } from "@/composables/usePayments";
 import { useAuthStore } from "@/stores/auth";
-import Identicon from "@/components/Identicon.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
 import ActivityHeatmap from "@/components/ActivityHeatmap.vue";
-import { LIFETIME_UNLOCK_NIM, LIFETIME_UNLOCK_LUNA, displayName, abbreviateWallet } from "@nimcharts/shared";
+import TmdbAttribution from "@/components/TmdbAttribution.vue";
+import ProfileTaste from "@/components/ProfileTaste.vue";
+import UserCard from "@/components/UserCard.vue";
+import { displayName, MAX_RECOMMENDS } from "@nimcharts/shared";
 import type { HeatmapDay, MeResponse, PublicProfile, TitleSummary } from "@nimcharts/shared";
 
 const router = useRouter();
 const { request } = useApi();
-const { sendPayment } = usePayments();
 const authStore = useAuthStore();
 
 const loading = ref(true);
-const purchasing = ref(false);
 const user = computed(() => authStore.user);
 const favorites = ref<TitleSummary[]>([]);
 const recommends = ref<TitleSummary[]>([]);
-const unlocks = ref<TitleSummary[]>([]);
 const shareUrl = ref<string | null>(null);
 const needsHandlePrompt = ref(false);
 const handleDraft = ref("");
+const xDraft = ref("");
+const xHandle = ref<string | null>(null);
 const heatmap = ref<HeatmapDay[]>([]);
 const heatmapMeta = ref<{ followerCount: number; followingCount: number } | null>(null);
 
-const lifetimeNim = LIFETIME_UNLOCK_NIM;
+const movieRecommendCount = computed(
+  () => recommends.value.filter((t) => t.mediaType === "movie").length
+);
+const tvRecommendCount = computed(
+  () => recommends.value.filter((t) => t.mediaType === "tv").length
+);
+const recommendCountLabel = computed(
+  () =>
+    `${movieRecommendCount.value}/${MAX_RECOMMENDS} movies · ${tvRecommendCount.value}/${MAX_RECOMMENDS} TV`
+);
 
 const loadMe = async () => {
   loading.value = true;
@@ -166,9 +115,10 @@ const loadMe = async () => {
     const data = await request<MeResponse>("/me");
     favorites.value = data.favorites;
     recommends.value = data.recommends || [];
-    unlocks.value = data.unlocks;
     shareUrl.value = data.shareUrl;
     needsHandlePrompt.value = data.needsHandlePrompt;
+    xHandle.value = data.xHandle;
+    xDraft.value = data.xHandle ? `@${data.xHandle}` : "";
     if (authStore.user?.walletAddress) {
       try {
         const profile = await request<PublicProfile>(
@@ -189,28 +139,6 @@ const loadMe = async () => {
   }
 };
 
-const purchaseLifetime = async () => {
-  purchasing.value = true;
-  try {
-    const hash = await sendPayment(LIFETIME_UNLOCK_LUNA, {
-      type: "lifetime",
-    });
-
-    await request("/lifetime", {
-      method: "POST",
-      body: JSON.stringify({ txHash: hash }),
-    });
-
-    await authStore.checkSession();
-    await loadMe();
-  } catch (err) {
-    console.error("Lifetime unlock failed:", err);
-    alert("Failed to unlock lifetime access");
-  } finally {
-    purchasing.value = false;
-  }
-};
-
 const copyShareLink = () => {
   if (shareUrl.value) {
     navigator.clipboard.writeText(shareUrl.value);
@@ -220,6 +148,14 @@ const copyShareLink = () => {
 const saveHandle = async () => {
   if (handleDraft.value.trim().length < 3) return;
   await authStore.setHandle(handleDraft.value.trim());
+  await loadMe();
+};
+
+const saveXHandle = async () => {
+  await request("/me/x-handle", {
+    method: "POST",
+    body: JSON.stringify({ xHandle: xDraft.value.trim() }),
+  });
   await loadMe();
 };
 
@@ -264,65 +200,6 @@ onMounted(() => {
   gap: 1rem;
 }
 
-.profile-section {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 0;
-  align-items: center;
-}
-
-.stats {
-  margin: 0.35rem 0 0;
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-}
-
-.profile-avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  overflow: hidden;
-  box-shadow: 0 0 0 2px var(--border);
-}
-
-.profile-info {
-  flex: 1;
-}
-
-.profile-info h2 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.25rem;
-  color: var(--text-primary);
-}
-
-.wallet {
-  margin: 0;
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  font-family: monospace;
-}
-
-.lifetime-banner {
-  background: var(--colors-blue-gradient);
-  margin-bottom: 1rem;
-  text-align: center;
-  color: white;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.lifetime-banner h3 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.25rem;
-}
-
-.lifetime-banner p {
-  margin: 0 0 1rem 0;
-  opacity: 0.9;
-}
-
 .share-section {
   margin-bottom: 1rem;
 }
@@ -331,6 +208,12 @@ onMounted(() => {
   margin: 0 0 1rem 0;
   font-size: 1.1rem;
   color: var(--text-primary);
+}
+
+.x-hint {
+  margin: -0.5rem 0 0.75rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
 }
 
 .share-link {
@@ -352,57 +235,9 @@ onMounted(() => {
   margin: 0;
 }
 
-.media-section {
-  margin-bottom: 2rem;
-}
-
-.media-section h3 {
-  margin: 0 0 1rem 0;
+.sources-section h3 {
+  margin: 0 0 0.85rem 0;
   font-size: 1.1rem;
   color: var(--text-primary);
-}
-
-.empty {
-  text-align: center;
-  padding: 2rem;
-  color: var(--text-secondary);
-}
-
-.media-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 0.75rem;
-}
-
-.media-item {
-  position: relative;
-  aspect-ratio: 2/3;
-  background: var(--bg-surface);
-  border-radius: 8px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.2s;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.media-item:hover {
-  transform: scale(1.05);
-}
-
-.media-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.poster-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  padding: 0.5rem;
-  text-align: center;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
 }
 </style>
