@@ -1,3 +1,5 @@
+@layer reset, nq-colors, nq-utilities;
+
 @import "nimiq-css/css/colors.css" layer(nq-colors);
 @import "nimiq-css/css/utilities.css" layer(nq-utilities);
 
@@ -19,13 +21,24 @@
   --font: var(--nq-font-sans);
   /* Clearance under Nimiq Pay / notch chrome */
   --top-chrome: calc(env(safe-area-inset-top, 0px) + 0.85rem);
+  --app-brand-row: 2.75rem;
+  --vv-offset-top: 0px;
+  --vv-height: 100dvh;
+  --vv-bottom-inset: 0px;
+  --column-pad: max(1.25rem, env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
+  --column-max: 44rem;
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  -webkit-tap-highlight-color: transparent;
+@layer reset {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
 }
 
 /* White press flash shaped like a poster thumbnail */
@@ -63,6 +76,8 @@ html {
 }
 
 body {
+  position: fixed;
+  inset: 0;
   font-family: var(--font);
   background: var(--bg-primary);
   color: var(--text-primary);
@@ -72,10 +87,83 @@ body {
 }
 
 #app {
+  position: relative;
   height: 100dvh;
   width: 100%;
   overflow: hidden;
   overscroll-behavior: none;
+}
+
+.app-column {
+  width: 100%;
+  max-width: var(--column-max);
+  margin-inline: auto;
+  padding-inline: var(--column-pad);
+  box-sizing: border-box;
+}
+
+#app::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url("./hex-pattern.svg");
+  background-repeat: repeat;
+  background-size: 5.25rem 4.5rem;
+  background-position: 0 0;
+  opacity: 0.14;
+  mask-image: radial-gradient(
+    ellipse 85% 75% at 50% 28%,
+    #000 12%,
+    transparent 78%
+  );
+  -webkit-mask-image: radial-gradient(
+    ellipse 85% 75% at 50% 28%,
+    #000 12%,
+    transparent 78%
+  );
+}
+
+.app-brand {
+  flex-shrink: 0;
+  z-index: 45;
+  height: var(--app-brand-row);
+  background: rgba(10, 10, 15, 0.92);
+  border-bottom: 1px solid var(--border);
+}
+
+.app-brand--fixed {
+  position: fixed;
+  top: var(--vv-offset-top, 0px);
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  touch-action: none;
+}
+
+.app-brand-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  height: 100%;
+  padding: 0 1rem;
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold);
+  line-height: 0;
+}
+
+.brand-mark .nq-icon,
+.brand-mark .brand-mark-icon {
+  width: 1.25rem;
+  height: 1.2rem;
+  display: block;
 }
 
 h1,
@@ -93,16 +181,31 @@ button {
   font-family: inherit;
 }
 
+img,
+svg,
+video {
+  -webkit-user-drag: none;
+}
+
 input,
 textarea,
 select {
   font-family: inherit;
+  -webkit-touch-callout: default;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 input:focus,
 textarea:focus,
 select:focus {
   outline: none;
+}
+
+/* Unlayered outline:none above would otherwise hide nq-input-box chrome. */
+.nq-input-box:focus,
+.nq-input-box:focus-within {
+  outline: 1.5px solid var(--outline-color);
 }
 
 a {
@@ -122,8 +225,22 @@ a.nq-pill-white:hover {
   text-decoration: none;
 }
 
+/* Unlayered `a { color }` beats nimiq-css pill `color: white` (layered). */
+a.nq-pill-blue,
+a.nq-pill-gold,
+a.nq-pill-green,
+a.nq-pill-red,
+a.nq-pill-orange,
+a.nq-pill-blue:hover,
+a.nq-pill-gold:hover,
+a.nq-pill-green:hover,
+a.nq-pill-red:hover,
+a.nq-pill-orange:hover {
+  color: #fff;
+}
+
 ::placeholder {
-  color: var(--text-secondary);
+  color: var(--placeholder-color, var(--text-secondary));
   opacity: 0.6;
 }
 
@@ -153,23 +270,6 @@ a.nq-pill-white:hover {
 .nq-pill-stretch {
   width: 100%;
   box-sizing: border-box;
-}
-
-.gold-badge {
-  position: absolute;
-  top: 0.35rem;
-  right: 0.35rem;
-  z-index: 2;
-  width: 1.4rem;
-  height: 1.4rem;
-  display: grid;
-  place-content: center;
-  border-radius: 999px;
-  background: var(--gold);
-  color: var(--colors-darkerblue);
-  font-size: 0.75rem;
-  line-height: 1;
-  box-shadow: 0 1px 4px color-mix(in oklch, var(--colors-neutral) 40%, transparent);
 }
 
 @keyframes fadeIn {

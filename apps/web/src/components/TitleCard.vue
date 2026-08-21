@@ -6,11 +6,7 @@
     "
   >
     <div class="card-poster poster-press" @click="$emit('click')">
-      <img
-        v-if="title.posterUrl"
-        :src="title.posterUrl"
-        :alt="title.title"
-      />
+      <PosterImg v-if="title.posterUrl" :src="title.posterUrl" :alt="title.title" />
       <div v-else class="poster-placeholder">
         {{ variant === "horizontal" ? title.title.charAt(0) : title.title }}
       </div>
@@ -23,9 +19,9 @@
           <span v-if="title.year">{{ title.year }}</span>
           <span v-if="title.year" class="dot">·</span>
           <span>{{ mediaLabel }}</span>
-          <template v-if="title.imdbRating != null">
+          <template v-if="title.rating != null">
             <span class="dot">·</span>
-            <span class="rating">{{ title.imdbRating.toFixed(1) }}</span>
+            <span class="rating">{{ title.rating.toFixed(1) }}</span>
           </template>
         </div>
       </div>
@@ -37,15 +33,7 @@
         :aria-label="favorited ? 'Remove favorite' : 'Add favorite'"
         @click.stop="$emit('toggle-favorite', title.id)"
       >
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path
-            d="M20.84 4.61C20.3292 4.099 19.7228 3.69364 19.0554 3.41708C18.3879 3.14052 17.6725 2.99817 16.95 2.99817C16.2275 2.99817 15.5121 3.14052 14.8446 3.41708C14.1772 3.69364 13.5708 4.099 13.06 4.61L12 5.67L10.94 4.61C9.9083 3.57831 8.50903 2.99871 7.05 2.99871C5.59096 2.99871 4.19169 3.57831 3.16 4.61C2.1283 5.64169 1.54871 7.04096 1.54871 8.5C1.54871 9.95903 2.1283 11.3583 3.16 12.39L4.22 13.45L12 21.23L19.78 13.45L20.84 12.39C21.351 11.8792 21.7564 11.2728 22.0329 10.6054C22.3095 9.93789 22.4518 9.2225 22.4518 8.5C22.4518 7.7775 22.3095 7.06211 22.0329 6.39464C21.7564 5.72717 21.351 5.12084 20.84 4.61Z"
-            :fill="favorited ? 'currentColor' : 'none'"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linejoin="round"
-          />
-        </svg>
+        <NqIcon name="heart" :size="20" />
       </button>
     </div>
   </div>
@@ -53,7 +41,9 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import type { TitleSummary } from "@nimcharts/shared";
+import type { TitleSummary } from "@cinima/shared";
+import NqIcon from "@/components/NqIcon.vue";
+import PosterImg from "@/components/PosterImg.vue";
 
 const props = withDefaults(
   defineProps<{
@@ -78,6 +68,10 @@ const mediaLabel = computed(() => {
 </script>
 
 <style scoped>
+.title-card {
+  flex-shrink: 0;
+}
+
 .title-card--poster {
   display: flex;
   flex-direction: column;
@@ -240,7 +234,7 @@ const mediaLabel = computed(() => {
   -webkit-tap-highlight-color: transparent;
 }
 
-.favorite-button svg {
+.favorite-button :deep(.nq-icon) {
   width: 20px;
   height: 20px;
 }

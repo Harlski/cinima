@@ -1,4 +1,4 @@
-const STORAGE_KEY = "nimcharts.searchHistory";
+const STORAGE_KEY = "cinima.searchHistory";
 const MAX_ITEMS = 12;
 
 function read(): string[] {

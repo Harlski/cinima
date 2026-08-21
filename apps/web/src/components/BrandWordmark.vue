@@ -78,38 +78,39 @@ const sizeClass = computed(() => `brand-wordmark--${props.size}`);
 }
 
 /*
-  7s loop (absolute %). All letters stay gray at rest.
-  White travels C→I→N→I→M→A, then NIM pulses, then 5s hold.
+  8s loop (absolute %). All letters gray at rest.
+  Gold travels C→I→N→I→M→A (~1.4s), then NIM pulses 3× (Ci–Nim–A),
+  holds solid gold 5s, fades, repeats.
 */
 .brand-wordmark--animate .brand-wordmark__letter--i0 {
-  animation: brand-flash-0 7s linear infinite;
+  animation: brand-flash-0 8s linear infinite;
 }
 .brand-wordmark--animate .brand-wordmark__letter--i1 {
-  animation: brand-flash-1 7s linear infinite;
+  animation: brand-flash-1 8s linear infinite;
 }
 .brand-wordmark--animate .brand-wordmark__letter--i2 {
-  animation: brand-flash-2 7s linear infinite;
+  animation: brand-flash-2 8s linear infinite;
 }
 .brand-wordmark--animate .brand-wordmark__letter--i3 {
-  animation: brand-flash-3 7s linear infinite;
+  animation: brand-flash-3 8s linear infinite;
 }
 .brand-wordmark--animate .brand-wordmark__letter--i4 {
-  animation: brand-flash-4 7s linear infinite;
+  animation: brand-flash-4 8s linear infinite;
 }
 .brand-wordmark--animate .brand-wordmark__letter--i5 {
-  animation: brand-flash-5 7s linear infinite;
+  animation: brand-flash-5 8s linear infinite;
 }
 
-/* Letter fades: soft rise to white then fall back to gray (~0–1.4s). */
+/* Letter cascade: soft rise to gold then back to gray (~0–1.4s). */
 @keyframes brand-flash-0 {
   0%,
-  0.5% {
+  0.4% {
     color: var(--text-secondary);
   }
-  2.5% {
-    color: var(--text-primary);
+  2.2% {
+    color: var(--gold);
   }
-  5%,
+  4.4%,
   100% {
     color: var(--text-secondary);
   }
@@ -117,13 +118,13 @@ const sizeClass = computed(() => `brand-wordmark--${props.size}`);
 
 @keyframes brand-flash-1 {
   0%,
-  3.5% {
+  3.1% {
     color: var(--text-secondary);
   }
-  5.5% {
-    color: var(--text-primary);
+  4.8% {
+    color: var(--gold);
   }
-  8%,
+  7%,
   100% {
     color: var(--text-secondary);
   }
@@ -131,32 +132,44 @@ const sizeClass = computed(() => `brand-wordmark--${props.size}`);
 
 @keyframes brand-flash-2 {
   0%,
-  6.5% {
+  5.7% {
     color: var(--text-secondary);
     transform: scale(1);
   }
-  8.5% {
-    color: var(--text-primary);
+  7.4% {
+    color: var(--gold);
     transform: scale(1);
   }
-  11%,
-  20% {
+  9.6%,
+  17.5% {
     color: var(--text-secondary);
     transform: scale(1);
   }
-  23% {
-    color: var(--text-primary);
+  20.1% {
+    color: var(--gold);
     transform: scale(1.08);
   }
-  26% {
+  22.5% {
     color: var(--text-secondary);
     transform: scale(1);
   }
-  28.5% {
-    color: var(--text-primary);
+  24.9% {
+    color: var(--gold);
+    transform: scale(1.08);
+  }
+  27.3% {
+    color: var(--text-secondary);
+    transform: scale(1);
+  }
+  29.8% {
+    color: var(--gold);
     transform: scale(1.05);
   }
-  32%,
+  31.3%,
+  93.8% {
+    color: var(--gold);
+    transform: scale(1);
+  }
   100% {
     color: var(--text-secondary);
     transform: scale(1);
@@ -165,32 +178,44 @@ const sizeClass = computed(() => `brand-wordmark--${props.size}`);
 
 @keyframes brand-flash-3 {
   0%,
-  9.5% {
+  8.3% {
     color: var(--text-secondary);
     transform: scale(1);
   }
-  11.5% {
-    color: var(--text-primary);
+  10.1% {
+    color: var(--gold);
     transform: scale(1);
   }
-  14%,
-  20% {
+  12.3%,
+  17.5% {
     color: var(--text-secondary);
     transform: scale(1);
   }
-  23% {
-    color: var(--text-primary);
+  20.1% {
+    color: var(--gold);
     transform: scale(1.08);
   }
-  26% {
+  22.5% {
     color: var(--text-secondary);
     transform: scale(1);
   }
-  28.5% {
-    color: var(--text-primary);
+  24.9% {
+    color: var(--gold);
+    transform: scale(1.08);
+  }
+  27.3% {
+    color: var(--text-secondary);
+    transform: scale(1);
+  }
+  29.8% {
+    color: var(--gold);
     transform: scale(1.05);
   }
-  32%,
+  31.3%,
+  93.8% {
+    color: var(--gold);
+    transform: scale(1);
+  }
   100% {
     color: var(--text-secondary);
     transform: scale(1);
@@ -199,32 +224,44 @@ const sizeClass = computed(() => `brand-wordmark--${props.size}`);
 
 @keyframes brand-flash-4 {
   0%,
-  12.5% {
+  10.9% {
     color: var(--text-secondary);
     transform: scale(1);
   }
-  14.5% {
-    color: var(--text-primary);
+  12.7% {
+    color: var(--gold);
     transform: scale(1);
   }
-  17%,
-  20% {
+  14.9%,
+  17.5% {
     color: var(--text-secondary);
     transform: scale(1);
   }
-  23% {
-    color: var(--text-primary);
+  20.1% {
+    color: var(--gold);
     transform: scale(1.08);
   }
-  26% {
+  22.5% {
     color: var(--text-secondary);
     transform: scale(1);
   }
-  28.5% {
-    color: var(--text-primary);
+  24.9% {
+    color: var(--gold);
+    transform: scale(1.08);
+  }
+  27.3% {
+    color: var(--text-secondary);
+    transform: scale(1);
+  }
+  29.8% {
+    color: var(--gold);
     transform: scale(1.05);
   }
-  32%,
+  31.3%,
+  93.8% {
+    color: var(--gold);
+    transform: scale(1);
+  }
   100% {
     color: var(--text-secondary);
     transform: scale(1);
@@ -233,13 +270,13 @@ const sizeClass = computed(() => `brand-wordmark--${props.size}`);
 
 @keyframes brand-flash-5 {
   0%,
-  15.5% {
+  13.6% {
     color: var(--text-secondary);
   }
-  17.5% {
-    color: var(--text-primary);
+  15.3% {
+    color: var(--gold);
   }
-  20%,
+  17.5%,
   100% {
     color: var(--text-secondary);
   }

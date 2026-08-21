@@ -1,9 +1,5 @@
 <template>
   <div class="me">
-    <header class="page-header">
-      <h1>Me</h1>
-    </header>
-
     <div v-if="loading" class="loading">
       <NqSpinner />
     </div>
@@ -14,23 +10,40 @@
         :wallet-address="user.walletAddress"
         :handle="displayName(user.handle, user.walletAddress)"
         :x-handle="xHandle"
+        :show-x-link="false"
         :follower-count="heatmapMeta?.followerCount"
         :following-count="heatmapMeta?.followingCount"
         wallet-display="abbrev"
         :avatar-size="64"
-      />
+      >
+        <template #actions>
+          <div class="card-actions">
+            <button
+              type="button"
+              class="icon-btn"
+              :class="{ on: !!xHandle }"
+              aria-label="Update X handle"
+              @click="openXEditor"
+            >
+              <NqIcon name="logos-twitter-mono" :size="20" />
+            </button>
+            <button
+              v-if="shareUrl"
+              type="button"
+              class="icon-btn"
+              :class="{ on: copied }"
+              :aria-label="copied ? 'Copied' : 'Copy profile link'"
+              @click="copyShareLink"
+            >
+              <NqIcon :name="copied ? 'check' : 'copy'" :size="20" />
+            </button>
+          </div>
+        </template>
+      </UserCard>
 
       <ActivityHeatmap v-if="heatmap.length" :days="heatmap" title="Your activity" />
 
-      <div v-if="shareUrl" class="share-section nq-card">
-        <h3>Your Public Profile</h3>
-        <div class="share-link">
-          <input :value="shareUrl" readonly class="nq-input-box" />
-          <button type="button" class="nq-pill-blue" @click="copyShareLink">Copy</button>
-        </div>
-      </div>
-
-      <div v-else-if="needsHandlePrompt" class="handle-prompt nq-card">
+      <div v-if="needsHandlePrompt" class="handle-prompt nq-card">
         <h3>Claim a shareable handle</h3>
         <p>Soft NimConnect-style identity for your public favorites URL.</p>
         <div class="share-link">
@@ -39,48 +52,68 @@
         </div>
       </div>
 
-      <div v-if="shareUrl" class="share-section nq-card">
-        <h3>X</h3>
-        <p class="x-hint">Optional public link on your share page.</p>
-        <div class="share-link">
-          <input
-            v-model="xDraft"
-            class="nq-input-box"
-            placeholder="@handle"
-            maxlength="16"
-            autocomplete="off"
-          />
-          <button type="button" class="nq-pill-blue" @click="saveXHandle">Save</button>
-        </div>
-      </div>
-
       <ProfileTaste
         :favorites="favorites"
         :recommends="recommends"
-        :recommend-count-label="recommendCountLabel"
         @select="(title) => goToTitle(title.id)"
       />
 
-      <section class="sources-section nq-card">
-        <h3>Sources & terms</h3>
-        <TmdbAttribution variant="legal" />
-      </section>
+      <TmdbAttribution variant="legal" />
+    </div>
+
+    <div
+      v-if="xEditorOpen"
+      class="x-modal"
+      role="presentation"
+      @click.self="xEditorOpen = false"
+    >
+      <div
+        class="x-dialog nq-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="x-edit-title"
+      >
+        <button type="button" class="x-close" aria-label="Close" @click="xEditorOpen = false">
+          <NqIcon name="cross" :size="20" />
+        </button>
+        <h2 id="x-edit-title">X</h2>
+        <p>Optional public link on your share page.</p>
+        <input
+          v-model="xDraft"
+          class="nq-input-box"
+          placeholder="@handle"
+          maxlength="16"
+          autocomplete="off"
+        />
+        <button type="button" class="nq-pill-blue nq-pill-stretch" @click="saveXHandle(xDraft.trim())">
+          Save
+        </button>
+        <button
+          v-if="xHandle"
+          type="button"
+          class="nq-pill-secondary nq-pill-stretch"
+          @click="clearXHandle"
+        >
+          Remove
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
 import { useAuthStore } from "@/stores/auth";
+import NqIcon from "@/components/NqIcon.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
 import ActivityHeatmap from "@/components/ActivityHeatmap.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";
 import ProfileTaste from "@/components/ProfileTaste.vue";
 import UserCard from "@/components/UserCard.vue";
-import { displayName, MAX_RECOMMENDS } from "@nimcharts/shared";
-import type { HeatmapDay, MeResponse, PublicProfile, TitleSummary } from "@nimcharts/shared";
+import { displayName } from "@cinima/shared";
+import type { HeatmapDay, MeResponse, PublicProfile, TitleSummary } from "@cinima/shared";
 
 const router = useRouter();
 const { request } = useApi();
@@ -97,17 +130,8 @@ const xDraft = ref("");
 const xHandle = ref<string | null>(null);
 const heatmap = ref<HeatmapDay[]>([]);
 const heatmapMeta = ref<{ followerCount: number; followingCount: number } | null>(null);
-
-const movieRecommendCount = computed(
-  () => recommends.value.filter((t) => t.mediaType === "movie").length
-);
-const tvRecommendCount = computed(
-  () => recommends.value.filter((t) => t.mediaType === "tv").length
-);
-const recommendCountLabel = computed(
-  () =>
-    `${movieRecommendCount.value}/${MAX_RECOMMENDS} movies · ${tvRecommendCount.value}/${MAX_RECOMMENDS} TV`
-);
+const xEditorOpen = ref(false);
+const copied = ref(false);
 
 const loadMe = async () => {
   loading.value = true;
@@ -139,9 +163,21 @@ const loadMe = async () => {
   }
 };
 
-const copyShareLink = () => {
-  if (shareUrl.value) {
-    navigator.clipboard.writeText(shareUrl.value);
+const openXEditor = () => {
+  xDraft.value = xHandle.value ? `@${xHandle.value}` : "";
+  xEditorOpen.value = true;
+};
+
+const copyShareLink = async () => {
+  if (!shareUrl.value) return;
+  try {
+    await navigator.clipboard.writeText(shareUrl.value);
+    copied.value = true;
+    window.setTimeout(() => {
+      copied.value = false;
+    }, 1600);
+  } catch {
+    copied.value = false;
   }
 };
 
@@ -151,20 +187,34 @@ const saveHandle = async () => {
   await loadMe();
 };
 
-const saveXHandle = async () => {
+const saveXHandle = async (value: string | null) => {
   await request("/me/x-handle", {
     method: "POST",
-    body: JSON.stringify({ xHandle: xDraft.value.trim() }),
+    body: JSON.stringify({ xHandle: value }),
   });
+  xEditorOpen.value = false;
   await loadMe();
+};
+
+const clearXHandle = async () => {
+  await saveXHandle(null);
 };
 
 const goToTitle = (titleId: string) => {
   router.push({ name: "title", params: { id: titleId } });
 };
 
+const onKeydown = (e: KeyboardEvent) => {
+  if (e.key === "Escape") xEditorOpen.value = false;
+};
+
 onMounted(() => {
   loadMe();
+  window.addEventListener("keydown", onKeydown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("keydown", onKeydown);
 });
 </script>
 
@@ -174,46 +224,61 @@ onMounted(() => {
   padding-bottom: 2rem;
 }
 
-.page-header {
-  padding: 1.5rem 1rem;
-  background: var(--bg-surface);
-  border-bottom: 1px solid var(--border);
-}
-
-.page-header h1 {
-  font-size: 1.75rem;
-  font-weight: 700;
-  margin: 0;
-  color: var(--text-primary);
-}
-
 .loading {
   text-align: center;
-  padding: 3rem 1rem;
+  padding: 3rem 0;
   color: var(--text-secondary);
 }
 
 .content {
-  padding: 1rem;
+  padding: 1rem 0;
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
-.share-section {
-  margin-bottom: 1rem;
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
-.share-section h3 {
-  margin: 0 0 1rem 0;
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--colors-neutral-200);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.icon-btn.on {
+  color: var(--text-primary);
+}
+
+.icon-btn :deep(.nq-icon) {
+  width: 20px;
+  height: 20px;
+}
+
+.handle-prompt {
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.handle-prompt h3 {
+  margin: 0 0 0.5rem;
   font-size: 1.1rem;
   color: var(--text-primary);
 }
 
-.x-hint {
-  margin: -0.5rem 0 0.75rem;
-  font-size: 0.85rem;
-  color: var(--text-secondary);
+.handle-prompt p {
+  margin: 0 0 0.75rem;
 }
 
 .share-link {
@@ -225,19 +290,45 @@ onMounted(() => {
   flex: 1;
 }
 
-.handle-prompt {
-  margin-bottom: 1rem;
-  text-align: center;
+.x-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: color-mix(in oklch, var(--colors-neutral) 28%, transparent);
+}
+
+.x-dialog {
+  position: relative;
+  width: min(100%, 22rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.35rem 1.25rem 1.25rem;
+}
+
+.x-dialog h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.x-dialog p {
+  margin: 0;
+  font-size: 0.9rem;
   color: var(--text-secondary);
 }
 
-.handle-prompt p {
-  margin: 0;
-}
-
-.sources-section h3 {
-  margin: 0 0 0.85rem 0;
-  font-size: 1.1rem;
-  color: var(--text-primary);
+.x-close {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  display: flex;
+  padding: 0.35rem;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
 }
 </style>

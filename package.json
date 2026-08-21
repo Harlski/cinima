@@ -1,17 +1,17 @@
 {
-  "name": "nimcharts",
+  "name": "cinima",
   "private": true,
   "version": "0.1.0",
-  "description": "NimCharts — social taste discovery Mini App for Nimiq Pay (Cycle 2)",
+  "description": "Cinima — social taste discovery Mini App for Nimiq Pay",
   "scripts": {
-    "dev": "pnpm --parallel --filter @nimcharts/api --filter @nimcharts/web run dev",
-    "dev:web": "pnpm --filter @nimcharts/web dev",
-    "dev:api": "pnpm --filter @nimcharts/api dev",
-    "dev:shared": "pnpm --filter @nimcharts/shared dev",
-    "build": "pnpm --filter @nimcharts/shared build && pnpm --filter @nimcharts/api build && pnpm --filter @nimcharts/web build",
+    "dev": "pnpm --parallel --filter @cinima/api --filter @cinima/web run dev",
+    "dev:web": "pnpm --filter @cinima/web dev",
+    "dev:api": "pnpm --filter @cinima/api dev",
+    "dev:shared": "pnpm --filter @cinima/shared dev",
+    "build": "pnpm --filter @cinima/shared build && pnpm --filter @cinima/api build && pnpm --filter @cinima/web build",
     "typecheck": "pnpm -r run typecheck",
-    "test": "pnpm --filter @nimcharts/api test && pnpm --filter @nimcharts/web test",
-    "db:push": "pnpm --filter @nimcharts/api db:push"
+    "test": "pnpm --filter @cinima/api test && pnpm --filter @cinima/web test",
+    "db:push": "pnpm --filter @cinima/api db:push"
   },
   "engines": {
     "node": ">=20"

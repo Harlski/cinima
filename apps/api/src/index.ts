@@ -1,10 +1,4 @@
-import { config as loadEnv } from "dotenv";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-loadEnv({ path: path.resolve(__dirname, "../../../.env") });
-loadEnv({ path: path.resolve(__dirname, "../../.env") });
+import "./load-env.js";
 
 import { serve } from "@hono/node-server";
 import { sql } from "drizzle-orm";
@@ -29,7 +23,9 @@ async function main() {
   await seedDemoSocialGraph();
 
   const hostname = process.env.HOST || "0.0.0.0";
-  console.log(`[nimcharts-api] http://${hostname}:${config.port} demo=${config.demoMode}`);
+  console.log(
+    `[cinima-api] http://${hostname}:${config.port} demo=${config.demoMode} tmdb=${config.tmdbApiKey ? "on" : "off"}`
+  );
   serve({ fetch: app.fetch, port: config.port, hostname });
 }
 

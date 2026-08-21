@@ -12,8 +12,8 @@ export function payHeaders(): HeadersInit {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
-  if (isNimiqPay()) headers["X-Nimcharts-Pay"] = "1";
-  if (demoEnabledOutsidePay()) headers["X-Nimcharts-Demo"] = "1";
+  if (isNimiqPay()) headers["X-Cinima-Pay"] = "1";
+  if (demoEnabledOutsidePay()) headers["X-Cinima-Demo"] = "1";
   return headers;
 }
 

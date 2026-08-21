@@ -12,9 +12,9 @@ import type {
   AuthChallengeResponse,
   AuthVerifyResponse,
   MeResponse,
-} from "@nimcharts/shared";
+} from "@cinima/shared";
 
-const TOKEN_KEY = "nimcharts_token";
+const TOKEN_KEY = "cinima_token";
 
 export const useAuthStore = defineStore("auth", () => {
   const token = ref<string | null>(localStorage.getItem(TOKEN_KEY));
@@ -48,7 +48,7 @@ export const useAuthStore = defineStore("auth", () => {
         return;
       }
       if (!isNimiqPay()) {
-        throw new Error("Open NimCharts inside Nimiq Pay (or use ?demo=1 locally)");
+        throw new Error("Open Cinima inside Nimiq Pay (or use ?demo=1 locally)");
       }
 
       // Prompt 1: share accounts (native dialog)
@@ -84,8 +84,8 @@ export const useAuthStore = defineStore("auth", () => {
 
   const devLogin = async () => {
     const demoWallet =
-      localStorage.getItem("nimcharts.demoWallet") || "NQ05DEMONIMCHARTSCYCLETWOWALLET0001";
-    localStorage.setItem("nimcharts.demoWallet", demoWallet);
+      localStorage.getItem("cinima.demoWallet") || "NQ05DEMOCINIMACYCLETWOWALLET0000001";
+    localStorage.setItem("cinima.demoWallet", demoWallet);
 
     const challengeResp = await request<AuthChallengeResponse>("/auth/challenge");
     const verifyResp = await request<AuthVerifyResponse>("/auth/verify", {

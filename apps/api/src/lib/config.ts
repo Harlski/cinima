@@ -5,7 +5,7 @@ import {
   LIFETIME_UNLOCK_NIM,
   UNLOCK_LUNA,
   UNLOCK_NIM,
-} from "@nimcharts/shared";
+} from "@cinima/shared";
 
 function envBool(name: string, fallback = false): boolean {
   const v = process.env[name];
@@ -13,16 +13,36 @@ function envBool(name: string, fallback = false): boolean {
   return v === "1" || v.toLowerCase() === "true" || v.toLowerCase() === "yes";
 }
 
+function envString(name: string, fallback = ""): string {
+  return process.env[name] || fallback;
+}
+
+/** Lazy env reads so dotenv (via `./load-env`) can run before values are consumed. */
 export const config = {
-  port: Number(process.env.PORT || 8787),
-  demoMode: envBool("DEMO_MODE", true),
-  sessionSecret: process.env.SESSION_SECRET || "dev-secret",
-  treasuryAddress: process.env.TREASURY_ADDRESS || "NQ07 0000 0000 0000 0000 0000 0000 0000 0000",
-  nimiqRpcUrl: process.env.NIMIQ_RPC_URL || "https://rpc.nimiqwatch.com",
-  tmdbApiKey: process.env.TMDB_API_KEY || "",
-  omdbApiKey: process.env.OMDB_API_KEY || "",
-  nimConnectBaseUrl: (process.env.NIMCONNECT_BASE_URL || "https://nimconnect.nimiq.com").replace(/\/$/, ""),
-  webOrigin: process.env.WEB_ORIGIN || "http://localhost:5173",
+  get port() {
+    return Number(process.env.PORT || 8787);
+  },
+  get demoMode() {
+    return envBool("DEMO_MODE", true);
+  },
+  get sessionSecret() {
+    return envString("SESSION_SECRET", "dev-secret");
+  },
+  get treasuryAddress() {
+    return envString("TREASURY_ADDRESS", "NQ07 0000 0000 0000 0000 0000 0000 0000 0000");
+  },
+  get nimiqRpcUrl() {
+    return envString("NIMIQ_RPC_URL", "https://rpc.nimiqwatch.com");
+  },
+  get tmdbApiKey() {
+    return envString("TMDB_API_KEY");
+  },
+  get nimConnectBaseUrl() {
+    return envString("NIMCONNECT_BASE_URL", "https://nimconnect.nimiq.com").replace(/\/$/, "");
+  },
+  get webOrigin() {
+    return envString("WEB_ORIGIN", "http://localhost:5173");
+  },
   prices: {
     unlockNim: UNLOCK_NIM,
     lifetimeNim: LIFETIME_UNLOCK_NIM,

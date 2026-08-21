@@ -1,7 +1,7 @@
-import { normalizeWallet } from "@nimcharts/shared";
-import { and, desc, eq } from "drizzle-orm";
+import { normalizeWallet } from "@cinima/shared";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { comments, thanks, titles, unlocks, users } from "../db/schema.js";
+import { comments, favorites, thanks, titles, unlocks, users } from "../db/schema.js";
 import { toTitleSummary } from "../lib/titles.js";
 import { markLifetimeUnlocked } from "./auth.js";
 import { verifyPayment } from "./payments.js";
@@ -77,22 +77,44 @@ export async function listComments(titleId: string) {
   }));
 }
 
-export async function addComment(wallet: string, titleId: string, body: string, txHash: string) {
+export async function addComment(wallet: string, titleId: string, body: string) {
   const text = body.trim().slice(0, 500);
   if (!text) throw new Error("empty_comment");
-  await verifyPayment({
-    txHash,
-    expectedMemoType: "comment",
-    expectedTitleId: titleId,
-    payerWallet: wallet,
-  });
   await db.insert(comments).values({
     titleId,
     walletAddress: normalizeWallet(wallet),
     body: text,
-    txHash,
+    txHash: "",
     createdAt: new Date(),
   });
+}
+
+export async function listSuggesters(titleId: string, me: string) {
+  const w = normalizeWallet(me);
+  const peers = await db
+    .select({
+      walletAddress: favorites.walletAddress,
+      handle: users.handle,
+      thankedAt: thanks.createdAt,
+    })
+    .from(favorites)
+    .leftJoin(users, eq(favorites.walletAddress, users.walletAddress))
+    .leftJoin(
+      thanks,
+      and(
+        eq(thanks.fromWallet, w),
+        eq(thanks.toWallet, favorites.walletAddress),
+        eq(thanks.titleId, titleId)
+      )
+    )
+    .where(and(eq(favorites.titleId, titleId), sql`${favorites.walletAddress} != ${w}`))
+    .limit(24);
+
+  return peers.map((p) => ({
+    walletAddress: p.walletAddress,
+    handle: p.handle,
+    thanked: p.thankedAt != null,
+  }));
 }
 
 export async function addThanks(opts: {
@@ -100,23 +122,47 @@ export async function addThanks(opts: {
   to: string;
   titleId: string;
   tipTxHash?: string | null;
-}) {
+}): Promise<{ created: boolean }> {
   if (opts.tipTxHash) {
-    await verifyPayment({
-      txHash: opts.tipTxHash,
-      expectedMemoType: "thanks",
-      expectedTo: opts.to,
-      payerWallet: opts.from,
-      minLuna: 1,
-    });
+    throw new Error("payments_retired");
   }
-  await db.insert(thanks).values({
-    fromWallet: normalizeWallet(opts.from),
-    toWallet: normalizeWallet(opts.to),
-    titleId: opts.titleId,
-    tipTxHash: opts.tipTxHash ?? null,
-    createdAt: new Date(),
-  });
+  const fromWallet = normalizeWallet(opts.from);
+  const toWallet = normalizeWallet(opts.to);
+  if (fromWallet === toWallet) {
+    throw new Error("cannot_thank_self");
+  }
+  const inserted = await db
+    .insert(thanks)
+    .values({
+      fromWallet,
+      toWallet,
+      titleId: opts.titleId,
+      tipTxHash: opts.tipTxHash ?? null,
+      createdAt: new Date(),
+    })
+    .onConflictDoNothing()
+    .returning({ id: thanks.id });
+  return { created: inserted.length > 0 };
+}
+
+export async function thankAllSuggesters(from: string, titleId: string) {
+  const remaining = (await listSuggesters(titleId, from)).filter((s) => !s.thanked);
+  if (remaining.length === 0) return 0;
+  const fromWallet = normalizeWallet(from);
+  const now = new Date();
+  await db
+    .insert(thanks)
+    .values(
+      remaining.map((s) => ({
+        fromWallet,
+        toWallet: normalizeWallet(s.walletAddress),
+        titleId,
+        tipTxHash: null,
+        createdAt: now,
+      }))
+    )
+    .onConflictDoNothing();
+  return remaining.length;
 }
 
 export async function activityFeed(limit = 40) {

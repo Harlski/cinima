@@ -4,6 +4,7 @@ const statements = [
   `CREATE TABLE IF NOT EXISTS users (
     wallet_address TEXT PRIMARY KEY,
     handle TEXT,
+    x_handle TEXT,
     lifetime_unlocked_at INTEGER,
     created_at INTEGER NOT NULL
   )`,
@@ -27,8 +28,8 @@ const statements = [
     poster_path TEXT,
     overview TEXT,
     imdb_id TEXT,
-    imdb_rating TEXT,
-    tmdb_rating TEXT,
+    rating TEXT,
+    popularity REAL,
     fetched_at INTEGER NOT NULL,
     source TEXT NOT NULL DEFAULT 'seed'
   )`,
@@ -39,7 +40,9 @@ const statements = [
     season INTEGER NOT NULL,
     episode INTEGER NOT NULL,
     name TEXT,
-    imdb_rating TEXT,
+    overview TEXT,
+    rating TEXT,
+    imdb_id TEXT,
     fetched_at INTEGER NOT NULL
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS episodes_unique ON episodes(title_id, season, episode)`,
@@ -97,12 +100,67 @@ export async function migrate() {
   for (const sql of statements) {
     await client.execute(sql);
   }
-  // Expand older favorites tables that predate Recommend
+  try {
+    await client.execute(`ALTER TABLE users ADD COLUMN x_handle TEXT`);
+  } catch {
+    /* column already exists */
+  }
   try {
     await client.execute(`ALTER TABLE favorites ADD COLUMN recommended_at INTEGER`);
   } catch {
     /* column already exists */
   }
+  // Titles/episodes: single TMDB-sourced `rating` (replaces imdb_rating / tmdb_rating)
+  try {
+    await client.execute(`ALTER TABLE titles ADD COLUMN rating TEXT`);
+  } catch {
+    /* column already exists */
+  }
+  try {
+    await client.execute(
+      `UPDATE titles SET rating = COALESCE(tmdb_rating, imdb_rating) WHERE rating IS NULL`
+    );
+  } catch {
+    /* legacy columns may be absent on fresh DBs */
+  }
+  try {
+    await client.execute(`ALTER TABLE episodes ADD COLUMN rating TEXT`);
+  } catch {
+    /* column already exists */
+  }
+  try {
+    await client.execute(
+      `UPDATE episodes SET rating = imdb_rating WHERE rating IS NULL`
+    );
+  } catch {
+    /* legacy column may be absent on fresh DBs */
+  }
+  try {
+    await client.execute(`ALTER TABLE episodes ADD COLUMN overview TEXT`);
+    await client.execute(`UPDATE titles SET fetched_at = 0 WHERE media_type = 'tv'`);
+  } catch {
+    /* column already exists */
+  }
+  try {
+    await client.execute(`ALTER TABLE episodes ADD COLUMN imdb_id TEXT`);
+  } catch {
+    /* column already exists */
+  }
+  try {
+    await client.execute(`ALTER TABLE titles ADD COLUMN popularity REAL`);
+  } catch {
+    /* column already exists */
+  }
+  await client.execute(
+    `DELETE FROM thanks WHERE id NOT IN (
+      SELECT id FROM (
+        SELECT MIN(id) AS id FROM thanks GROUP BY from_wallet, to_wallet, title_id
+      )
+    )`
+  );
+  await client.execute(
+    `CREATE UNIQUE INDEX IF NOT EXISTS thanks_unique ON thanks(from_wallet, to_wallet, title_id)`
+  );
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

@@ -1,9 +1,5 @@
 <template>
   <div class="activity">
-    <header class="page-header">
-      <h1>Activity</h1>
-    </header>
-
     <div v-if="loading" class="loading">
       <NqSpinner />
     </div>
@@ -56,8 +52,8 @@
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
-import type { ActivityItem } from "@nimcharts/shared";
-import { displayName } from "@nimcharts/shared";
+import type { ActivityItem } from "@cinima/shared";
+import { displayName } from "@cinima/shared";
 import Identicon from "@/components/Identicon.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
 
@@ -125,23 +121,10 @@ onMounted(() => {
   padding-bottom: 2rem;
 }
 
-.page-header {
-  padding: 1rem 1rem 0.85rem;
-  background: var(--bg-surface);
-  border-bottom: 1px solid var(--border);
-}
-
-.page-header h1 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 0;
-  color: var(--text-primary);
-}
-
 .loading,
 .empty {
   text-align: center;
-  padding: 3rem 1rem;
+  padding: 3rem 0;
   color: var(--text-secondary);
 }
 
@@ -149,7 +132,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  padding: 0.75rem 1rem;
+  padding: 1rem 0;
 }
 
 .activity-item {

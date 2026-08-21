@@ -5,7 +5,7 @@ import { drizzle } from "drizzle-orm/libsql";
 import * as schema from "./schema.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const defaultDb = path.resolve(__dirname, "../../data/nimcharts.db");
+const defaultDb = path.resolve(__dirname, "../../data/cinima.db");
 
 function resolveUrl(): string {
   const raw = process.env.DATABASE_URL;

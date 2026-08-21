@@ -3,27 +3,27 @@ import { cors } from "hono/cors";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import {
-  COMMENT_LUNA,
-  LIFETIME_UNLOCK_LUNA,
-  UNLOCK_LUNA,
+  makeTitleId,
   normalizeWallet,
   type ActivityItem,
   type CommentDto,
   type EpisodeCell,
   type GatePayload,
   type MeResponse,
-  type PricesResponse,
   type PublicProfile,
   type SessionUser,
+  type TitleShare,
+  type TitleSuggester,
   type TitleDetail,
-} from "@nimcharts/shared";
+  type FollowingFeedResponse,
+} from "@cinima/shared";
 import { db } from "./db/index.js";
 import * as schema from "./db/schema.js";
 import { config } from "./lib/config.js";
 import { bearerToken, isPayContext } from "./lib/util.js";
 import { toTitleSummary } from "./lib/titles.js";
+import { titleShareOgHtml } from "./lib/titleShareHtml.js";
 import { searchCatalog, ensureTitleFresh, getEpisodesForTitle } from "./services/catalog.js";
-import { verifyPayment } from "./services/payments.js";
 import { lookupWalletByHandle } from "./services/nimconnect.js";
 import {
   activityHeatmap,
@@ -46,7 +46,11 @@ import {
   removeFavorite,
   setRecommend,
 } from "./services/favorites.js";
-import type { FollowingFeedResponse } from "@nimcharts/shared";
+import {
+  addThanks,
+  listSuggesters,
+  thankAllSuggesters,
+} from "./services/social.js";
 
 type Vars = {
   user: typeof schema.users.$inferSelect;
@@ -60,7 +64,7 @@ app.use(
   "*",
   cors({
     origin: (o) => o || "*",
-    allowHeaders: ["Content-Type", "Authorization", "X-Nimcharts-Pay", "X-Nimcharts-Demo"],
+    allowHeaders: ["Content-Type", "Authorization", "X-Cinima-Pay", "X-Cinima-Demo"],
     allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
   })
 );
@@ -71,22 +75,16 @@ app.use("*", async (c, next) => {
   await next();
 });
 
-function demoTxOk(hash: string): boolean {
-  return config.demoMode && (hash.startsWith("demo:") || hash.startsWith("dev:"));
-}
-
-async function assertPayment(opts: Parameters<typeof verifyPayment>[0]) {
-  if (demoTxOk(opts.txHash) || (config.demoMode && opts.txHash)) {
-    return verifyPayment({ ...opts, txHash: opts.txHash.startsWith("demo:") || opts.txHash.startsWith("dev:") ? opts.txHash : `demo:${opts.txHash}` });
-  }
-  return verifyPayment(opts);
-}
+const PAYMENTS_RETIRED = {
+  error: "payments_retired",
+  message: "Catalog data is free. Cinima does not charge NIM for TMDB-sourced titles, ratings, or comments.",
+} as const;
 
 const requirePay = async (c: any, next: any) => {
   if (!c.get("payContext") && !config.demoMode) {
     const payload: GatePayload = {
       gate: true,
-      message: "NimCharts runs inside Nimiq Pay.",
+      message: "Cinima runs inside Nimiq Pay.",
       openInPayUrl: "https://www.nimiq.com/pay/",
     };
     return c.json(payload, 403);
@@ -141,17 +139,13 @@ app.get("/api/gate", (c) => {
   if (c.get("payContext") || config.demoMode) return c.json({ gate: false });
   return c.json({
     gate: true,
-    message: "NimCharts runs inside Nimiq Pay.",
+    message: "Cinima runs inside Nimiq Pay.",
     openInPayUrl: "https://www.nimiq.com/pay/",
   } satisfies GatePayload);
 });
 
 app.get("/api/prices", requirePay, (c) => {
-  const response: PricesResponse = {
-    ...config.prices,
-    treasuryAddress: config.treasuryAddress,
-  };
-  return c.json(response);
+  return c.json(PAYMENTS_RETIRED, 410);
 });
 
 // --- Auth ---
@@ -161,7 +155,7 @@ app.get("/api/auth/challenge", requirePay, async (c) => {
   await db.insert(schema.authNonces).values({ nonce, expiresAt, used: false });
   return c.json({
     nonce,
-    message: `NimCharts:v1:${nonce}`,
+    message: `Cinima:v1:${nonce}`,
     expiresAt: expiresAt.getTime(),
   });
 });
@@ -188,7 +182,7 @@ app.post("/api/auth/verify", requirePay, async (c) => {
     if (!nonceRow || nonceRow.used || nonceRow.expiresAt < new Date()) {
       return c.json({ error: "invalid_or_expired_nonce" }, 400);
     }
-    if (body.message !== `NimCharts:v1:${body.nonce}`) {
+    if (body.message !== `Cinima:v1:${body.nonce}`) {
       return c.json({ error: "message_mismatch" }, 400);
     }
 
@@ -276,6 +270,7 @@ app.get("/api/me", requirePay, requireAuth, async (c) => {
     unlocks: unlockRows.map((r) => toTitleSummary(r.titles)),
     shareUrl: user.handle ? `${config.webOrigin}/${user.handle}` : null,
     needsHandlePrompt: !user.handle,
+    xHandle: user.xHandle ?? null,
   };
   return c.json(response);
 });
@@ -299,6 +294,27 @@ app.post("/api/me/handle", requirePay, requireAuth, async (c) => {
   return c.json({ user: sessionUser, shareUrl: `${config.webOrigin}/${cleaned}` });
 });
 
+app.post("/api/me/x-handle", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  const { xHandle } = await c.req.json<{ xHandle: string | null }>();
+  const cleaned = String(xHandle ?? "")
+    .replace(/^@/, "")
+    .trim();
+  if (!cleaned) {
+    await db
+      .update(schema.users)
+      .set({ xHandle: null })
+      .where(eq(schema.users.walletAddress, user.walletAddress));
+    return c.json({ xHandle: null });
+  }
+  if (!/^[A-Za-z0-9_]{1,15}$/.test(cleaned)) return c.json({ error: "invalid_x_handle" }, 400);
+  await db
+    .update(schema.users)
+    .set({ xHandle: cleaned })
+    .where(eq(schema.users.walletAddress, user.walletAddress));
+  return c.json({ xHandle: cleaned });
+});
+
 // --- Catalog ---
 app.get("/api/search", requirePay, requireAuth, async (c) => {
   const q = c.req.query("q") || "";
@@ -319,7 +335,7 @@ app.get("/api/titles/popular", requirePay, requireAuth, async (c) => {
   const rows = await db
     .select()
     .from(schema.titles)
-    .orderBy(sql`CAST(COALESCE(imdb_rating, tmdb_rating, '0') AS REAL) DESC`)
+    .orderBy(sql`CAST(COALESCE(rating, '0') AS REAL) DESC`)
     .limit(40);
   return c.json({ results: rows.map(toTitleSummary) });
 });
@@ -328,45 +344,28 @@ app.get("/api/titles/:id", requirePay, requireAuth, async (c) => {
   const id = decodeURIComponent(c.req.param("id"));
   const user = c.get("user");
   let title = await db.query.titles.findFirst({ where: eq(schema.titles.id, id) });
-  if (!title) {
-    try {
-      const fresh = await ensureTitleFresh(id);
-      if (fresh) title = fresh;
-    } catch {
-      /* ignore */
-    }
+  try {
+    const fresh = await ensureTitleFresh(id);
+    if (fresh) title = fresh;
+  } catch {
+    /* keep cached row if refresh fails */
   }
   if (!title) return c.json({ error: "not_found" }, 404);
 
-  const unlocked =
-    !!user.lifetimeUnlockedAt ||
-    !!(await db.query.unlocks.findFirst({
-      where: and(eq(schema.unlocks.walletAddress, user.walletAddress), eq(schema.unlocks.titleId, id)),
-    }));
   const favorited = await isFavorited(user.walletAddress, id);
   const recommended = favorited ? await isRecommended(user.walletAddress, id) : false;
 
-  let episodeCells: EpisodeCell[] = [];
-  if (unlocked) {
-    const eps = await getEpisodesForTitle(id).catch(() =>
-      db.select().from(schema.episodes).where(eq(schema.episodes.titleId, id))
-    );
-    episodeCells = eps.map((e) => ({
-      season: e.season,
-      episode: e.episode,
-      name: e.name,
-      imdbRating: e.imdbRating != null ? Number(e.imdbRating) : null,
-    }));
-  } else if (title.mediaType === "tv") {
-    // Locked placeholder cells so the heat-map UI can blur
-    const eps = await db.select().from(schema.episodes).where(eq(schema.episodes.titleId, id)).limit(40);
-    episodeCells = eps.map((e) => ({
-      season: e.season,
-      episode: e.episode,
-      name: e.name,
-      imdbRating: null,
-    }));
-  }
+  const eps = await getEpisodesForTitle(id).catch(() =>
+    db.select().from(schema.episodes).where(eq(schema.episodes.titleId, id))
+  );
+  const episodeCells: EpisodeCell[] = eps.map((e) => ({
+    season: e.season,
+    episode: e.episode,
+    name: e.name,
+    overview: e.overview ?? null,
+    rating: e.rating != null ? Number(e.rating) : null,
+    imdbId: e.imdbId ?? null,
+  }));
 
   const commentCount = await db
     .select({ count: sql<number>`count(*)` })
@@ -377,13 +376,11 @@ app.get("/api/titles/:id", requirePay, requireAuth, async (c) => {
   const summary = toTitleSummary(title);
   const detail: TitleDetail = {
     ...summary,
-    unlocked,
+    unlocked: true,
     favorited,
     recommended,
     episodes: episodeCells,
     commentCount,
-    imdbRating: unlocked ? summary.imdbRating : null,
-    tmdbRating: unlocked ? summary.tmdbRating : null,
   };
   return c.json(detail);
 });
@@ -462,81 +459,22 @@ app.delete("/api/recommends/:titleId", requirePay, requireAuth, async (c) => {
   return c.json({ ok: true, user: await sessionUserFor(user.walletAddress) });
 });
 
-// --- Payments ---
-app.post("/api/unlocks", requirePay, requireAuth, async (c) => {
-  const user = c.get("user");
-  const { titleId, txHash } = await c.req.json<{ titleId: string; txHash: string }>();
-  if (!titleId || !txHash) return c.json({ error: "missing_fields" }, 400);
-  try {
-    await assertPayment({
-      txHash,
-      expectedMemoType: "unlock",
-      expectedTitleId: titleId,
-      expectedTo: config.treasuryAddress,
-      minLuna: UNLOCK_LUNA,
-      payerWallet: user.walletAddress,
-    });
-  } catch (e) {
-    return c.json({ error: e instanceof Error ? e.message : "payment_verify_failed" }, 400);
-  }
+// --- Payments (retired: TMDB catalog data is not sold) ---
+app.post("/api/unlocks", requirePay, requireAuth, (c) => c.json(PAYMENTS_RETIRED, 410));
 
-  await db
-    .insert(schema.unlocks)
-    .values({
-      walletAddress: user.walletAddress,
-      titleId,
-      txHash,
-      createdAt: new Date(),
-    })
-    .onConflictDoNothing();
-  return c.json({ ok: true, expectedLuna: UNLOCK_LUNA });
-});
-
-app.post("/api/lifetime", requirePay, requireAuth, async (c) => {
-  const user = c.get("user");
-  const { txHash } = await c.req.json<{ txHash: string }>();
-  if (!txHash) return c.json({ error: "missing_tx" }, 400);
-  try {
-    await assertPayment({
-      txHash,
-      expectedMemoType: "lifetime",
-      expectedTo: config.treasuryAddress,
-      minLuna: LIFETIME_UNLOCK_LUNA,
-      payerWallet: user.walletAddress,
-    });
-  } catch (e) {
-    return c.json({ error: e instanceof Error ? e.message : "payment_verify_failed" }, 400);
-  }
-  await db
-    .update(schema.users)
-    .set({ lifetimeUnlockedAt: new Date() })
-    .where(eq(schema.users.walletAddress, user.walletAddress));
-  return c.json({ ok: true, user: await sessionUserFor(user.walletAddress), expectedLuna: LIFETIME_UNLOCK_LUNA });
-});
+app.post("/api/lifetime", requirePay, requireAuth, (c) => c.json(PAYMENTS_RETIRED, 410));
 
 app.post("/api/comments", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
-  const body = await c.req.json<{ titleId: string; body: string; txHash: string }>();
+  const body = await c.req.json<{ titleId: string; body: string }>();
   const text = String(body.body || "").trim().slice(0, 500);
-  if (!text || !body.titleId || !body.txHash) return c.json({ error: "missing_fields" }, 400);
-  try {
-    await assertPayment({
-      txHash: body.txHash,
-      expectedMemoType: "comment",
-      expectedTitleId: body.titleId,
-      expectedTo: config.treasuryAddress,
-      minLuna: COMMENT_LUNA,
-      payerWallet: user.walletAddress,
-    });
-  } catch (e) {
-    return c.json({ error: e instanceof Error ? e.message : "payment_verify_failed" }, 400);
-  }
+  if (!text || !body.titleId) return c.json({ error: "missing_fields" }, 400);
 
   await db.insert(schema.comments).values({
     titleId: body.titleId,
     walletAddress: user.walletAddress,
     body: text,
-    txHash: body.txHash,
+    txHash: "",
     createdAt: new Date(),
   });
 
@@ -561,7 +499,6 @@ app.post("/api/comments", requirePay, requireAuth, async (c) => {
       body: r.body,
       createdAt: r.createdAt.toISOString(),
     })),
-    expectedLuna: COMMENT_LUNA,
   });
 });
 
@@ -569,29 +506,28 @@ app.post("/api/thanks", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
   const body = await c.req.json<{ toWallet: string; titleId: string; tipTxHash?: string }>();
   if (!body.toWallet || !body.titleId) return c.json({ error: "missing_fields" }, 400);
-  const toWallet = normalizeWallet(body.toWallet);
-  if (body.tipTxHash) {
-    try {
-      await assertPayment({
-        txHash: body.tipTxHash,
-        expectedMemoType: "thanks",
-        expectedTo: toWallet,
-        expectedTitleId: body.titleId,
-        minLuna: 1,
-        payerWallet: user.walletAddress,
-      });
-    } catch (e) {
-      return c.json({ error: e instanceof Error ? e.message : "tip_verify_failed" }, 400);
-    }
+  if (body.tipTxHash) return c.json(PAYMENTS_RETIRED, 410);
+  try {
+    const result = await addThanks({
+      from: user.walletAddress,
+      to: body.toWallet,
+      titleId: body.titleId,
+    });
+    return c.json({ ok: true, created: result.created });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "thanks_failed";
+    if (code === "cannot_thank_self") return c.json({ error: code }, 400);
+    if (code === "payments_retired") return c.json(PAYMENTS_RETIRED, 410);
+    return c.json({ error: code }, 400);
   }
-  await db.insert(schema.thanks).values({
-    fromWallet: user.walletAddress,
-    toWallet,
-    titleId: body.titleId,
-    tipTxHash: body.tipTxHash || null,
-    createdAt: new Date(),
-  });
-  return c.json({ ok: true });
+});
+
+app.post("/api/thanks/all", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  const body = await c.req.json<{ titleId: string }>();
+  if (!body.titleId) return c.json({ error: "missing_fields" }, 400);
+  const thanked = await thankAllSuggesters(user.walletAddress, body.titleId);
+  return c.json({ ok: true, thanked });
 });
 
 app.get("/api/users/:wallet", requirePay, requireAuth, async (c) => {
@@ -610,6 +546,7 @@ app.get("/api/users/:wallet", requirePay, requireAuth, async (c) => {
     isFollowing: me === walletAddress ? false : await isFollowing(me, walletAddress),
     isSelf: me === walletAddress,
     heatmap: await activityHeatmap(walletAddress),
+    xHandle: user.xHandle ?? null,
   };
   return c.json(response);
 });
@@ -641,22 +578,8 @@ app.get("/api/users/:wallet/heatmap", requirePay, requireAuth, async (c) => {
 
 app.get("/api/titles/:id/suggesters", requirePay, requireAuth, async (c) => {
   const id = decodeURIComponent(c.req.param("id"));
-  const me = c.get("user").walletAddress;
-  const peers = await db
-    .select({
-      walletAddress: schema.favorites.walletAddress,
-      handle: schema.users.handle,
-    })
-    .from(schema.favorites)
-    .leftJoin(schema.users, eq(schema.favorites.walletAddress, schema.users.walletAddress))
-    .where(and(eq(schema.favorites.titleId, id), sql`${schema.favorites.walletAddress} != ${me}`))
-    .limit(12);
-  return c.json({
-    suggesters: peers.map((p) => ({
-      walletAddress: p.walletAddress,
-      handle: p.handle,
-    })),
-  });
+  const suggesters: TitleSuggester[] = await listSuggesters(id, c.get("user").walletAddress);
+  return c.json({ suggesters });
 });
 
 app.get("/api/activity", requirePay, requireAuth, async (c) => {
@@ -744,20 +667,73 @@ app.get("/api/activity", requirePay, requireAuth, async (c) => {
   return c.json({ items: items.slice(0, 40) });
 });
 
-// Public profile — no pay gate
-app.get("/api/public/:username", async (c) => {
-  const username = c.req.param("username").replace(/^@/, "").toLowerCase();
-  let user = await db.query.users.findFirst({ where: eq(schema.users.handle, username) });
+async function findPublicUserByHandle(username: string) {
+  const handle = username.replace(/^@/, "").toLowerCase();
+  let user = await db.query.users.findFirst({ where: eq(schema.users.handle, handle) });
   if (!user) {
-    const wallet = await lookupWalletByHandle(username).catch(() => null);
+    const wallet = await lookupWalletByHandle(handle).catch(() => null);
     if (wallet) {
       user = await db.query.users.findFirst({ where: eq(schema.users.walletAddress, wallet) });
       if (user && !user.handle) {
-        await db.update(schema.users).set({ handle: username }).where(eq(schema.users.walletAddress, wallet));
-        user = { ...user, handle: username };
+        await db.update(schema.users).set({ handle }).where(eq(schema.users.walletAddress, wallet));
+        user = { ...user, handle };
       }
     }
   }
+  return user?.handle ? user : null;
+}
+
+function wantsHtml(accept: string | undefined): boolean {
+  const a = accept || "";
+  return a.includes("text/html") && !a.includes("application/json");
+}
+
+// Title Share — no pay gate
+app.get("/api/public/:handle/t/:mediaType/:tmdbId", async (c) => {
+  const mediaType = c.req.param("mediaType");
+  const tmdbId = Number(c.req.param("tmdbId"));
+  if ((mediaType !== "movie" && mediaType !== "tv") || !Number.isInteger(tmdbId) || tmdbId <= 0) {
+    return c.json({ error: "not_found" }, 404);
+  }
+
+  const user = await findPublicUserByHandle(c.req.param("handle"));
+  if (!user?.handle) return c.json({ error: "not_found" }, 404);
+
+  const id = makeTitleId(mediaType, tmdbId);
+  let title = await db.query.titles.findFirst({ where: eq(schema.titles.id, id) });
+  try {
+    const fresh = await ensureTitleFresh(id);
+    if (fresh) title = fresh;
+  } catch {
+    /* keep cached row if refresh fails */
+  }
+  if (!title) return c.json({ error: "not_found" }, 404);
+
+  const summary = toTitleSummary(title);
+  if (wantsHtml(c.req.header("accept"))) {
+    return c.html(
+      titleShareOgHtml({
+        origin: config.webOrigin,
+        handle: user.handle,
+        mediaType,
+        tmdbId,
+        titleName: summary.title,
+        posterUrl: summary.posterUrl,
+      })
+    );
+  }
+
+  const response: TitleShare = {
+    handle: user.handle,
+    walletAddress: user.walletAddress,
+    title: summary,
+  };
+  return c.json(response);
+});
+
+// Public profile — no pay gate
+app.get("/api/public/:username", async (c) => {
+  const user = await findPublicUserByHandle(c.req.param("username"));
   if (!user?.handle) return c.json({ error: "not_found" }, 404);
   const counts = await followCounts(user.walletAddress);
   const response: PublicProfile = {
@@ -770,6 +746,7 @@ app.get("/api/public/:username", async (c) => {
     isFollowing: false,
     isSelf: false,
     heatmap: await activityHeatmap(user.walletAddress),
+    xHandle: user.xHandle ?? null,
   };
   return c.json(response);
 });

@@ -1,23 +1,17 @@
 <template>
   <div class="app-shell">
-    <header class="app-brand" :class="{ 'app-brand--hidden': brandHidden }">
-      <span class="brand-mark" aria-hidden="true">
-        <NqIcon name="logos-nimiq-hexagon-outline-mono" :size="20" class="brand-mark-icon" />
-      </span>
-      <BrandWordmark size="sm" animate />
-    </header>
+    <AppBrandHeader fixed />
 
-    <div
-      ref="contentEl"
-      class="app-content"
-      :class="{ 'app-content--brand-hidden': brandHidden }"
-      @scroll.passive="onContentScroll"
-    >
-      <RouterView v-slot="{ Component }">
-        <Transition name="page" mode="out-in">
-          <component :is="Component" />
-        </Transition>
-      </RouterView>
+    <div class="app-content">
+      <div class="app-column">
+        <RouterView v-slot="{ Component }">
+          <Transition name="page" mode="out-in">
+            <KeepAlive include="Discover">
+              <component :is="Component" />
+            </KeepAlive>
+          </Transition>
+        </RouterView>
+      </div>
     </div>
     <nav class="bottom-tabs">
       <RouterLink to="/discover" class="tab">
@@ -46,47 +40,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
-import { RouterView, RouterLink, useRoute } from "vue-router";
+import { computed, onMounted } from "vue";
+import { RouterView, RouterLink } from "vue-router";
+import { useViewportChromeLock } from "@/composables/useViewportChromeLock";
 import { useFavoritesStore } from "@/stores/favorites";
 import { useAuthStore } from "@/stores/auth";
-import BrandWordmark from "@/components/BrandWordmark.vue";
+import AppBrandHeader from "@/components/AppBrandHeader.vue";
 import Identicon from "@/components/Identicon.vue";
 import NqIcon from "@/components/NqIcon.vue";
 
+useViewportChromeLock();
+
 const favoritesStore = useFavoritesStore();
 const authStore = useAuthStore();
-const route = useRoute();
 const walletAddress = computed(() => authStore.user?.walletAddress || "");
-
-const contentEl = ref<HTMLElement | null>(null);
-const brandHidden = ref(false);
-let lastScrollTop = 0;
-
-function onContentScroll() {
-  const el = contentEl.value;
-  if (!el) return;
-  const y = el.scrollTop;
-  const delta = y - lastScrollTop;
-
-  if (y < 16) {
-    brandHidden.value = false;
-  } else if (delta > 6) {
-    brandHidden.value = true;
-  } else if (delta < -6) {
-    brandHidden.value = false;
-  }
-
-  lastScrollTop = y;
-}
-
-watch(
-  () => route.fullPath,
-  () => {
-    brandHidden.value = false;
-    lastScrollTop = contentEl.value?.scrollTop ?? 0;
-  }
-);
 
 onMounted(() => {
   favoritesStore.load();
@@ -103,72 +70,38 @@ onMounted(() => {
   --bottom-tabs-height: calc(
     var(--bottom-tabs-pad-top) + var(--bottom-tabs-inner) + var(--bottom-tabs-pad-bottom)
   );
+  --bottom-tabs-inset: calc(
+    var(--bottom-tabs-height) + var(--vv-bottom-inset, 0px)
+  );
   --app-brand-row: 2.75rem;
+  position: relative;
+  z-index: 1;
   height: 100dvh;
   overflow: hidden;
   overscroll-behavior: none;
-  background: var(--bg-primary);
-}
-
-.app-brand {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 45;
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  height: var(--app-brand-row);
-  padding: 0 1rem;
-  background: rgba(10, 10, 15, 0.92);
-  border-bottom: 1px solid var(--border);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  transform: translateY(0);
-  transition: transform 0.22s ease;
-  pointer-events: none;
-}
-
-.app-brand--hidden {
-  transform: translateY(-100%);
-}
-
-.brand-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--gold);
-  line-height: 0;
-}
-
-.brand-mark :deep(.nq-icon),
-.brand-mark :deep(.brand-mark-icon) {
-  width: 1.25rem;
-  height: 1.2rem;
-  display: block;
 }
 
 .app-content {
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  overscroll-behavior-y: contain;
+  overscroll-behavior: none;
+  touch-action: pan-y;
+  overflow-anchor: none;
   -webkit-overflow-scrolling: touch;
+  isolation: isolate;
   padding-top: var(--app-brand-row);
-  padding-bottom: var(--bottom-tabs-height);
-  transition: padding-top 0.22s ease;
-}
-
-.app-content--brand-hidden {
-  padding-top: 0;
+  padding-bottom: var(--bottom-tabs-inset);
 }
 
 .bottom-tabs {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  top: calc(
+    var(--vv-offset-top, 0px) + var(--vv-height, 100dvh) - var(--bottom-tabs-height)
+  );
+  bottom: auto;
   z-index: 50;
   display: flex;
   background: var(--bg-surface);
@@ -176,6 +109,7 @@ onMounted(() => {
   padding-top: var(--bottom-tabs-pad-top);
   /* Extra clearance below tabs — Nimiq Pay / Android often report 0 for safe-area */
   padding-bottom: var(--bottom-tabs-pad-bottom);
+  touch-action: none;
 }
 
 .tab {

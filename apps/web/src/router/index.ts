@@ -7,6 +7,7 @@ import Me from "../views/Me.vue";
 import TitleDetail from "../views/TitleDetail.vue";
 import User from "../views/User.vue";
 import PublicProfile from "../views/PublicProfile.vue";
+import TitleShare from "../views/TitleShare.vue";
 import PayGate from "../views/PayGate.vue";
 
 const RESERVED = new Set([
@@ -37,6 +38,21 @@ export const router = createRouter({
         { path: "title/:id", name: "title", component: TitleDetail, props: true },
         { path: "user/:wallet", name: "user", component: User, props: true },
       ],
+    },
+    {
+      path: "/:handle/t/:mediaType/:tmdbId",
+      name: "title-share",
+      component: TitleShare,
+      props: true,
+      beforeEnter: (to) => {
+        const handle = String(to.params.handle || "").toLowerCase();
+        const media = String(to.params.mediaType || "");
+        if (RESERVED.has(handle)) return { name: "discover" };
+        if (media !== "movie" && media !== "tv") {
+          return { name: "public", params: { username: handle } };
+        }
+        return true;
+      },
     },
     {
       path: "/:username",

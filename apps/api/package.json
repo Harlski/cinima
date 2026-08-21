@@ -1,5 +1,5 @@
 {
-  "name": "@nimcharts/api",
+  "name": "@cinima/api",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -15,7 +15,7 @@
   "dependencies": {
     "@hono/node-server": "^1.13.8",
     "@libsql/client": "^0.14.0",
-    "@nimcharts/shared": "workspace:*",
+    "@cinima/shared": "workspace:*",
     "@nimiq/core": "^2.2.2",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.39.1",

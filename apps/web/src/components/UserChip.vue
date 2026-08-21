@@ -13,7 +13,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { displayName } from "@nimcharts/shared";
+import { displayName } from "@cinima/shared";
 import Identicon from "@/components/Identicon.vue";
 
 const props = withDefaults(

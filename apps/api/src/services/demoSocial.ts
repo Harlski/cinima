@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { makeTitleId } from "@nimcharts/shared";
+import { makeTitleId } from "@cinima/shared";
 import { db } from "../db/index.js";
 import { favorites, follows, users } from "../db/schema.js";
 
@@ -32,8 +32,8 @@ export async function seedDemoSocialGraph() {
   ];
 
   const demoWallets = [
-    "NQ05DEMONIMCHARTSCYCLETWOWALLET0001",
-    "NQ05DEMONIMCHARTSCYCLETWOWALLET0001",
+    "NQ05DEMOCINIMACYCLETWOWALLET0000001",
+    "NQ05DEMOCINIMACYCLETWOWALLET0000001",
   ];
 
   for (const p of peers) {
@@ -63,7 +63,7 @@ export async function seedDemoSocialGraph() {
   }
 
   // Auto-follow seeded curators for local demo wallet so Discover feed is populated
-  const demo = "NQ05DEMONIMCHARTSCYCLETWOWALLET0001";
+  const demo = "NQ05DEMOCINIMACYCLETWOWALLET0000001";
   await db
     .insert(users)
     .values({

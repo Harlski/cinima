@@ -4,7 +4,7 @@ import {
   UNLOCK_LUNA,
   normalizeWallet,
   parseMemo,
-} from "@nimcharts/shared";
+} from "@cinima/shared";
 import { config } from "../lib/config.js";
 
 export type VerifiedTx = {

@@ -1,4 +1,4 @@
-import { CATALOG_TTL_DAYS, makeTitleId, parseTitleId, type MediaType } from "@nimcharts/shared";
+import { CATALOG_TTL_DAYS, makeTitleId, parseTitleId, type MediaType } from "@cinima/shared";
 import { eq, like, or, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { episodes, ratingSnapshots, titles } from "../db/schema.js";
@@ -24,22 +24,22 @@ async function tmdbFetch(path: string): Promise<unknown | null> {
   }
 }
 
-async function omdbFetch(params: Record<string, string>): Promise<unknown | null> {
-  if (!config.omdbApiKey) return null;
-  const qs = new URLSearchParams({ ...params, apikey: config.omdbApiKey });
-  try {
-    const res = await fetch(`https://www.omdbapi.com/?${qs}`);
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
-}
-
 function yearFromDate(d?: string | null): number | null {
   if (!d) return null;
   const y = Number(String(d).slice(0, 4));
   return Number.isFinite(y) ? y : null;
+}
+
+function ratingString(voteAverage: unknown): string | null {
+  if (voteAverage == null) return null;
+  const n = Number(voteAverage);
+  return Number.isFinite(n) ? String(n) : null;
+}
+
+function popularityNumber(value: unknown): number | null {
+  if (value == null) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
 }
 
 async function upsertFromTmdb(mediaType: MediaType, tmdbId: number): Promise<string | null> {
@@ -58,21 +58,13 @@ async function upsertFromTmdb(mediaType: MediaType, tmdbId: number): Promise<str
       : yearFromDate(data.first_air_date as string);
   const posterPath = (data.poster_path as string) || null;
   const overview = (data.overview as string) || null;
-  const tmdbRating = data.vote_average != null ? String(data.vote_average) : null;
-  let imdbId =
-    mediaType === "movie" ? ((data.imdb_id as string) || null) : null;
+  const rating = ratingString(data.vote_average);
+  const popularity = popularityNumber(data.popularity);
+  let imdbId = mediaType === "movie" ? ((data.imdb_id as string) || null) : null;
 
   if (mediaType === "tv" && !imdbId) {
     const ext = (await tmdbFetch(`/tv/${tmdbId}/external_ids`)) as { imdb_id?: string } | null;
     imdbId = ext?.imdb_id ?? null;
-  }
-
-  let imdbRating: string | null = null;
-  if (imdbId) {
-    const omdb = (await omdbFetch({ i: imdbId })) as { imdbRating?: string; Response?: string } | null;
-    if (omdb && omdb.Response !== "False" && omdb.imdbRating && omdb.imdbRating !== "N/A") {
-      imdbRating = omdb.imdbRating;
-    }
   }
 
   const now = new Date();
@@ -87,10 +79,10 @@ async function upsertFromTmdb(mediaType: MediaType, tmdbId: number): Promise<str
       posterPath,
       overview,
       imdbId,
-      imdbRating,
-      tmdbRating,
+      rating,
+      popularity,
       fetchedAt: now,
-      source: "tmdb+omdb",
+      source: "tmdb",
     })
     .onConflictDoUpdate({
       target: titles.id,
@@ -100,50 +92,55 @@ async function upsertFromTmdb(mediaType: MediaType, tmdbId: number): Promise<str
         posterPath,
         overview,
         imdbId,
-        imdbRating,
-        tmdbRating,
+        rating,
+        popularity,
         fetchedAt: now,
-        source: "tmdb+omdb",
+        source: "tmdb",
       },
     });
 
   await db.insert(ratingSnapshots).values({
     titleId: id,
-    source: "tmdb+omdb",
-    rating: imdbRating ?? tmdbRating,
-    rawJson: JSON.stringify({ tmdbId, imdbId, imdbRating, tmdbRating }),
+    source: "tmdb",
+    rating,
+    rawJson: JSON.stringify({ tmdbId, imdbId, rating }),
     fetchedAt: now,
   });
 
-  if (mediaType === "tv") await syncTvEpisodes(id, tmdbId, imdbId);
+  if (mediaType === "tv") await syncTvEpisodes(id, tmdbId);
   return id;
 }
 
-async function syncTvEpisodes(titleIdValue: string, tmdbId: number, imdbId: string | null) {
+async function syncTvEpisodes(titleIdValue: string, tmdbId: number) {
   const show = (await tmdbFetch(`/tv/${tmdbId}`)) as { number_of_seasons?: number } | null;
   const seasons = Math.min(show?.number_of_seasons ?? 0, 6);
   const now = new Date();
 
   for (let season = 1; season <= seasons; season++) {
     const seasonData = (await tmdbFetch(`/tv/${tmdbId}/season/${season}`)) as {
-      episodes?: Array<{ episode_number: number; name?: string }>;
+      episodes?: Array<{
+        episode_number: number;
+        name?: string;
+        overview?: string;
+        vote_average?: number;
+      }>;
     } | null;
     const eps = seasonData?.episodes ?? [];
+    const imdbIds = await Promise.all(
+      eps.map(async (ep) => {
+        const ext = (await tmdbFetch(
+          `/tv/${tmdbId}/season/${season}/episode/${ep.episode_number}/external_ids`
+        )) as { imdb_id?: string } | null;
+        return ext?.imdb_id ?? null;
+      })
+    );
 
-    let omdbEps: Array<{ Episode?: string; imdbRating?: string }> | null = null;
-    if (imdbId && config.omdbApiKey) {
-      const omdb = (await omdbFetch({ i: imdbId, Season: String(season) })) as {
-        Episodes?: Array<{ Episode?: string; imdbRating?: string }>;
-        Response?: string;
-      } | null;
-      if (omdb && omdb.Response !== "False") omdbEps = omdb.Episodes ?? [];
-    }
-
-    for (const ep of eps) {
+    for (let i = 0; i < eps.length; i++) {
+      const ep = eps[i];
       const epNum = ep.episode_number;
-      const omdbMatch = omdbEps?.find((e) => Number(e.Episode) === epNum);
-      const rating =
-        omdbMatch?.imdbRating && omdbMatch.imdbRating !== "N/A" ? omdbMatch.imdbRating : null;
+      const rating = ratingString(ep.vote_average);
+      const overview = String(ep.overview ?? "").trim() || null;
+      const imdbId = imdbIds[i];
 
       await db
         .insert(episodes)
@@ -152,12 +149,14 @@ async function syncTvEpisodes(titleIdValue: string, tmdbId: number, imdbId: stri
           season,
           episode: epNum,
           name: ep.name ?? null,
-          imdbRating: rating,
+          overview,
+          rating,
+          imdbId,
           fetchedAt: now,
         })
         .onConflictDoUpdate({
           target: [episodes.titleId, episodes.season, episodes.episode],
-          set: { name: ep.name ?? null, imdbRating: rating, fetchedAt: now },
+          set: { name: ep.name ?? null, overview, rating, imdbId, fetchedAt: now },
         });
     }
   }
@@ -231,7 +230,7 @@ export async function listPopular(limit = 40) {
   const rows = await db
     .select()
     .from(titles)
-    .orderBy(sql`CAST(COALESCE(imdb_rating, tmdb_rating, '0') AS REAL) DESC`)
+    .orderBy(sql`CAST(COALESCE(rating, '0') AS REAL) DESC`)
     .limit(limit);
   return rows.map(toTitleSummary);
 }

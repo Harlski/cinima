@@ -2,26 +2,10 @@
   <section class="heatmap-section">
     <div class="heatmap-header">
       <h3>Episode Ratings</h3>
-      <button v-if="!unlocked" type="button" @click="$emit('unlock')" class="unlock-button">
-        Unlock for {{ unlockNim }} NIM
-      </button>
     </div>
 
     <div class="heatmap-container">
-      <div v-if="!unlocked" class="unlock-overlay">
-        <div class="unlock-prompt">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="2"/>
-            <path d="M7 11V7C7 5.67392 7.52678 4.40215 8.46447 3.46447C9.40215 2.52678 10.6739 2 12 2C13.3261 2 14.5979 2.52678 15.5355 3.46447C16.4732 4.40215 17 5.67392 17 7V11" stroke="currentColor" stroke-width="2"/>
-          </svg>
-          <p>Unlock to see episode ratings</p>
-          <button type="button" class="unlock-button" @click="$emit('unlock')">
-            Unlock for {{ unlockNim }} NIM
-          </button>
-        </div>
-      </div>
-
-      <div class="heatmap-blur" :class="{ locked: !unlocked }">
+      <div class="heatmap-blur">
         <div v-if="seasons.length === 0" class="empty">
           No episode data available
         </div>
@@ -80,50 +64,55 @@
       </div>
     </div>
 
-    <div v-if="unlocked && selected" class="episode-detail">
+    <div v-if="selected" class="episode-detail">
       <div class="detail-top">
         <div>
           <p class="detail-code">S{{ selected.season }} · E{{ selected.episode }}</p>
           <h4>{{ selected.name || `Episode ${selected.episode}` }}</h4>
         </div>
         <div
-          v-if="selected.imdbRating != null"
+          v-if="selected.rating != null"
           class="detail-rating"
-          :class="ratingTone(selected.imdbRating)"
+          :class="ratingTone(selected.rating)"
         >
-          {{ selected.imdbRating.toFixed(1) }}
+          {{ selected.rating.toFixed(1) }}
         </div>
         <div v-else class="detail-rating muted">---</div>
       </div>
-      <p class="detail-meta">IMDb episode rating</p>
-      <button type="button" class="detail-close" @click="selected = null">Close</button>
+      <p class="detail-meta">Episode rating</p>
+      <ExpandableText
+        v-if="selected.overview"
+        class="detail-overview"
+        :text="selected.overview"
+        :lines="4"
+      />
+      <div class="detail-actions">
+        <button type="button" class="nq-pill-secondary" @click="selected = null">Close</button>
+        <a
+          v-if="imdbUrl"
+          class="nq-pill-secondary"
+          :href="imdbUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          View on IMDb
+        </a>
+      </div>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
-import { UNLOCK_NIM } from "@nimcharts/shared";
-import type { EpisodeCell } from "@nimcharts/shared";
+import { computed, ref } from "vue";
+import { imdbTitleUrl, type EpisodeCell } from "@cinima/shared";
+import ExpandableText from "@/components/ExpandableText.vue";
 
 const props = defineProps<{
   episodes: EpisodeCell[];
-  unlocked: boolean;
 }>();
 
-defineEmits<{
-  unlock: [];
-}>();
-
-const unlockNim = UNLOCK_NIM;
 const selected = ref<EpisodeCell | null>(null);
-
-watch(
-  () => props.unlocked,
-  (ok) => {
-    if (!ok) selected.value = null;
-  }
-);
+const imdbUrl = computed(() => imdbTitleUrl(selected.value?.imdbId));
 
 const episodeMap = computed(() => {
   const map = new Map<string, EpisodeCell>();
@@ -147,19 +136,18 @@ const maxEpisodes = computed(() => {
 });
 
 const getCellValue = (season: number, episode: number): string => {
-  if (!props.unlocked) return "---";
   const ep = episodeMap.value.get(`${season}-${episode}`);
   if (!ep) return "";
-  if (ep.imdbRating == null) return "---";
-  return ep.imdbRating.toFixed(1);
+  if (ep.rating == null) return "---";
+  return ep.rating.toFixed(1);
 };
 
 const getCellClass = (season: number, episode: number): string => {
   const ep = episodeMap.value.get(`${season}-${episode}`);
   if (!ep) return "cell-empty";
-  if (!props.unlocked || ep.imdbRating == null) return "cell-locked";
+  if (ep.rating == null) return "cell-locked";
 
-  const rating = ep.imdbRating;
+  const rating = ep.rating;
   if (rating >= 9.0) return "cell-excellent";
   if (rating >= 8.0) return "cell-great";
   if (rating >= 7.0) return "cell-good";
@@ -171,12 +159,11 @@ const getCellTitle = (season: number, episode: number): string => {
   const ep = episodeMap.value.get(`${season}-${episode}`);
   if (!ep) return "";
   const name = ep.name || `Episode ${episode}`;
-  const rating = ep.imdbRating != null ? ` (${ep.imdbRating.toFixed(1)})` : "";
+  const rating = ep.rating != null ? ` (${ep.rating.toFixed(1)})` : "";
   return `S${season}E${episode}: ${name}${rating}`;
 };
 
 const canSelect = (season: number, episode: number) => {
-  if (!props.unlocked) return false;
   return !!episodeMap.value.get(`${season}-${episode}`);
 };
 
@@ -223,62 +210,12 @@ const ratingTone = (rating: number) => {
   color: var(--text-primary);
 }
 
-.unlock-button {
-  padding: 0.5rem 1rem;
-  background: var(--primary);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-}
-
 .heatmap-container {
   position: relative;
   background: var(--bg-surface);
   border-radius: 12px;
   padding: 1rem;
   overflow-x: auto;
-}
-
-.heatmap-blur.locked {
-  filter: blur(4px);
-  user-select: none;
-  pointer-events: none;
-}
-
-.unlock-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(10, 10, 15, 0.55);
-  z-index: 2;
-  border-radius: 12px;
-  backdrop-filter: blur(2px);
-}
-
-.unlock-prompt {
-  text-align: center;
-  color: var(--text-primary);
-}
-
-.unlock-prompt svg {
-  width: 48px;
-  height: 48px;
-  margin-bottom: 1rem;
-  color: var(--primary);
-}
-
-.unlock-prompt p {
-  margin: 0 0 0.75rem;
-  font-size: 1.1rem;
-  font-weight: 500;
 }
 
 .empty {
@@ -399,27 +336,27 @@ const ratingTone = (rating: number) => {
 }
 
 .cell-excellent {
-  background: #27ae60;
-  color: white;
+  background: var(--colors-green);
+  color: var(--colors-darkerblue);
 }
 
 .cell-great {
-  background: #2ecc71;
-  color: white;
+  background: var(--colors-green-1100);
+  color: var(--colors-darkerblue);
 }
 
 .cell-good {
-  background: #f39c12;
-  color: white;
+  background: var(--colors-gold);
+  color: var(--colors-darkerblue);
 }
 
 .cell-okay {
-  background: #e67e22;
-  color: white;
+  background: var(--colors-orange);
+  color: var(--colors-darkerblue);
 }
 
 .cell-poor {
-  background: #e74c3c;
+  background: var(--colors-red);
   color: white;
 }
 
@@ -469,11 +406,11 @@ const ratingTone = (rating: number) => {
   color: var(--text-secondary);
 }
 
-.tone-excellent { background: #27ae60; }
-.tone-great { background: #2ecc71; }
-.tone-good { background: #f39c12; }
-.tone-okay { background: #e67e22; }
-.tone-poor { background: #e74c3c; }
+.tone-excellent { background: var(--colors-green); }
+.tone-great { background: var(--colors-green-1100); }
+.tone-good { background: var(--colors-gold); }
+.tone-okay { background: var(--colors-orange); }
+.tone-poor { background: var(--colors-red); }
 
 .detail-meta {
   margin: 0.45rem 0 0.75rem;
@@ -481,16 +418,18 @@ const ratingTone = (rating: number) => {
   color: var(--text-secondary);
 }
 
-.detail-close {
-  padding: 0.45rem 0.8rem;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  font-weight: 600;
-  font-size: 0.85rem;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
+.detail-overview {
+  margin: -0.25rem 0 0.85rem;
+}
+
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.detail-actions a {
+  text-decoration: none;
 }
 
 @media (max-width: 640px) {

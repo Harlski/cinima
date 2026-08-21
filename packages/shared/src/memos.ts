@@ -74,5 +74,21 @@ export function displayName(handle: string | null | undefined, wallet: string): 
   return abbreviateWallet(wallet);
 }
 
+/** IMDb title page from a TMDB external id (tt…) */
+export function imdbTitleUrl(imdbId: string | null | undefined): string | null {
+  const id = String(imdbId ?? "").trim();
+  if (!/^tt\d+$/i.test(id)) return null;
+  return `https://www.imdb.com/title/${id}/`;
+}
+
+/** Public X profile from a stored handle (no @) */
+export function xProfileUrl(xHandle: string | null | undefined): string | null {
+  const h = String(xHandle ?? "")
+    .replace(/^@/, "")
+    .trim();
+  if (!/^[A-Za-z0-9_]{1,15}$/.test(h)) return null;
+  return `https://x.com/${h}`;
+}
+
 /** Alias used in docs / payment verifiers */
 export const decodeMemo = parseMemo;

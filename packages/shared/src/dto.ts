@@ -44,8 +44,12 @@ export type TitleSummary = {
   year: number | null;
   posterUrl: string | null;
   overview: string | null;
-  imdbRating: number | null;
-  tmdbRating: number | null;
+  /** TMDB vote_average; null when unknown */
+  rating: number | null;
+  /** TMDB popularity; null when unknown */
+  popularity: number | null;
+  /** TMDB external IMDb title id (tt…); null when unknown */
+  imdbId: string | null;
   /** Present when this title is a Recommend for the profile/owner context */
   recommended?: boolean;
 };
@@ -54,7 +58,12 @@ export type EpisodeCell = {
   season: number;
   episode: number;
   name: string | null;
-  imdbRating: number | null;
+  /** TMDB episode synopsis; null when unknown */
+  overview: string | null;
+  /** TMDB episode vote_average; null when unknown */
+  rating: number | null;
+  /** TMDB external IMDb episode id (tt…); null when unknown */
+  imdbId: string | null;
 };
 
 export type TitleDetail = TitleSummary & {
@@ -71,6 +80,12 @@ export type CommentDto = {
   handle: string | null;
   body: string;
   createdAt: string;
+};
+
+export type TitleSuggester = {
+  walletAddress: string;
+  handle: string | null;
+  thanked: boolean;
 };
 
 export type OverlapSuggestion = {
@@ -97,6 +112,14 @@ export type PublicProfile = {
   isFollowing: boolean;
   isSelf: boolean;
   heatmap: HeatmapDay[];
+  /** Public X (Twitter) handle, without @ */
+  xHandle: string | null;
+};
+
+export type TitleShare = {
+  handle: string;
+  walletAddress: string;
+  title: TitleSummary;
 };
 
 export type HeatmapDay = {
@@ -156,6 +179,7 @@ export type MeResponse = {
   unlocks: TitleSummary[];
   shareUrl: string | null;
   needsHandlePrompt: boolean;
+  xHandle: string | null;
 };
 
 export type PricesResponse = {

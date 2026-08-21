@@ -48,8 +48,8 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
-import { displayName } from "@nimcharts/shared";
-import type { PublicProfile } from "@nimcharts/shared";
+import { displayName } from "@cinima/shared";
+import type { PublicProfile } from "@cinima/shared";
 import ActivityHeatmap from "@/components/ActivityHeatmap.vue";
 import NqIcon from "@/components/NqIcon.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
@@ -122,12 +122,9 @@ watch(wallet, loadProfile);
   display: flex;
   align-items: center;
   gap: 1rem;
-  padding: 1rem;
+  padding: 1rem 0;
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 10;
 }
 
 .back-button {
@@ -156,12 +153,12 @@ watch(wallet, loadProfile);
 
 .loading {
   text-align: center;
-  padding: 3rem 1rem;
+  padding: 3rem 0;
   color: var(--text-secondary);
 }
 
 .content {
-  padding: 1rem;
+  padding: 1rem 0;
   display: flex;
   flex-direction: column;
   gap: 1rem;

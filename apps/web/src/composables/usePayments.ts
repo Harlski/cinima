@@ -1,5 +1,5 @@
 import { ref } from "vue";
-import { encodeMemo, type PaymentMemo } from "@nimcharts/shared";
+import { encodeMemo, type PaymentMemo } from "@cinima/shared";
 import { demoEnabledOutsidePay, isNimiqPay, sendPayTransaction } from "@/lib/nimiqPay";
 
 const treasuryAddress = (import.meta.env.VITE_TREASURY_ADDRESS || "").trim();
@@ -16,7 +16,7 @@ export function usePayments() {
       if (demoEnabledOutsidePay()) {
         return `demo:${encoded}:${Date.now()}`;
       }
-      if (!isNimiqPay()) throw new Error("Open NimCharts inside Nimiq Pay to pay");
+      if (!isNimiqPay()) throw new Error("Open Cinima inside Nimiq Pay to pay");
       if (!to) throw new Error("Missing payment recipient");
       return await sendPayTransaction({
         recipient: to,

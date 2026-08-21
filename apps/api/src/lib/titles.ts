@@ -1,4 +1,4 @@
-import type { TitleSummary } from "@nimcharts/shared";
+import type { TitleSummary } from "@cinima/shared";
 import type { titles } from "../db/schema.js";
 
 type TitleRow = typeof titles.$inferSelect;
@@ -9,6 +9,10 @@ export function posterUrl(posterPath: string | null | undefined): string | null 
   if (!posterPath) return null;
   if (posterPath.startsWith("http")) return posterPath;
   return `${TMDB_IMG}${posterPath.startsWith("/") ? "" : "/"}${posterPath}`;
+}
+
+export function hasOverview(overview: string | null | undefined): boolean {
+  return Boolean(overview?.trim());
 }
 
 export function toTitleSummary(row: TitleRow): TitleSummary {
@@ -22,7 +26,8 @@ export function toTitleSummary(row: TitleRow): TitleSummary {
     year: row.year,
     posterUrl: posterUrl(row.posterPath),
     overview: row.overview,
-    imdbRating: row.imdbRating != null ? Number(row.imdbRating) : null,
-    tmdbRating: row.tmdbRating != null ? Number(row.tmdbRating) : null,
+    rating: row.rating != null ? Number(row.rating) : null,
+    popularity: row.popularity ?? null,
+    imdbId: row.imdbId ?? null,
   };
 }

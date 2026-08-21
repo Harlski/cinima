@@ -2,7 +2,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { MAX_RECOMMENDS } from "@nimcharts/shared";
+import { MAX_RECOMMENDS } from "@cinima/shared";
 
 const dataDir = mkdtempSync(path.join(tmpdir(), "cinima-recommend-"));
 process.env.DATABASE_URL = `file:${path.join(dataDir, "test.db")}`;
@@ -11,6 +11,7 @@ process.env.DEMO_MODE = "true";
 const WALLET = "NQ05RECOMMENDTESTWALLET000000000001";
 const TOKEN = "test-session-token-recommend";
 const TITLE_IDS = Array.from({ length: 6 }, (_, i) => `movie:${100 + i}`);
+const TV_IDS = Array.from({ length: 6 }, (_, i) => `tv:${200 + i}`);
 
 describe("Recommend HTTP API", () => {
   let app: { fetch: (request: Request) => Response | Promise<Response> };
@@ -20,7 +21,7 @@ describe("Recommend HTTP API", () => {
   const headers = {
     Authorization: `Bearer ${TOKEN}`,
     "Content-Type": "application/json",
-    "X-Nimcharts-Demo": "1",
+    "X-Cinima-Demo": "1",
   };
 
   beforeAll(async () => {
@@ -51,8 +52,22 @@ describe("Recommend HTTP API", () => {
         posterPath: null,
         overview: null,
         imdbId: null,
-        imdbRating: "7.0",
-        tmdbRating: "7.0",
+        rating: "7.0",
+        fetchedAt: new Date(),
+        source: "seed",
+      });
+    }
+    for (const [i, id] of TV_IDS.entries()) {
+      await db.insert(schema.titles).values({
+        id,
+        mediaType: "tv",
+        tmdbId: 200 + i,
+        title: `Show ${i}`,
+        year: 2018 + i,
+        posterPath: null,
+        overview: null,
+        imdbId: null,
+        rating: "8.0",
         fetchedAt: new Date(),
         source: "seed",
       });
@@ -215,5 +230,77 @@ describe("Recommend HTTP API", () => {
     };
     expect(peer.recommends.some((r) => r.id === TITLE_IDS[1])).toBe(true);
     expect(peer.favorites.find((f) => f.id === TITLE_IDS[1])?.recommended).toBe(true);
+  });
+
+  it("caps Recommends per media type, not across movies and TV", async () => {
+    for (const id of TV_IDS) {
+      const fav = await app.fetch(
+        new Request(`http://test/api/favorites/${encodeURIComponent(id)}`, {
+          method: "POST",
+          headers,
+        })
+      );
+      expect(fav.status).toBe(200);
+    }
+
+    const meStart = (await (
+      await app.fetch(new Request("http://test/api/me", { headers }))
+    ).json()) as {
+      recommends: { id: string; mediaType: string }[];
+    };
+    const movieRecIds = new Set(
+      meStart.recommends.filter((r) => r.mediaType === "movie").map((r) => r.id)
+    );
+    for (const id of TITLE_IDS) {
+      if (movieRecIds.size >= MAX_RECOMMENDS) break;
+      if (movieRecIds.has(id)) continue;
+      const topUp = await app.fetch(
+        new Request(`http://test/api/recommends/${encodeURIComponent(id)}`, {
+          method: "POST",
+          headers,
+        })
+      );
+      expect(topUp.status).toBe(200);
+      movieRecIds.add(id);
+    }
+
+    for (let i = 0; i < MAX_RECOMMENDS; i++) {
+      const res = await app.fetch(
+        new Request(`http://test/api/recommends/${encodeURIComponent(TV_IDS[i])}`, {
+          method: "POST",
+          headers,
+        })
+      );
+      expect(res.status).toBe(200);
+    }
+
+    const sixthTv = await app.fetch(
+      new Request(`http://test/api/recommends/${encodeURIComponent(TV_IDS[5])}`, {
+        method: "POST",
+        headers,
+      })
+    );
+    expect(sixthTv.status).toBe(409);
+    const tvBody = (await sixthTv.json()) as { error: string; message: string };
+    expect(tvBody.error).toBe("recommend_cap");
+    expect(tvBody.message).toMatch(/TV/i);
+
+    const me = (await (
+      await app.fetch(new Request("http://test/api/me", { headers }))
+    ).json()) as {
+      recommends: { id: string; mediaType: string }[];
+    };
+    expect(me.recommends.filter((r) => r.mediaType === "movie").length).toBe(MAX_RECOMMENDS);
+    expect(me.recommends.filter((r) => r.mediaType === "tv").length).toBe(MAX_RECOMMENDS);
+
+    const sixthMovie = await app.fetch(
+      new Request(`http://test/api/recommends/${encodeURIComponent(TITLE_IDS[5])}`, {
+        method: "POST",
+        headers,
+      })
+    );
+    expect(sixthMovie.status).toBe(409);
+    const movieBody = (await sixthMovie.json()) as { error: string; message: string };
+    expect(movieBody.message).toMatch(/movie/i);
   });
 });

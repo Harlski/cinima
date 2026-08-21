@@ -16,8 +16,8 @@ export type SignResult = {
 export async function signChallenge(message: string): Promise<SignResult> {
   if (demoEnabledOutsidePay()) {
     const wallet =
-      localStorage.getItem("nimcharts.demoWallet") || "NQ05DEMONIMCHARTSCYCLETWOWALLET0001";
-    localStorage.setItem("nimcharts.demoWallet", wallet);
+      localStorage.getItem("cinima.demoWallet") || "NQ05DEMOCINIMACYCLETWOWALLET0000001";
+    localStorage.setItem("cinima.demoWallet", wallet);
     return {
       signerPublicKey: btoa("demo-pubkey"),
       signature: btoa(`sig:${message}`),
@@ -26,7 +26,7 @@ export async function signChallenge(message: string): Promise<SignResult> {
   }
 
   if (!isNimiqPay()) {
-    throw new Error("Open NimCharts inside Nimiq Pay (or use ?demo=1 locally)");
+    throw new Error("Open Cinima inside Nimiq Pay (or use ?demo=1 locally)");
   }
 
   const accounts = await listPayAccounts();

@@ -159,19 +159,21 @@ import { useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
 import { useFavoritesStore } from "@/stores/favorites";
 import { useCatalogStore } from "@/stores/catalog";
-import { displayName } from "@nimcharts/shared";
+import { displayName } from "@cinima/shared";
 import type {
   DiscoverResponse,
   FollowingFeedItem,
   FollowingFeedResponse,
   OverlapSuggestion,
   TitleSummary,
-} from "@nimcharts/shared";
+} from "@cinima/shared";
 import TitleCard from "@/components/TitleCard.vue";
 import Identicon from "@/components/Identicon.vue";
 import ForYouPicker from "@/components/ForYouPicker.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
 import PosterImg from "@/components/PosterImg.vue";
+
+defineOptions({ name: "Discover" });
 
 type FeedCard = {
   key: string;
@@ -345,7 +347,7 @@ onMounted(() => {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: var(--bottom-tabs-height);
+  bottom: var(--bottom-tabs-inset);
   z-index: 45;
   display: flex;
   justify-content: center;
@@ -379,7 +381,7 @@ onMounted(() => {
 }
 
 .discover-tab.active {
-  color: var(--text-primary);
+  color: var(--gold);
 }
 
 .discover-tab.active::after {
@@ -390,7 +392,7 @@ onMounted(() => {
   top: 0;
   height: 2px;
   border-radius: 0 0 2px 2px;
-  background: var(--primary);
+  background: var(--gold);
 }
 
 .discover-tab:active {

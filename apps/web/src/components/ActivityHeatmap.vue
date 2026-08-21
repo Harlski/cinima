@@ -29,7 +29,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from "vue";
-import type { HeatmapDay } from "@nimcharts/shared";
+import type { HeatmapDay } from "@cinima/shared";
 
 const props = withDefaults(
   defineProps<{

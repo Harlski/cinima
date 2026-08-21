@@ -1,14 +1,19 @@
 <template>
   <div class="picker">
     <div v-if="selected" class="detail">
-      <div class="hero poster-press">
+      <button
+        type="button"
+        class="hero poster-press"
+        :aria-label="`Open ${selected.title.title}`"
+        @click="openSelected"
+      >
         <PosterImg
           v-if="selected.title.posterUrl"
           :src="selected.title.posterUrl"
           :alt="selected.title.title"
         />
         <div v-else class="hero-fallback">{{ selected.title.title }}</div>
-      </div>
+      </button>
 
       <div class="meta">
         <h2>{{ selected.title.title }}</h2>
@@ -37,31 +42,29 @@
             />
           </div>
         </div>
-        <button
-          type="button"
-          class="nq-pill-stretch"
-          :class="favorited ? 'nq-pill-blue' : 'nq-pill-secondary'"
-          @click="$emit('toggle-favorite', selected.title.id)"
-        >
-          {{ favorited ? "Favorited" : "Add to Favorites" }}
-        </button>
+        <div class="actions">
+          <button
+            type="button"
+            class="nq-pill-stretch"
+            :class="favorited ? 'nq-pill-blue' : 'nq-pill-secondary'"
+            @click="$emit('toggle-favorite', selected.title.id)"
+          >
+            {{ favorited ? "Favorited" : "Add to Favorites" }}
+          </button>
+          <button
+            type="button"
+            class="refresh-btn"
+            :disabled="suggestions.length === 0"
+            aria-label="Show another set of titles"
+            @click="refresh"
+          >
+            <NqIcon name="cycle" :size="20" />
+          </button>
+        </div>
       </div>
     </div>
 
     <div class="dock">
-      <div class="dock-toolbar">
-        <button
-          type="button"
-          class="refresh-btn"
-          :disabled="suggestions.length === 0"
-          aria-label="Show another set of titles"
-          @click="refresh"
-        >
-          <NqIcon name="cycle" :size="18" />
-          <span>New set</span>
-        </button>
-      </div>
-
       <div
         ref="stripEl"
         class="strip"
@@ -101,7 +104,7 @@
             type="button"
             class="open-btn"
             :aria-label="`Open ${suggestion.title.title}`"
-            @click.stop="$emit('open', suggestion.title.id)"
+            @click.stop="openSelected"
           >
             <NqIcon name="arrow-top-right" :size="16" />
           </button>
@@ -112,30 +115,36 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-import type { OverlapSuggestion, TitleSummary } from "@nimcharts/shared";
+import { computed, nextTick, onActivated, onMounted, onUnmounted, ref, watch } from "vue";
+import type { OverlapSuggestion, TitleSummary } from "@cinima/shared";
 import Identicon from "@/components/Identicon.vue";
 import NqIcon from "@/components/NqIcon.vue";
 import PosterImg from "@/components/PosterImg.vue";
 import {
-  centerIndex,
-  initialSuggestionWindow,
-  nextSuggestionWindow,
-} from "@/lib/suggestionDeck";
+  captureForYouSelection,
+  loadForYouSelection,
+  restoreForYouWindow,
+  saveForYouSelection,
+} from "@/lib/forYouRestore";
+import { centerIndex, nextSuggestionWindow } from "@/lib/suggestionDeck";
 
 const props = defineProps<{
   suggestions: OverlapSuggestion[];
   isFavorite: (titleId: string) => boolean;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   open: [titleId: string];
   "toggle-favorite": [titleId: string];
 }>();
 
 const stripEl = ref<HTMLElement | null>(null);
-const windowItems = ref<OverlapSuggestion[]>([]);
-const selectedIndex = ref(0);
+const restored = restoreForYouWindow(
+  props.suggestions,
+  loadForYouSelection()
+);
+const windowItems = ref<OverlapSuggestion[]>(restored.window);
+const selectedIndex = ref(restored.selectedIndex);
 const suppressSelect = ref(false);
 
 const selected = computed(() => windowItems.value[selectedIndex.value] ?? null);
@@ -153,19 +162,49 @@ function mediaLabel(title: TitleSummary) {
   return kind === "tv" ? "TV" : "Movie";
 }
 
-function applyWindow(next: OverlapSuggestion[], behavior: ScrollBehavior) {
+function persistSelection() {
+  const snapshot = captureForYouSelection(
+    windowItems.value,
+    selectedIndex.value
+  );
+  if (snapshot) saveForYouSelection(snapshot);
+}
+
+function persistVisibleCard() {
+  if (stripEl.value && !suppressSelect.value) {
+    selectedIndex.value = nearestIndex();
+  }
+  persistSelection();
+}
+
+function applyWindow(
+  next: OverlapSuggestion[],
+  behavior: ScrollBehavior,
+  index?: number
+) {
   windowItems.value = next;
-  selectedIndex.value = centerIndex(next.length);
+  selectedIndex.value = index ?? centerIndex(next.length);
+  persistSelection();
   void snapToIndex(selectedIndex.value, behavior);
 }
 
 function resetFromPool() {
-  applyWindow(initialSuggestionWindow(props.suggestions), "auto");
+  const restored = restoreForYouWindow(
+    props.suggestions,
+    loadForYouSelection()
+  );
+  applyWindow(restored.window, "auto", restored.selectedIndex);
 }
 
 function refresh() {
   const currentIds = windowItems.value.map((item) => item.title.id);
   applyWindow(nextSuggestionWindow(props.suggestions, currentIds), "smooth");
+}
+
+function openSelected() {
+  persistVisibleCard();
+  const titleId = selected.value?.title.id;
+  if (titleId) emit("open", titleId);
 }
 
 async function snapToIndex(index: number, behavior: ScrollBehavior) {
@@ -186,7 +225,7 @@ async function snapToIndex(index: number, behavior: ScrollBehavior) {
   if (snapTimer) clearTimeout(snapTimer);
   snapTimer = setTimeout(() => {
     suppressSelect.value = false;
-    syncSelectedFromScroll();
+    if (behavior === "smooth") syncSelectedFromScroll();
   }, behavior === "smooth" ? 280 : 40);
 }
 
@@ -211,6 +250,7 @@ function nearestIndex(): number {
 function syncSelectedFromScroll() {
   if (suppressSelect.value) return;
   selectedIndex.value = nearestIndex();
+  persistSelection();
 }
 
 function onStripScroll() {
@@ -232,6 +272,7 @@ function onPosterClick(index: number) {
   if (dragging) return;
   if (index === selectedIndex.value) return;
   selectedIndex.value = index;
+  persistSelection();
   void snapToIndex(index, "smooth");
 }
 
@@ -243,11 +284,17 @@ watch(
 );
 
 onMounted(() => {
-  resetFromPool();
+  persistSelection();
+  void snapToIndex(selectedIndex.value, "auto");
   window.addEventListener("resize", onResize);
 });
 
+onActivated(() => {
+  void snapToIndex(selectedIndex.value, "auto");
+});
+
 onUnmounted(() => {
+  persistSelection();
   window.removeEventListener("resize", onResize);
   if (scrollTimer) clearTimeout(scrollTimer);
   if (snapTimer) clearTimeout(snapTimer);
@@ -261,7 +308,7 @@ function onResize() {
 <style scoped>
 .picker {
   --picker-poster: 5.6rem;
-  --picker-dock-height: 12.5rem;
+  --picker-dock-height: 10.75rem;
 }
 
 .detail {
@@ -273,13 +320,26 @@ function onResize() {
 }
 
 .hero {
+  display: block;
   width: min(36vw, 8.75rem);
   aspect-ratio: 2 / 3;
+  padding: 0;
+  border: 0;
   border-radius: 12px;
   overflow: hidden;
   background: var(--bg-surface);
   flex-shrink: 0;
+  cursor: pointer;
+  color: inherit;
   box-shadow: 0 12px 28px color-mix(in oklch, var(--colors-neutral) 28%, transparent);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hero img,
+.hero :deep(.poster-img) {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .hero-fallback,
@@ -367,50 +427,33 @@ function onResize() {
   margin-left: 0;
 }
 
-.meta .nq-pill-stretch {
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 19.25rem;
   margin-top: 0.15rem;
-  max-width: 16rem;
+}
+
+.actions .nq-pill-stretch {
+  flex: 1 1 auto;
+  width: auto;
   min-height: 2.4rem;
 }
 
-.dock {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: calc(
-    var(--bottom-tabs-height) + var(--discover-feed-tabs-height, 2.85rem)
-  );
-  z-index: 44;
-  padding-bottom: 0.15rem;
-  background: linear-gradient(
-    to top,
-    var(--bg-primary) 0%,
-    var(--bg-primary) 48%,
-    transparent 100%
-  );
-}
-
-.dock-toolbar {
-  display: flex;
-  justify-content: flex-end;
-  width: 100%;
-  max-width: var(--column-max);
-  margin-inline: auto;
-  padding: 0 var(--column-pad) 0.2rem;
-  box-sizing: border-box;
-}
-
 .refresh-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
+  flex: 0 0 2.4rem;
+  width: 2.4rem;
+  height: 2.4rem;
+  display: grid;
+  place-items: center;
   border: 0;
   border-radius: 999px;
-  padding: 0.35rem 0.7rem;
+  padding: 0;
   background: var(--bg-surface);
   color: var(--text-primary);
-  font-size: 0.8rem;
-  font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -422,6 +465,23 @@ function onResize() {
 
 .refresh-btn:not(:disabled):active {
   filter: brightness(1.08);
+}
+
+.dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(
+    var(--bottom-tabs-inset) + var(--discover-feed-tabs-height, 2.85rem)
+  );
+  z-index: 44;
+  padding-bottom: 0.15rem;
+  background: linear-gradient(
+    to top,
+    var(--bg-primary) 0%,
+    var(--bg-primary) 48%,
+    transparent 100%
+  );
 }
 
 .strip {
@@ -470,7 +530,7 @@ function onResize() {
 .poster.is-selected {
   transform: scale(1);
   opacity: 1;
-  box-shadow: 0 0 0 2px var(--primary);
+  box-shadow: 0 0 0 2px var(--gold);
 }
 
 .poster img,

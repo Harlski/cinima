@@ -1,4 +1,4 @@
-import { normalizeWallet } from "@nimcharts/shared";
+import { normalizeWallet } from "@cinima/shared";
 import { config } from "../lib/config.js";
 
 /**

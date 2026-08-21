@@ -5,13 +5,14 @@ import {
   MIN_FAVORITES_FOR_DISCOVER,
   normalizeWallet,
   type DiscoverResponse,
+  type MediaType,
   type OverlapSuggestion,
   type TitleSummary,
-} from "@nimcharts/shared";
+} from "@cinima/shared";
 import { and, count, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { favorites, titles } from "../db/schema.js";
-import { toTitleSummary } from "../lib/titles.js";
+import { hasOverview, toTitleSummary } from "../lib/titles.js";
 
 export class SocialTasteError extends Error {
   constructor(
@@ -21,6 +22,20 @@ export class SocialTasteError extends Error {
     super(message);
     this.name = "SocialTasteError";
   }
+}
+
+function recommendKindLabel(mediaType: MediaType): string {
+  return mediaType === "tv" ? "TV" : "movie";
+}
+
+async function titleMediaType(titleId: string): Promise<MediaType | null> {
+  const [row] = await db
+    .select({ mediaType: titles.mediaType })
+    .from(titles)
+    .where(eq(titles.id, titleId))
+    .limit(1);
+  if (!row?.mediaType) return null;
+  return row.mediaType as MediaType;
 }
 
 function withRecommended(summary: TitleSummary, recommended: boolean): TitleSummary {
@@ -101,6 +116,9 @@ export async function isRecommended(wallet: string, titleId: string) {
 
 export async function setRecommend(wallet: string, titleId: string) {
   const w = normalizeWallet(wallet);
+  const mediaType = await titleMediaType(titleId);
+  if (!mediaType) throw new SocialTasteError("not_favorited", "Recommend requires a Favorite");
+
   await db.transaction(async (tx) => {
     const [row] = await tx
       .select()
@@ -113,10 +131,21 @@ export async function setRecommend(wallet: string, titleId: string) {
     const [countRow] = await tx
       .select({ c: count() })
       .from(favorites)
-      .where(and(eq(favorites.walletAddress, w), isNotNull(favorites.recommendedAt)));
+      .innerJoin(titles, eq(favorites.titleId, titles.id))
+      .where(
+        and(
+          eq(favorites.walletAddress, w),
+          isNotNull(favorites.recommendedAt),
+          eq(titles.mediaType, mediaType)
+        )
+      );
     const n = Number(countRow?.c ?? 0);
     if (n >= MAX_RECOMMENDS) {
-      throw new SocialTasteError("recommend_cap", `At most ${MAX_RECOMMENDS} Recommends; remove one first`);
+      const kind = recommendKindLabel(mediaType);
+      throw new SocialTasteError(
+        "recommend_cap",
+        `At most ${MAX_RECOMMENDS} ${kind} Recommends; remove one first`
+      );
     }
 
     await tx
@@ -152,7 +181,7 @@ export async function discoverFor(wallet: string): Promise<DiscoverResponse> {
     const candidates = await db
       .select()
       .from(titles)
-      .orderBy(sql`CAST(COALESCE(imdb_rating, tmdb_rating, '0') AS REAL) DESC`)
+      .orderBy(sql`CAST(COALESCE(rating, '0') AS REAL) DESC`)
       .limit(30);
     return {
       mode: "onboarding",
@@ -217,6 +246,7 @@ export async function discoverFor(wallet: string): Promise<DiscoverResponse> {
     }
     suggestions = [...map.values()]
       .sort((a, b) => b.score - a.score || b.sharedCount - a.sharedCount)
+      .filter((s) => hasOverview(s.title.overview))
       .slice(0, 20)
       .map((s) => ({
         title: s.title,
@@ -229,7 +259,8 @@ export async function discoverFor(wallet: string): Promise<DiscoverResponse> {
     const popular = await db
       .select()
       .from(titles)
-      .orderBy(sql`CAST(COALESCE(imdb_rating, '0') AS REAL) DESC`)
+      .where(sql`TRIM(COALESCE(${titles.overview}, '')) != ''`)
+      .orderBy(sql`CAST(COALESCE(rating, '0') AS REAL) DESC`)
       .limit(16);
     const mine = new Set(myTitleIds);
     suggestions = popular

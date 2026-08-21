@@ -18,7 +18,7 @@ export const AMOUNTS = {
 
 export const MIN_FAVORITES_FOR_DISCOVER = 3;
 
-/** Max gold-star Recommends a user may hold at once */
+/** Max gold-star Recommends a user may hold per media type (movie | tv) */
 export const MAX_RECOMMENDS = 5;
 
 /** Discover scoring: a shared Recommend outranks a plain shared Favorite */

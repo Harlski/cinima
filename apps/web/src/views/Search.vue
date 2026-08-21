@@ -13,9 +13,9 @@
           No results found
         </div>
 
-        <div v-else-if="!showHistory" class="results">
+        <div v-else-if="!showHistory" ref="resultsEl" class="results">
           <TitleCard
-            v-for="title in results"
+            v-for="title in displayedResults"
             :key="title.id"
             variant="horizontal"
             :title="title"
@@ -65,6 +65,25 @@
         </div>
 
         <form class="search-bar" @submit.prevent="onSubmit">
+          <div
+            v-if="!showHistory"
+            class="search-sort"
+            role="radiogroup"
+            aria-label="Sort search results"
+          >
+            <button
+              v-for="option in sortOptions"
+              :key="option.key"
+              type="button"
+              role="radio"
+              class="search-sort-btn"
+              :class="{ active: sortKey === option.key }"
+              :aria-checked="sortKey === option.key"
+              @click="setSort(option.key)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
           <div class="search-box">
             <NqIcon name="magnifying-glass" :size="20" class="search-ico" />
             <input
@@ -95,7 +114,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useFavoritesStore } from "@/stores/favorites";
 import { useCatalogStore } from "@/stores/catalog";
 import TitleCard from "@/components/TitleCard.vue";
@@ -107,33 +126,58 @@ import {
   pushSearchHistory,
   removeSearchHistoryItem,
 } from "@/lib/searchHistory";
+import { parseSearchQuery, searchRouteQuery } from "@/lib/searchQuery";
+import {
+  loadSearchResults,
+  saveSearchResults,
+} from "@/lib/searchResultsCache";
 import {
   searchDockBottomPx,
   searchStageBox,
   type SearchChrome,
   type VisualViewportBox,
 } from "@/lib/searchViewport";
-import type { TitleSummary } from "@nimcharts/shared";
+import {
+  loadSearchSort,
+  saveSearchSort,
+  sortSearchResults,
+  type SearchSortKey,
+} from "@/lib/searchSort";
+import type { TitleSummary } from "@cinima/shared";
 
+const route = useRoute();
 const router = useRouter();
 const favoritesStore = useFavoritesStore();
 const catalogStore = useCatalogStore();
 
-const searchQuery = ref("");
-const results = ref<TitleSummary[]>([]);
+const searchQuery = ref(parseSearchQuery(route.query.q));
+const results = ref<TitleSummary[]>(
+  loadSearchResults(searchQuery.value) ?? []
+);
 const loading = ref(false);
 const history = ref<string[]>(loadSearchHistory());
-const searchDockBottom = ref("var(--bottom-tabs-height)");
+const sortKey = ref<SearchSortKey>(loadSearchSort());
+const searchDockBottom = ref("var(--bottom-tabs-inset)");
 const searchStageStyle = ref<Record<string, string>>({
   top: "var(--app-brand-row)",
   height:
-    "calc(100dvh - var(--app-brand-row) - var(--bottom-tabs-height) - 4.5rem)",
+    "calc(100dvh - var(--app-brand-row) - var(--bottom-tabs-inset) - 4.5rem)",
 });
 const searchDockEl = ref<HTMLElement | null>(null);
 const historyListEl = ref<HTMLUListElement | null>(null);
+const resultsEl = ref<HTMLElement | null>(null);
+
+const sortOptions: { key: SearchSortKey; label: string }[] = [
+  { key: "popularity", label: "Popular" },
+  { key: "rating", label: "Rating" },
+  { key: "year", label: "Released" },
+];
 
 const showHistory = computed(() => !searchQuery.value.trim());
 const historyOldestFirst = computed(() => [...history.value].reverse());
+const displayedResults = computed(() =>
+  sortSearchResults(results.value, sortKey.value)
+);
 const searchDockStyle = computed(() => ({ bottom: searchDockBottom.value }));
 
 function readChrome(): SearchChrome {
@@ -164,19 +208,43 @@ function syncSearchLayout() {
   };
 }
 
-async function scrollHistoryToThumb() {
+async function scrollToThumb(getEl: () => HTMLElement | null) {
   await nextTick();
-  const list = historyListEl.value;
-  if (!list) return;
-  list.scrollTop = list.scrollHeight;
+  const el = getEl();
+  if (!el) return;
+  el.scrollTop = el.scrollHeight;
 }
 
 watch([showHistory, historyOldestFirst], () => {
-  if (showHistory.value) void scrollHistoryToThumb();
+  if (showHistory.value) void scrollToThumb(() => historyListEl.value);
   void nextTick().then(syncSearchLayout);
 });
 
+watch(displayedResults, () => {
+  if (!showHistory.value) void scrollToThumb(() => resultsEl.value);
+});
+
 let searchTimeout: ReturnType<typeof setTimeout>;
+
+function syncSearchRoute(query: string) {
+  if (parseSearchQuery(route.query.q) === query) return;
+  return router.replace({ name: "search", query: searchRouteQuery(query) });
+}
+
+watch(searchQuery, (query) => {
+  syncSearchRoute(query);
+});
+
+watch(
+  () => route.query.q,
+  (value) => {
+    const q = parseSearchQuery(value);
+    if (q === searchQuery.value) return;
+    searchQuery.value = q;
+    clearTimeout(searchTimeout);
+    void runSearch(q, false);
+  }
+);
 
 async function runSearch(query: string, record: boolean) {
   const q = query.trim();
@@ -185,9 +253,17 @@ async function runSearch(query: string, record: boolean) {
     return;
   }
 
+  const cached = loadSearchResults(q);
+  if (cached) {
+    results.value = cached;
+    if (record) history.value = pushSearchHistory(q);
+    return;
+  }
+
   loading.value = true;
   try {
     results.value = await catalogStore.search(q);
+    saveSearchResults(q, results.value);
     if (record) {
       history.value = pushSearchHistory(q);
     }
@@ -214,6 +290,10 @@ const onSubmit = () => {
   void runSearch(searchQuery.value, true);
 };
 
+const setSort = (key: SearchSortKey) => {
+  sortKey.value = saveSearchSort(key);
+};
+
 const runHistory = (item: string) => {
   clearTimeout(searchTimeout);
   searchQuery.value = item;
@@ -233,8 +313,9 @@ const toggleFavorite = async (titleId: string) => {
   await favoritesStore.toggle(titleId);
 };
 
-const goToTitle = (titleId: string) => {
-  router.push({ name: "title", params: { id: titleId } });
+const goToTitle = async (titleId: string) => {
+  await syncSearchRoute(searchQuery.value);
+  await router.push({ name: "title", params: { id: titleId } });
 };
 
 const clearQuery = () => {
@@ -248,7 +329,14 @@ onMounted(() => {
   window.visualViewport?.addEventListener("resize", syncSearchLayout);
   window.visualViewport?.addEventListener("scroll", syncSearchLayout);
   window.addEventListener("resize", syncSearchLayout);
-  void scrollHistoryToThumb();
+  if (
+    searchQuery.value.trim() &&
+    loadSearchResults(searchQuery.value) == null
+  ) {
+    void runSearch(searchQuery.value, false);
+  }
+  if (!showHistory.value) void scrollToThumb(() => resultsEl.value);
+  else void scrollToThumb(() => historyListEl.value);
 });
 
 onUnmounted(() => {
@@ -267,7 +355,7 @@ onUnmounted(() => {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: var(--bottom-tabs-height);
+  bottom: var(--bottom-tabs-inset);
   z-index: 40;
   display: flex;
   justify-content: center;
@@ -288,9 +376,37 @@ onUnmounted(() => {
 
 .search-bar {
   display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
   justify-content: center;
   background: transparent;
   border: 0;
+}
+
+.search-sort {
+  display: flex;
+  padding: 0.15rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.search-sort-btn {
+  flex: 1;
+  padding: 0.28rem 0.4rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.search-sort-btn.active {
+  background: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 .search-box {

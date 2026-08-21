@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { useApi } from "@/composables/useApi";
-import type { TitleSummary } from "@nimcharts/shared";
+import type { TitleSummary } from "@cinima/shared";
 
 export const useFavoritesStore = defineStore("favorites", () => {
   const favorites = ref<Set<string>>(new Set());

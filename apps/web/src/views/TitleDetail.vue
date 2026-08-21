@@ -2,11 +2,16 @@
   <div class="title-detail">
     <header class="detail-header">
       <button type="button" @click="goBack" class="back-button" aria-label="Back">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+        <NqIcon name="arrow-left" :size="24" />
       </button>
-      <h1>{{ title?.title || "Loading..." }}</h1>
+      <button
+        type="button"
+        class="share-button"
+        aria-label="Share title"
+        @click="shareOpen = true"
+      >
+        <NqIcon name="link" :size="22" />
+      </button>
     </header>
 
     <div v-if="loading" class="loading">
@@ -16,87 +21,113 @@
     <div v-else-if="title" class="content">
       <div class="poster-section">
         <div class="poster">
-          <img v-if="title.posterUrl" :src="title.posterUrl" :alt="title.title" />
+          <PosterImg v-if="title.posterUrl" :src="title.posterUrl" :alt="title.title" />
           <div v-else class="poster-placeholder">{{ title.title }}</div>
         </div>
         <div class="meta">
           <h2>{{ title.title }}</h2>
           <p class="year-kind">{{ title.year }} · {{ title.mediaType }}</p>
-          <div v-if="title.unlocked && title.imdbRating" class="rating">
-            <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
-            </svg>
-            {{ title.imdbRating.toFixed(1) }}
+          <div v-if="title.rating" class="rating">
+            <NqIcon name="star" :size="20" />
+            {{ title.rating.toFixed(1) }}
           </div>
-          <div v-else-if="!title.unlocked" class="rating locked-rating">---</div>
-          <p v-if="title.overview" class="overview">{{ title.overview }}</p>
+          <ExpandableText
+            v-if="title.overview"
+            class="overview"
+            :text="title.overview"
+            :lines="4"
+          />
 
-          <button type="button" @click="toggleFavorite" class="action-button" :class="{ favorited: title.favorited }">
+          <button
+            type="button"
+            @click="toggleFavorite"
+            class="nq-pill-stretch"
+            :class="title.favorited ? 'nq-pill-blue' : 'nq-pill-secondary'"
+          >
             {{ title.favorited ? "Favorited" : "Add to Favorites" }}
           </button>
 
           <button
             v-if="title.favorited"
             type="button"
-            class="action-button recommend-button"
-            :class="{ recommended: title.recommended }"
+            class="nq-pill-stretch"
+            :class="title.recommended ? 'nq-pill-gold' : 'nq-pill-secondary'"
             @click="toggleRecommend"
           >
             {{ title.recommended ? "Recommended ★" : "Recommend ★" }}
           </button>
 
-          <button
-            v-if="!title.unlocked"
-            type="button"
-            class="action-button unlock-cta"
-            @click="handleUnlock"
+          <a
+            v-if="imdbUrl"
+            class="nq-pill-secondary nq-pill-stretch"
+            :href="imdbUrl"
+            target="_blank"
+            rel="noopener noreferrer"
           >
-            Unlock ratings ({{ unlockNim }} NIM)
-          </button>
+            View on IMDb
+          </a>
         </div>
       </div>
 
       <HeatMap
         v-if="title.mediaType === 'tv'"
         :episodes="title.episodes"
-        :unlocked="title.unlocked"
-        @unlock="handleUnlock"
       />
 
       <section v-if="suggesters.length" class="thanks-section">
-        <h3>Thank people who favorited this</h3>
-        <div class="suggester-list">
-          <div v-for="s in suggesters" :key="s.walletAddress" class="suggester">
-            <UserChip
-              :address="s.walletAddress"
-              :handle="s.handle"
-              :size="32"
-              @click="goToUser"
-            />
-            <div class="suggester-actions">
-              <button type="button" @click="sendThanks(s.walletAddress)">Thanks</button>
-              <button type="button" class="tip" @click="sendThanks(s.walletAddress, true)">Tip 1 NIM</button>
+        <div class="thanks-card nq-card">
+          <div class="thanks-head">
+            <div class="thanks-head-left">
+              <div class="thanks-stack" aria-hidden="true">
+                <Identicon
+                  v-for="s in suggesters.slice(0, 5)"
+                  :key="s.walletAddress"
+                  :address="s.walletAddress"
+                  :size="28"
+                  alt=""
+                />
+                <span v-if="suggesters.length > 5" class="thanks-more">
+                  +{{ suggesters.length - 5 }}
+                </span>
+              </div>
+              <p class="thanks-count">
+                {{ suggesters.length }} favorited this
+              </p>
             </div>
+            <button
+              v-if="unthankedCount"
+              type="button"
+              class="nq-pill-blue nq-pill-lg"
+              :disabled="thankingAll"
+              @click="thankAll"
+            >
+              {{ thankingAll ? "Thanking..." : "Thank all" }}
+            </button>
           </div>
+          <ul class="thanks-people">
+            <li v-for="s in suggesters" :key="s.walletAddress" class="thanks-person">
+              <button type="button" class="thanks-who" @click="goToUser(s.walletAddress)">
+                <Identicon :address="s.walletAddress" :size="32" alt="" />
+                <span>{{ displayName(s.handle, s.walletAddress) }}</span>
+              </button>
+              <button
+                type="button"
+                class="nq-pill-secondary nq-pill-lg thanks-btn"
+                :disabled="s.thanked || thanking === s.walletAddress"
+                @click="sendThanks(s.walletAddress)"
+              >
+                {{ s.thanked ? "Thanked" : "Thanks" }}
+              </button>
+            </li>
+          </ul>
         </div>
       </section>
 
       <section class="comments-section">
         <h3>Comments ({{ title.commentCount }})</h3>
 
-        <div class="comment-form">
-          <textarea
-            v-model="commentText"
-            placeholder="Share your thoughts..."
-            rows="3"
-          />
-          <button type="button" @click="postComment" :disabled="!commentText.trim() || posting">
-            {{ posting ? "Posting..." : `Post (${commentNim} NIM)` }}
-          </button>
-        </div>
-
         <div v-if="loadingComments" class="loading-small">
-          <NqSpinner :size="20" label="Loading comments" />
+          <NqSpinner :size="28" label="Loading comments" />
         </div>
 
         <div v-else-if="comments.length === 0" class="empty-small">
@@ -104,29 +135,69 @@
         </div>
 
         <div v-else class="comments-list">
-          <button
+          <article
             v-for="comment in comments"
             :key="comment.id"
-            type="button"
-            class="comment"
-            @click="goToUser(comment.walletAddress)"
+            class="comment nq-card"
           >
-            <Identicon :address="comment.walletAddress" :size="36" alt="" />
+            <button
+              type="button"
+              class="comment-who"
+              :aria-label="displayName(comment.handle, comment.walletAddress)"
+              @click="goToUser(comment.walletAddress)"
+            >
+              <Identicon :address="comment.walletAddress" :size="36" alt="" />
+            </button>
             <div class="comment-main">
               <div class="comment-header">
-                <span class="comment-user">
+                <button
+                  type="button"
+                  class="comment-user"
+                  @click="goToUser(comment.walletAddress)"
+                >
                   {{ displayName(comment.handle, comment.walletAddress) }}
-                </span>
+                </button>
                 <span class="comment-time">
                   {{ formatTime(comment.createdAt) }}
                 </span>
               </div>
-              <p class="comment-body">{{ comment.body }}</p>
+              <ExpandableText :text="comment.body" :lines="3" />
             </div>
-          </button>
+          </article>
         </div>
+
+        <form class="comment-composer nq-card" @submit.prevent="postComment">
+          <Identicon :address="meWallet" :size="36" alt="" />
+          <div class="composer-main">
+            <textarea
+              v-model="commentText"
+              class="nq-input-box"
+              placeholder="Share your thoughts..."
+              rows="3"
+            />
+            <button
+              type="submit"
+              class="nq-pill-blue nq-pill-lg"
+              :disabled="!commentText.trim() || posting"
+            >
+              {{ posting ? "Posting..." : "Post" }}
+            </button>
+          </div>
+        </form>
       </section>
+
+      <TmdbAttribution variant="compact" class="title-attr" />
     </div>
+
+    <ShareTitleSheet
+      v-if="shareOpen && title"
+      :handle="authStore.user?.handle ?? null"
+      :title-name="title.title"
+      :media-type="title.mediaType"
+      :tmdb-id="title.tmdbId"
+      @close="shareOpen = false"
+      @claim="goClaimHandle"
+    />
   </div>
 </template>
 
@@ -134,27 +205,24 @@
 import { ref, computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
-import { usePayments } from "@/composables/usePayments";
+import { useAuthStore } from "@/stores/auth";
 import { useFavoritesStore } from "@/stores/favorites";
 import { useCatalogStore } from "@/stores/catalog";
-import {
-  displayName,
-  COMMENT_NIM,
-  COMMENT_LUNA,
-  UNLOCK_NIM,
-  UNLOCK_LUNA,
-  LUNA_PER_NIM,
-} from "@nimcharts/shared";
-import type { TitleDetail, CommentDto } from "@nimcharts/shared";
+import { displayName, imdbTitleUrl } from "@cinima/shared";
+import type { TitleDetail, CommentDto, TitleSuggester } from "@cinima/shared";
+import ExpandableText from "@/components/ExpandableText.vue";
 import HeatMap from "@/components/HeatMap.vue";
 import Identicon from "@/components/Identicon.vue";
-import UserChip from "@/components/UserChip.vue";
+import NqIcon from "@/components/NqIcon.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
+import PosterImg from "@/components/PosterImg.vue";
+import ShareTitleSheet from "@/components/ShareTitleSheet.vue";
+import TmdbAttribution from "@/components/TmdbAttribution.vue";
 
 const route = useRoute();
 const router = useRouter();
 const { request } = useApi();
-const { sendPayment, sendTip } = usePayments();
+const authStore = useAuthStore();
 const favoritesStore = useFavoritesStore();
 const catalogStore = useCatalogStore();
 
@@ -165,10 +233,13 @@ const comments = ref<CommentDto[]>([]);
 const loadingComments = ref(false);
 const commentText = ref("");
 const posting = ref(false);
-const suggesters = ref<{ walletAddress: string; handle: string | null }[]>([]);
-
-const commentNim = COMMENT_NIM;
-const unlockNim = UNLOCK_NIM;
+const suggesters = ref<TitleSuggester[]>([]);
+const thanking = ref<string | null>(null);
+const thankingAll = ref(false);
+const shareOpen = ref(false);
+const meWallet = computed(() => authStore.user?.walletAddress || "");
+const unthankedCount = computed(() => suggesters.value.filter((s) => !s.thanked).length);
+const imdbUrl = computed(() => imdbTitleUrl(title.value?.imdbId));
 
 const loadTitle = async () => {
   loading.value = true;
@@ -194,7 +265,7 @@ const loadComments = async () => {
 
 const loadSuggesters = async () => {
   try {
-    const data = await request<{ suggesters: { walletAddress: string; handle: string | null }[] }>(
+    const data = await request<{ suggesters: TitleSuggester[] }>(
       `/titles/${encodeURIComponent(titleId.value)}/suggesters`
     );
     suggesters.value = data.suggesters;
@@ -227,37 +298,14 @@ const toggleRecommend = async () => {
   }
 };
 
-const handleUnlock = async () => {
-  if (!title.value) return;
-  try {
-    const hash = await sendPayment(UNLOCK_LUNA, {
-      type: "unlock",
-      titleId: title.value.id,
-    });
-    await request("/unlocks", {
-      method: "POST",
-      body: JSON.stringify({ titleId: title.value.id, txHash: hash }),
-    });
-    title.value = await catalogStore.refreshDetail(title.value.id);
-  } catch (err) {
-    console.error("Unlock failed:", err);
-    alert("Failed to unlock title");
-  }
-};
-
 const postComment = async () => {
   if (!title.value || !commentText.value.trim()) return;
   posting.value = true;
   try {
-    const hash = await sendPayment(COMMENT_LUNA, {
-      type: "comment",
-      titleId: title.value.id,
-    });
     await request("/comments", {
       method: "POST",
       body: JSON.stringify({
         titleId: title.value.id,
-        txHash: hash,
         body: commentText.value.trim(),
       }),
     });
@@ -272,25 +320,40 @@ const postComment = async () => {
   }
 };
 
-const sendThanks = async (toWallet: string, withTip = false) => {
+const sendThanks = async (toWallet: string) => {
   if (!title.value) return;
+  thanking.value = toWallet;
   try {
-    let tipTxHash: string | undefined;
-    if (withTip) {
-      tipTxHash = await sendTip(toWallet, LUNA_PER_NIM);
-    }
     await request("/thanks", {
       method: "POST",
       body: JSON.stringify({
         toWallet,
         titleId: title.value.id,
-        tipTxHash,
       }),
     });
-    alert(withTip ? "Thanks + tip sent" : "Thanks sent");
+    suggesters.value = suggesters.value.map((s) =>
+      s.walletAddress === toWallet ? { ...s, thanked: true } : s
+    );
   } catch (err) {
     console.error("Thanks failed:", err);
-    alert("Failed to send thanks");
+  } finally {
+    thanking.value = null;
+  }
+};
+
+const thankAll = async () => {
+  if (!title.value || !unthankedCount.value) return;
+  thankingAll.value = true;
+  try {
+    await request("/thanks/all", {
+      method: "POST",
+      body: JSON.stringify({ titleId: title.value.id }),
+    });
+    suggesters.value = suggesters.value.map((s) => ({ ...s, thanked: true }));
+  } catch (err) {
+    console.error("Thank all failed:", err);
+  } finally {
+    thankingAll.value = false;
   }
 };
 
@@ -309,6 +372,10 @@ const formatTime = (iso: string) => {
 
 const goBack = () => router.back();
 const goToUser = (wallet: string) => router.push({ name: "user", params: { wallet } });
+const goClaimHandle = () => {
+  shareOpen.value = false;
+  router.push({ name: "me" });
+};
 
 onMounted(() => {
   loadTitle();
@@ -324,16 +391,12 @@ onMounted(() => {
 .detail-header {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  background: var(--bg-surface);
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  justify-content: space-between;
+  padding: 0.35rem 0 0;
 }
 
-.back-button {
+.back-button,
+.share-button {
   padding: 0.5rem;
   background: transparent;
   border: none;
@@ -342,48 +405,41 @@ onMounted(() => {
   display: flex;
 }
 
-.back-button svg {
+.back-button :deep(.nq-icon) {
   width: 24px;
   height: 24px;
 }
 
-.detail-header h1 {
-  flex: 1;
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .loading {
   text-align: center;
-  padding: 3rem 1rem;
+  padding: 3rem 0;
   color: var(--text-secondary);
 }
 
 .content {
-  padding: 1rem;
+  padding: 1rem 0;
 }
 
 .poster-section {
   display: flex;
+  align-items: flex-start;
   gap: 1rem;
   margin-bottom: 2rem;
 }
 
 .poster {
-  flex-shrink: 0;
-  width: 120px;
-  aspect-ratio: 2/3;
+  flex: none;
+  align-self: flex-start;
+  width: 10rem;
+  height: 15rem;
+  aspect-ratio: 2 / 3;
   background: var(--bg-surface);
   border-radius: 12px;
   overflow: hidden;
 }
 
-.poster img {
+.poster :deep(.poster-img),
+.poster :deep(img) {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -402,9 +458,15 @@ onMounted(() => {
 
 .meta {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+}
+
+.meta a.nq-pill-stretch {
+  text-align: center;
+  text-decoration: none;
 }
 
 .meta h2 {
@@ -422,57 +484,18 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #f39c12;
+  color: var(--warning);
   font-weight: 600;
   font-size: 1.1rem;
 }
 
-.rating svg {
+.rating :deep(.nq-icon) {
   width: 20px;
   height: 20px;
 }
 
-.locked-rating {
-  color: var(--text-secondary);
-  letter-spacing: 0.15em;
-}
-
 .overview {
   margin: 0;
-  line-height: 1.6;
-  color: var(--text-primary);
-}
-
-.action-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  color: var(--text-primary);
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.action-button.favorited,
-.action-button.recommended {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: white;
-}
-
-.recommend-button.recommended {
-  background: #c9a227;
-  border-color: #c9a227;
-  color: #0a0a0f;
-}
-.action-button.unlock-cta {
-  background: var(--primary);
-  color: white;
-  border-color: var(--primary);
 }
 
 .thanks-section,
@@ -487,81 +510,142 @@ onMounted(() => {
   color: var(--text-primary);
 }
 
-.suggester-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+.thanks-card {
+  padding: 0.95rem 1rem 0.85rem;
 }
 
-.suggester {
+.thanks-head {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  align-items: center;
-  padding: 0.85rem 1rem;
-  background: var(--bg-surface);
-  border-radius: 12px;
+  margin-bottom: 0.85rem;
 }
 
-.linkish {
-  background: none;
-  border: 0;
+.thanks-head-left {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.thanks-count {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
   color: var(--text-primary);
+}
+
+.thanks-stack {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.thanks-stack :deep(.identicon) {
+  margin-left: -0.45rem;
+  border: 2px solid var(--bg-surface);
+  box-sizing: content-box;
+}
+
+.thanks-stack :deep(.identicon:first-child) {
+  margin-left: 0;
+}
+
+.thanks-more {
+  margin-left: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.thanks-people {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.thanks-person {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex: 1 1 11.5rem;
+  min-width: 11.5rem;
+  padding: 0.35rem 0.4rem 0.35rem 0.2rem;
+  border-radius: 12px;
+  background: var(--colors-neutral-200);
+}
+
+.thanks-who {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
   font-weight: 600;
   cursor: pointer;
   text-align: left;
 }
 
-.suggester-actions {
-  display: flex;
-  gap: 0.4rem;
+.thanks-who span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thanks-btn {
   flex-shrink: 0;
 }
 
-.suggester-actions button {
-  padding: 0.45rem 0.7rem;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  cursor: pointer;
-  font-size: 0.85rem;
+.thanks-btn:disabled {
+  opacity: 0.7;
+  cursor: default;
 }
 
-.suggester-actions .tip {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: white;
-}
-
-.comment-form {
-  margin-bottom: 1.5rem;
-}
-
-.comment-form textarea {
-  width: 100%;
+.comment-composer {
+  display: flex;
+  flex-direction: row;
+  gap: 0.7rem;
+  align-items: flex-start;
+  margin-top: 0.75rem;
   padding: 0.75rem;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  color: var(--text-primary);
-  font-size: 1rem;
-  font-family: inherit;
-  resize: vertical;
-  margin-bottom: 0.5rem;
 }
 
-.comment-form button {
-  padding: 0.75rem 1.5rem;
-  background: var(--primary);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-weight: 600;
-  cursor: pointer;
+.comment-composer :deep(.identicon) {
+  flex-shrink: 0;
 }
 
-.comment-form button:disabled {
+.composer-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.composer-main textarea {
+  width: 100%;
+  resize: none;
+  background-color: var(--colors-white);
+  --color: var(--colors-darkblue);
+  --placeholder-color: color-mix(in oklch, var(--colors-darkblue) 45%, transparent);
+  --outline-color: color-mix(in oklch, var(--colors-darkblue) 16%, transparent);
+}
+
+.composer-main textarea::placeholder {
+  opacity: 1;
+}
+
+.composer-main button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -581,21 +665,20 @@ onMounted(() => {
 
 .comment {
   display: flex;
+  flex-direction: row;
   gap: 0.7rem;
   align-items: flex-start;
   width: 100%;
-  padding: 0.65rem 0.75rem;
-  border: 0;
-  border-radius: 12px;
-  background: var(--bg-surface);
-  color: inherit;
-  text-align: left;
-  font: inherit;
-  cursor: pointer;
+  padding: 0.75rem;
 }
 
-.comment:active {
-  background: #1c1c28;
+.comment-who {
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  line-height: 0;
 }
 
 .comment-main {
@@ -612,9 +695,19 @@ onMounted(() => {
 }
 
 .comment-user {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
   font-weight: 600;
   color: var(--text-primary);
   font-size: 0.9rem;
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .comment-time {
@@ -623,10 +716,12 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
-.comment-body {
-  margin: 0;
-  line-height: 1.4;
-  color: var(--text-primary);
+.comment-main :deep(.expandable-text) {
   font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.title-attr {
+  margin-top: 2rem;
 }
 </style>

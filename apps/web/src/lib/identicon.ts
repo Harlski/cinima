@@ -5,7 +5,7 @@
  * globalThis so faces render fully under Vite.
  */
 import Identicons, { IdenticonsAssets } from "@nimiq/identicons/dist/identicons.bundle.min.js";
-import { formatWallet } from "@nimcharts/shared";
+import { formatWallet } from "@cinima/shared";
 
 type IdenticonsGlobal = typeof globalThis & { IdenticonsAssets?: string };
 const g = globalThis as IdenticonsGlobal;

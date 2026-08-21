@@ -1,5 +1,3 @@
-const KEYBOARD_OVERLAP_THRESHOLD_PX = 48;
-
 export type VisualViewportBox = {
   offsetTop: number;
   height: number;
@@ -24,8 +22,10 @@ export function searchDockBottomPx(
   chrome: SearchChrome,
   viewport: VisualViewportBox | null
 ): number {
-  const overlap = keyboardOverlapPx(chrome.layoutHeight, viewport);
-  return overlap > KEYBOARD_OVERLAP_THRESHOLD_PX ? overlap : chrome.tabsHeight;
+  // Tabs follow the visual viewport. Clear both the bar and the gap below it
+  // (Pay chrome, rubber-band). Large overlap is the keyboard: the bar rides
+  // up with it, so the dock still needs the extra tab height.
+  return chrome.tabsHeight + keyboardOverlapPx(chrome.layoutHeight, viewport);
 }
 
 export function searchStageBox(

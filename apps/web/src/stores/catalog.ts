@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { useApi } from "@/composables/useApi";
-import type { TitleDetail, TitleSummary } from "@nimcharts/shared";
+import type { TitleDetail, TitleSummary } from "@cinima/shared";
 
 export const useCatalogStore = defineStore("catalog", () => {
   const { request } = useApi();

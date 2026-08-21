@@ -42,8 +42,7 @@ describe("Favorite HTTP API", () => {
       posterPath: null,
       overview: "fixture",
       imdbId: null,
-      imdbRating: "8.0",
-      tmdbRating: "8.0",
+      rating: "8.0",
       fetchedAt: new Date(),
       source: "seed",
     });
@@ -56,7 +55,7 @@ describe("Favorite HTTP API", () => {
     const headers = {
       Authorization: `Bearer ${TOKEN}`,
       "Content-Type": "application/json",
-      "X-Nimcharts-Demo": "1",
+      "X-Cinima-Demo": "1",
     };
 
     const addRes = await app.fetch(
@@ -94,7 +93,7 @@ describe("Favorite HTTP API", () => {
   it("Discover returns onboarding while under the favorite minimum", async () => {
     const headers = {
       Authorization: `Bearer ${TOKEN}`,
-      "X-Nimcharts-Demo": "1",
+      "X-Cinima-Demo": "1",
     };
     const res = await app.fetch(new Request("http://test/api/discover", { headers }));
     expect(res.status).toBe(200);

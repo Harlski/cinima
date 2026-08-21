@@ -1,4 +1,4 @@
-import { normalizeWallet, type SessionUser } from "@nimcharts/shared";
+import { normalizeWallet, type SessionUser } from "@cinima/shared";
 import { and, count, eq, gt } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db } from "../db/index.js";
@@ -14,7 +14,7 @@ export async function createChallenge() {
   await db.insert(authNonces).values({ nonce, expiresAt, used: false });
   return {
     nonce,
-    message: `NimCharts:v1:${nonce}`,
+    message: `Cinima:v1:${nonce}`,
     expiresAt: expiresAt.getTime(),
   };
 }
@@ -78,7 +78,7 @@ export async function verifyAndCreateSession(input: {
   if (!nonceRow || nonceRow.expiresAt.getTime() < Date.now()) {
     throw new Error("invalid_or_expired_nonce");
   }
-  if (input.message !== `NimCharts:v1:${input.nonce}`) {
+  if (input.message !== `Cinima:v1:${input.nonce}`) {
     throw new Error("message_mismatch");
   }
 

@@ -17,6 +17,7 @@ const SHARED_B = "movie:2";
 const SHARED_C = "movie:3";
 const GOLD = "movie:gold";
 const PLAIN = "movie:plain";
+const BARE = "movie:bare";
 
 describe("Discover Recommend-weighted overlap", () => {
   let app: { fetch: (request: Request) => Response | Promise<Response> };
@@ -42,12 +43,13 @@ describe("Discover Recommend-weighted overlap", () => {
       createdAt: now,
     });
 
-    for (const [id, tmdbId, title] of [
-      [SHARED_A, 1, "Shared A"],
-      [SHARED_B, 2, "Shared B"],
-      [SHARED_C, 3, "Shared C"],
-      [GOLD, 4, "Gold Recommend Title"],
-      [PLAIN, 5, "Plain Favorite Title"],
+    for (const [id, tmdbId, title, overview] of [
+      [SHARED_A, 1, "Shared A", "Shared favorite A."],
+      [SHARED_B, 2, "Shared B", "Shared favorite B."],
+      [SHARED_C, 3, "Shared C", "Shared favorite C."],
+      [GOLD, 4, "Gold Recommend Title", "A peer Recommended this title."],
+      [PLAIN, 5, "Plain Favorite Title", "A peer Favorited this title."],
+      [BARE, 6, "No Overview Title", null],
     ] as const) {
       await db.insert(schema.titles).values({
         id,
@@ -56,10 +58,9 @@ describe("Discover Recommend-weighted overlap", () => {
         title,
         year: 2020,
         posterPath: null,
-        overview: null,
+        overview,
         imdbId: null,
-        imdbRating: "7.0",
-        tmdbRating: "7.0",
+        rating: "7.0",
         fetchedAt: now,
         source: "seed",
       });
@@ -75,13 +76,13 @@ describe("Discover Recommend-weighted overlap", () => {
       });
     }
 
-    // Peer with Recommend on GOLD — same shared favorites as the other peer
-    for (const titleId of [SHARED_A, SHARED_B, GOLD]) {
+    // Peer with Recommend on GOLD and BARE — same shared favorites as the other peer
+    for (const titleId of [SHARED_A, SHARED_B, GOLD, BARE]) {
       await db.insert(schema.favorites).values({
         walletAddress: PEER_REC,
         titleId,
         createdAt: now,
-        recommendedAt: titleId === GOLD ? now : null,
+        recommendedAt: titleId === GOLD || titleId === BARE ? now : null,
       });
     }
 
@@ -103,7 +104,7 @@ describe("Discover Recommend-weighted overlap", () => {
       new Request("http://test/api/discover", {
         headers: {
           Authorization: `Bearer ${TOKEN}`,
-          "X-Nimcharts-Demo": "1",
+          "X-Cinima-Demo": "1",
         },
       })
     );
@@ -117,5 +118,9 @@ describe("Discover Recommend-weighted overlap", () => {
     expect(ids).toContain(GOLD);
     expect(ids).toContain(PLAIN);
     expect(ids.indexOf(GOLD)).toBeLessThan(ids.indexOf(PLAIN));
+    expect(ids).not.toContain(BARE);
+    for (const suggestion of body.suggestions) {
+      expect(suggestion.title.overview?.trim()).toBeTruthy();
+    }
   });
 });

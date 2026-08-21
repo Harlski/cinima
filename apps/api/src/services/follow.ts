@@ -1,5 +1,5 @@
 import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
-import type { FollowingFeedItem, HeatmapDay } from "@nimcharts/shared";
+import type { FollowingFeedItem, HeatmapDay } from "@cinima/shared";
 import { db } from "../db/index.js";
 import * as schema from "../db/schema.js";
 import { toTitleSummary } from "../lib/titles.js";

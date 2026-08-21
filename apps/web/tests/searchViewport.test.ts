@@ -18,16 +18,16 @@ describe("searchDockBottomPx", () => {
     ).toBe(80);
   });
 
-  it("sits on the keyboard when overlap is more than 48px", () => {
+  it("stays above the tab bar when the keyboard is open", () => {
     expect(
       searchDockBottomPx(chrome, { offsetTop: 0, height: 500 })
-    ).toBe(300);
+    ).toBe(380);
   });
 
-  it("ignores keyboard overlap of 48px or less", () => {
+  it("clears a raised tab bar when the visual viewport is shorter", () => {
     expect(
       searchDockBottomPx(chrome, { offsetTop: 0, height: 752 })
-    ).toBe(80);
+    ).toBe(128);
   });
 });
 
@@ -42,7 +42,7 @@ describe("searchStageBox", () => {
   it("shrinks to the visual viewport when the keyboard is open", () => {
     expect(searchStageBox(chrome, { offsetTop: 0, height: 500 })).toEqual({
       top: 44,
-      height: 386,
+      height: 306,
     });
   });
 
@@ -51,7 +51,7 @@ describe("searchStageBox", () => {
       searchStageBox(chrome, { offsetTop: 60, height: 500 })
     ).toEqual({
       top: 60,
-      height: 430,
+      height: 350,
     });
   });
 });

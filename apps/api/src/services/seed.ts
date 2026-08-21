@@ -1,4 +1,4 @@
-import { makeTitleId } from "@nimcharts/shared";
+import { makeTitleId } from "@cinima/shared";
 import { eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { episodes, titles } from "../db/schema.js";
@@ -10,8 +10,8 @@ type SeedTitle = {
   year: number;
   posterPath: string;
   overview: string;
-  imdbRating: string;
-  tmdbRating: string;
+  rating: string;
+  popularity: number;
   imdbId?: string;
   episodeGrid?: { seasons: number; episodesPerSeason: number; ratings: (number | null)[][] };
 };
@@ -24,8 +24,8 @@ const SEEDS: SeedTitle[] = [
     year: 2010,
     posterPath: "/oYuLEt3zBJxUQIF7ZoVAEjdUcDN.jpg",
     overview: "A thief who steals corporate secrets through dream-sharing technology is given the inverse task of planting an idea.",
-    imdbRating: "8.8",
-    tmdbRating: "8.4",
+    rating: "8.4",
+    popularity: 90,
     imdbId: "tt1375666",
   },
   {
@@ -35,8 +35,8 @@ const SEEDS: SeedTitle[] = [
     year: 2014,
     posterPath: "/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg",
     overview: "A team of explorers travel through a wormhole in space in an attempt to ensure humanity's survival.",
-    imdbRating: "8.7",
-    tmdbRating: "8.5",
+    rating: "8.5",
+    popularity: 85,
     imdbId: "tt0816692",
   },
   {
@@ -46,8 +46,8 @@ const SEEDS: SeedTitle[] = [
     year: 2008,
     posterPath: "/qJ2tW6WMUDux911r6m7haRef0WH.jpg",
     overview: "Batman raises the stakes in his war on crime with the help of Lt. Jim Gordon and District Attorney Harvey Dent.",
-    imdbRating: "9.0",
-    tmdbRating: "8.5",
+    rating: "8.5",
+    popularity: 80,
     imdbId: "tt0468569",
   },
   {
@@ -57,8 +57,8 @@ const SEEDS: SeedTitle[] = [
     year: 1994,
     posterPath: "/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg",
     overview: "The lives of two mob hitmen, a boxer, a gangster's wife, and a pair of diner bandits intertwine.",
-    imdbRating: "8.9",
-    tmdbRating: "8.5",
+    rating: "8.5",
+    popularity: 70,
     imdbId: "tt0110912",
   },
   {
@@ -68,8 +68,8 @@ const SEEDS: SeedTitle[] = [
     year: 2019,
     posterPath: "/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg",
     overview: "Greed and class discrimination threaten the newly formed symbiotic relationship between the wealthy Park family and the destitute Kim clan.",
-    imdbRating: "8.5",
-    tmdbRating: "8.5",
+    rating: "8.5",
+    popularity: 75,
     imdbId: "tt6751668",
   },
   {
@@ -79,8 +79,8 @@ const SEEDS: SeedTitle[] = [
     year: 1994,
     posterPath: "/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg",
     overview: "The presidencies of Kennedy and Johnson, Vietnam, Watergate, and other history unfold through the perspective of an Alabama man.",
-    imdbRating: "8.8",
-    tmdbRating: "8.5",
+    rating: "8.5",
+    popularity: 65,
     imdbId: "tt0109830",
   },
   {
@@ -90,8 +90,8 @@ const SEEDS: SeedTitle[] = [
     year: 1972,
     posterPath: "/3bhkrj58Vtu7enYsRolD1fZdja1.jpg",
     overview: "The aging patriarch of an organized crime dynasty transfers control of his clandestine empire to his reluctant son.",
-    imdbRating: "9.2",
-    tmdbRating: "8.7",
+    rating: "8.7",
+    popularity: 60,
     imdbId: "tt0068646",
   },
   {
@@ -101,8 +101,8 @@ const SEEDS: SeedTitle[] = [
     year: 1999,
     posterPath: "/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
     overview: "An office worker and a soap maker form an underground fight club that evolves into something much more.",
-    imdbRating: "8.8",
-    tmdbRating: "8.4",
+    rating: "8.4",
+    popularity: 72,
     imdbId: "tt0137523",
   },
   {
@@ -112,8 +112,8 @@ const SEEDS: SeedTitle[] = [
     year: 2008,
     posterPath: "/ggFHVNu6YYI5L9pCfOacjizRGt.jpg",
     overview: "A chemistry teacher diagnosed with cancer turns to manufacturing meth with a former student.",
-    imdbRating: "9.5",
-    tmdbRating: "8.9",
+    rating: "8.9",
+    popularity: 88,
     imdbId: "tt0903747",
     episodeGrid: {
       seasons: 2,
@@ -131,8 +131,8 @@ const SEEDS: SeedTitle[] = [
     year: 2011,
     posterPath: "/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg",
     overview: "Nine noble families fight for control over the lands of Westeros.",
-    imdbRating: "9.2",
-    tmdbRating: "8.4",
+    rating: "8.4",
+    popularity: 95,
     imdbId: "tt0944947",
     episodeGrid: {
       seasons: 2,
@@ -150,8 +150,8 @@ const SEEDS: SeedTitle[] = [
     year: 2016,
     posterPath: "/49WJfeN0moxb9IPfGn8AIqMGskD.jpg",
     overview: "When a young boy vanishes, a small town uncovers a mystery involving secret experiments.",
-    imdbRating: "8.7",
-    tmdbRating: "8.6",
+    rating: "8.6",
+    popularity: 92,
     imdbId: "tt4574334",
     episodeGrid: {
       seasons: 2,
@@ -169,8 +169,8 @@ const SEEDS: SeedTitle[] = [
     year: 2021,
     posterPath: "/fqldf2t8ztc9aiwn3k6mlX3tvRT.jpg",
     overview: "The origins of two legendary champions — and the power that will tear them apart.",
-    imdbRating: "9.0",
-    tmdbRating: "8.7",
+    rating: "8.7",
+    popularity: 78,
     imdbId: "tt11126994",
     episodeGrid: {
       seasons: 1,
@@ -185,8 +185,8 @@ const SEEDS: SeedTitle[] = [
     year: 2024,
     posterPath: "/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg",
     overview: "Paul Atreides unites with Chani and the Fremen while seeking revenge against the conspirators who destroyed his family.",
-    imdbRating: "8.5",
-    tmdbRating: "8.1",
+    rating: "8.1",
+    popularity: 100,
     imdbId: "tt15239678",
   },
   {
@@ -196,8 +196,8 @@ const SEEDS: SeedTitle[] = [
     year: 2023,
     posterPath: "/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg",
     overview: "The story of J. Robert Oppenheimer's role in the development of the atomic bomb.",
-    imdbRating: "8.3",
-    tmdbRating: "8.1",
+    rating: "8.1",
+    popularity: 94,
     imdbId: "tt15398776",
   },
   {
@@ -207,8 +207,8 @@ const SEEDS: SeedTitle[] = [
     year: 2022,
     posterPath: "/7QMsOTMUswlwxJP0rTTZfmz2tX2.jpg",
     overview: "The Targaryen civil war, set 200 years before the events of Game of Thrones.",
-    imdbRating: "8.4",
-    tmdbRating: "8.4",
+    rating: "8.4",
+    popularity: 82,
     imdbId: "tt11198330",
     episodeGrid: {
       seasons: 1,
@@ -234,8 +234,8 @@ export async function seedCatalogIfEmpty() {
       posterPath: s.posterPath,
       overview: s.overview,
       imdbId: s.imdbId ?? null,
-      imdbRating: s.imdbRating,
-      tmdbRating: s.tmdbRating,
+      rating: s.rating,
+      popularity: s.popularity,
       fetchedAt: now,
       source: "seed",
     });
@@ -250,7 +250,7 @@ export async function seedCatalogIfEmpty() {
             season,
             episode: ep,
             name: `S${season}E${ep}`,
-            imdbRating: rating != null ? String(rating) : null,
+            rating: rating != null ? String(rating) : null,
             fetchedAt: now,
           });
         }
