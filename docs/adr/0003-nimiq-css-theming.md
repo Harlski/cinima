@@ -1,0 +1,3 @@
+# Nimiq CSS as the visual source of truth
+
+Cinima is a Nimiq Pay Mini App and should look like a Nimiq product, not a cinema-red custom theme. We theme the web app with the `nimiq-css` package: native import of the colors and utilities layers, `class="dark"` plus `color-scheme: dark`, and aliases from our existing CSS variables onto Nimiq tokens. We skip the Nimiq preflight/typography layers so they do not fight the Mini App shell (bottom tabs, no document scroll). Rejected: 2018 Nimiq Style (`@nimiq/style`, `1rem = 8px`, unmaintained) and UnoCSS/`presetNimiq`, which would rewrite the Vue SFC stylesheet stack. Official design-kit assets are logos only; we keep the Cinima wordmark plus Nimiq hex, not the official Nimiq wordmark in the header.

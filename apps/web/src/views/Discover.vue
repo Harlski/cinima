@@ -41,7 +41,7 @@
           Add at least {{ minFavorites }} titles to unlock personalized
           suggestions
         </p>
-        <div class="progress">
+        <div class="progress nq-pill-blue">
           {{ favoriteCount }} / {{ minFavorites }}
         </div>
       </div>
@@ -52,7 +52,7 @@
           @input="onSearch"
           type="text"
           placeholder="Search titles..."
-          class="search-input"
+          class="search-input nq-input-box"
         />
       </div>
 
@@ -98,12 +98,7 @@
                 {{ suggestion.title.year }} · {{ suggestion.title.mediaType }}
               </p>
               <div v-if="suggestion.sampleWallets.length" class="card-liked">
-                <svg class="thumb" viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    fill="currentColor"
-                    d="M2 21h4V9H2v12zm20-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L13.17 1 6.59 7.59C6.22 7.95 6 8.45 6 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"
-                  />
-                </svg>
+                <NqIcon name="heart" :size="16" class="thumb" />
                 <div class="liked-faces">
                   <Identicon
                     v-for="wallet in suggestion.sampleWallets.slice(0, 3)"
@@ -192,6 +187,7 @@ import type {
 } from "@nimcharts/shared";
 import TitleCard from "@/components/TitleCard.vue";
 import Identicon from "@/components/Identicon.vue";
+import NqIcon from "@/components/NqIcon.vue";
 
 type FeedCard = {
   key: string;
@@ -418,12 +414,7 @@ onMounted(() => {
 }
 
 .progress {
-  display: inline-block;
-  padding: 0.5rem 1rem;
-  background: var(--primary);
-  color: white;
-  border-radius: 20px;
-  font-weight: 600;
+  display: inline-flex;
 }
 
 .search-box {
@@ -432,12 +423,6 @@ onMounted(() => {
 
 .search-input {
   width: 100%;
-  padding: 0.75rem 1rem;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  color: var(--text-primary);
-  font-size: 1rem;
 }
 
 .results {
@@ -682,8 +667,6 @@ onMounted(() => {
 }
 
 .thumb {
-  width: 16px;
-  height: 16px;
   color: var(--primary);
   flex-shrink: 0;
 }

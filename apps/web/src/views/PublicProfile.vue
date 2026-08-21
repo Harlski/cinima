@@ -65,10 +65,10 @@
         </div>
       </section>
 
-      <div class="cta-banner">
+      <div class="cta-banner nq-card">
         <h3>Join Cinima</h3>
         <p>Discover shows based on your taste</p>
-        <a :href="payUrl" class="cta-button">
+        <a :href="payUrl" class="nq-pill-blue nq-pill-lg">
           Open in Nimiq Pay
         </a>
       </div>
@@ -192,20 +192,12 @@ onMounted(loadProfile);
   display: block;
 }
 
-.gold-badge {
-  position: absolute;
-  top: 0.35rem;
-  right: 0.35rem;
-  z-index: 2;
-  width: 1.4rem;
-  height: 1.4rem;
-  display: grid;
-  place-content: center;
-  border-radius: 999px;
-  background: #c9a227;
-  color: #0a0a0f;
-  font-size: 0.75rem;
-  line-height: 1;
+.cta-banner {
+  margin-top: 2rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .poster-placeholder {
@@ -226,14 +218,6 @@ onMounted(loadProfile);
   text-overflow: ellipsis;
 }
 
-.cta-banner {
-  margin-top: 2rem;
-  padding: 1.25rem;
-  border-radius: 16px;
-  background: var(--bg-surface);
-  text-align: center;
-}
-
 .cta-banner h3 {
   margin: 0 0 0.35rem;
 }
@@ -243,13 +227,7 @@ onMounted(loadProfile);
   color: var(--text-secondary);
 }
 
-.cta-button {
-  display: inline-block;
-  padding: 0.75rem 1.25rem;
-  border-radius: 12px;
-  background: var(--primary);
-  color: white;
-  font-weight: 600;
+.cta-banner a {
   text-decoration: none;
 }
 </style>

@@ -160,7 +160,7 @@ onMounted(() => {
 }
 
 .activity-item:active {
-  background: #1c1c28;
+  background: var(--colors-neutral-200);
 }
 
 .avatar-btn {
@@ -219,7 +219,7 @@ onMounted(() => {
 }
 
 .kind.comment {
-  color: #6cb6ff;
+  color: var(--primary);
 }
 
 .kind.thanks {

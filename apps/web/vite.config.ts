@@ -24,4 +24,8 @@ export default defineConfig({
     host: true,
     port: 5174,
   },
+  build: {
+    // nimiq-css utilities use native nesting; Pay WebView is modern.
+    cssTarget: ["chrome111", "safari16"],
+  },
 });

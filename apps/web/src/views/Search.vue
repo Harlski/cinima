@@ -8,7 +8,7 @@
           type="search"
           enterkeyhint="search"
           placeholder="Search movies & TV shows..."
-          class="search-input"
+          class="search-input nq-input-box"
           autofocus
         />
       </form>
@@ -34,22 +34,7 @@
       <ul v-else class="history-list">
         <li v-for="item in history" :key="item" class="history-item">
           <button type="button" class="history-query" @click="runHistory(item)">
-            <svg
-              class="history-ico"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" />
-              <path
-                d="M12 7V12L15 14"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
+            <NqIcon name="sand-clock" :size="18" class="history-ico" />
             <span>{{ item }}</span>
           </button>
           <button
@@ -58,7 +43,7 @@
             :aria-label="`Remove ${item}`"
             @click="removeHistory(item)"
           >
-            ×
+            <NqIcon name="cross" :size="14" />
           </button>
         </li>
       </ul>
@@ -90,6 +75,7 @@ import { useRouter } from "vue-router";
 import { useFavoritesStore } from "@/stores/favorites";
 import { useCatalogStore } from "@/stores/catalog";
 import TitleCard from "@/components/TitleCard.vue";
+import NqIcon from "@/components/NqIcon.vue";
 import {
   clearSearchHistory,
   loadSearchHistory,
@@ -192,17 +178,10 @@ const goToTitle = (titleId: string) => {
 
 .search-input {
   width: 100%;
-  padding: 0.75rem 1rem;
-  background: var(--bg-primary);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  color: var(--text-primary);
-  font-size: 1rem;
 }
 
 .search-input:focus {
   outline: none;
-  border-color: var(--primary);
 }
 
 .loading,
@@ -296,8 +275,6 @@ const goToTitle = (titleId: string) => {
 
 .history-ico {
   flex-shrink: 0;
-  width: 18px;
-  height: 18px;
   color: var(--text-secondary);
 }
 

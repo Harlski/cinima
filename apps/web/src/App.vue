@@ -24,7 +24,7 @@ onMounted(async () => {
   <div v-if="!auth.ready && route.name !== 'public'" class="boot">Starting Cinima…</div>
   <div v-else-if="auth.error && !auth.user && route.name !== 'public'" class="boot">
     <p>{{ auth.error }}</p>
-    <button type="button" @click="auth.boot()">Retry</button>
+    <button type="button" class="nq-pill-blue" @click="auth.boot()">Retry</button>
     <p style="opacity: 0.7; margin-top: 1rem">
       In Nimiq Pay: approve account share + sign prompts.<br />
       Desktop only: open with <code>?demo=1</code>
@@ -41,17 +41,11 @@ onMounted(async () => {
   gap: 0.75rem;
   text-align: center;
   padding: 2rem;
-  background: var(--bg-primary, #0a0a0f);
-  color: var(--text-primary, #f5f5f7);
-  font-family: var(--font, Mulish, system-ui, sans-serif);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font);
 }
 button {
   justify-self: center;
-  padding: 0.7rem 1.2rem;
-  border: 0;
-  border-radius: 10px;
-  background: #e74c3c;
-  color: white;
-  font-weight: 600;
 }
 </style>

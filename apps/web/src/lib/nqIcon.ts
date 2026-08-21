@@ -1,18 +1,17 @@
 import nimiqIconsData from "nimiq-icons/icons.json";
 
-const HEX_OUTLINE_ID = "logos-nimiq-hexagon-outline-mono";
+export type NqIconName = string;
 
-export function nqHexOutlineSvg(opts?: {
-  class?: string;
-  width?: number;
-  height?: number;
-}): string {
-  const ic = nimiqIconsData.icons[HEX_OUTLINE_ID];
+export function nqIconMeta(name: NqIconName): {
+  body: string;
+  width: number;
+  height: number;
+} {
+  const ic = nimiqIconsData.icons[name];
   if (!ic?.body) {
-    throw new Error(`[nqIcon] missing ${HEX_OUTLINE_ID}`);
+    throw new Error(`[nqIcon] missing ${name}`);
   }
-  const w = opts?.width ?? ic.width ?? 18;
-  const h = opts?.height ?? ic.height ?? 17;
-  const cls = ["nq-icon", opts?.class].filter(Boolean).join(" ");
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" class="${cls}" aria-hidden="true" fill="none">${ic.body}</svg>`;
+  const width = ic.width ?? ic.height ?? 12;
+  const height = ic.height ?? ic.width ?? 12;
+  return { body: ic.body, width, height };
 }

@@ -61,7 +61,7 @@ watch(
   display: block;
   border-radius: 50%;
   object-fit: cover;
-  background: var(--bg-primary, #111);
+  background: var(--bg-primary);
   flex-shrink: 0;
 }
 
@@ -69,7 +69,7 @@ watch(
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--primary, #e74c3c);
+  background: var(--primary);
   color: #fff;
   font-weight: 700;
 }

@@ -7,7 +7,7 @@
     <div v-if="loading" class="loading">Loading...</div>
 
     <div v-else class="content">
-      <div class="profile-section">
+      <div class="profile-section nq-card">
         <Identicon
           class="profile-avatar"
           :address="user?.walletAddress"
@@ -25,28 +25,28 @@
 
       <ActivityHeatmap v-if="heatmap.length" :days="heatmap" title="Your activity" />
 
-      <div v-if="!user?.lifetimeUnlocked" class="lifetime-banner">
+      <div v-if="!user?.lifetimeUnlocked" class="lifetime-banner nq-card">
         <h3>Lifetime Unlock</h3>
         <p>Unlock all titles forever for {{ lifetimeNim }} NIM</p>
-        <button @click="purchaseLifetime" :disabled="purchasing" class="cta-button">
+        <button @click="purchaseLifetime" :disabled="purchasing" class="nq-pill-white">
           {{ purchasing ? "Processing..." : "Unlock Lifetime" }}
         </button>
       </div>
 
-      <div v-if="shareUrl" class="share-section">
+      <div v-if="shareUrl" class="share-section nq-card">
         <h3>Your Public Profile</h3>
         <div class="share-link">
-          <input :value="shareUrl" readonly />
-          <button @click="copyShareLink">Copy</button>
+          <input :value="shareUrl" readonly class="nq-input-box" />
+          <button type="button" class="nq-pill-blue" @click="copyShareLink">Copy</button>
         </div>
       </div>
 
-      <div v-else-if="needsHandlePrompt" class="handle-prompt">
+      <div v-else-if="needsHandlePrompt" class="handle-prompt nq-card">
         <h3>Claim a shareable handle</h3>
         <p>Soft NimConnect-style identity for your public favorites URL.</p>
         <div class="share-link">
-          <input v-model="handleDraft" placeholder="yourname" maxlength="24" />
-          <button type="button" @click="saveHandle">Save</button>
+          <input v-model="handleDraft" class="nq-input-box" placeholder="yourname" maxlength="24" />
+          <button type="button" class="nq-pill-blue" @click="saveHandle">Save</button>
         </div>
       </div>
 
@@ -264,9 +264,6 @@ onMounted(() => {
 .profile-section {
   display: flex;
   gap: 1rem;
-  padding: 1.5rem;
-  background: var(--bg-surface);
-  border-radius: 16px;
   margin-bottom: 0;
   align-items: center;
 }
@@ -304,12 +301,13 @@ onMounted(() => {
 }
 
 .lifetime-banner {
-  padding: 1.5rem;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-  border-radius: 16px;
+  background: var(--colors-blue-gradient);
   margin-bottom: 1rem;
   text-align: center;
   color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .lifetime-banner h3 {
@@ -322,31 +320,7 @@ onMounted(() => {
   opacity: 0.9;
 }
 
-.cta-button {
-  padding: 0.75rem 1.5rem;
-  background: white;
-  color: var(--primary);
-  border: none;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: transform 0.2s;
-}
-
-.cta-button:hover:not(:disabled) {
-  transform: scale(1.05);
-}
-
-.cta-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .share-section {
-  padding: 1.5rem;
-  background: var(--bg-surface);
-  border-radius: 16px;
   margin-bottom: 1rem;
 }
 
@@ -363,28 +337,9 @@ onMounted(() => {
 
 .share-link input {
   flex: 1;
-  padding: 0.5rem;
-  background: var(--bg-primary);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text-primary);
-  font-size: 0.9rem;
-}
-
-.share-link button {
-  padding: 0.5rem 1rem;
-  background: var(--primary);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
 }
 
 .handle-prompt {
-  padding: 1rem;
-  background: var(--bg-surface);
-  border-radius: 12px;
   margin-bottom: 1rem;
   text-align: center;
   color: var(--text-secondary);
@@ -435,23 +390,6 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.gold-badge {
-  position: absolute;
-  top: 0.35rem;
-  right: 0.35rem;
-  z-index: 2;
-  width: 1.4rem;
-  height: 1.4rem;
-  display: grid;
-  place-content: center;
-  border-radius: 999px;
-  background: #c9a227;
-  color: #0a0a0f;
-  font-size: 0.75rem;
-  line-height: 1;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
 .poster-placeholder {

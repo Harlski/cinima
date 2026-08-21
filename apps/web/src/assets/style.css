@@ -1,17 +1,22 @@
-@import url('https://fonts.googleapis.com/css2?family=Mulish:wght@400;500;600;700;800&display=swap');
+@import "nimiq-css/css/colors.css" layer(nq-colors);
+@import "nimiq-css/css/utilities.css" layer(nq-utilities);
 
 :root {
-  --bg-primary: #0a0a0f;
-  --bg-surface: #16161f;
-  --border: #2a2a35;
-  --text-primary: #f5f5f7;
-  --text-secondary: #9a9aa8;
-  --primary: #e74c3c;
-  --primary-dark: #c0392b;
-  --success: #27ae60;
-  --warning: #f39c12;
-  --error: #e74c3c;
-  --font: "Mulish", system-ui, sans-serif;
+  color-scheme: dark;
+  --nq-font-sans: "Mulish", ui-sans-serif, system-ui, sans-serif;
+  --nq-ease: cubic-bezier(0.25, 0, 0, 1);
+  --bg-primary: var(--colors-neutral-0);
+  --bg-surface: var(--colors-neutral-50);
+  --border: var(--colors-neutral-400);
+  --text-primary: var(--colors-neutral);
+  --text-secondary: var(--colors-neutral-800);
+  --primary: var(--colors-blue);
+  --primary-dark: var(--colors-blue-1100);
+  --gold: var(--colors-gold);
+  --success: var(--colors-green);
+  --warning: var(--colors-orange);
+  --error: var(--colors-red);
+  --font: var(--nq-font-sans);
   /* Clearance under Nimiq Pay / notch chrome */
   --top-chrome: calc(env(safe-area-inset-top, 0px) + 0.85rem);
 }
@@ -51,6 +56,10 @@ body {
   width: 100%;
   overflow: hidden;
   overscroll-behavior: none;
+}
+
+html {
+  color-scheme: dark;
 }
 
 body {
@@ -105,6 +114,14 @@ a:hover {
   text-decoration: underline;
 }
 
+a.nq-pill-blue:hover,
+a.nq-pill-lg:hover,
+a.nq-pill-gold:hover,
+a.nq-pill-secondary:hover,
+a.nq-pill-white:hover {
+  text-decoration: none;
+}
+
 ::placeholder {
   color: var(--text-secondary);
   opacity: 0.6;
@@ -125,7 +142,34 @@ a:hover {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3a3a45;
+  background: var(--colors-neutral-500);
+}
+
+.nq-icon {
+  display: block;
+  flex-shrink: 0;
+}
+
+.nq-pill-stretch {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.gold-badge {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  z-index: 2;
+  width: 1.4rem;
+  height: 1.4rem;
+  display: grid;
+  place-content: center;
+  border-radius: 999px;
+  background: var(--gold);
+  color: var(--colors-darkerblue);
+  font-size: 0.75rem;
+  line-height: 1;
+  box-shadow: 0 1px 4px color-mix(in oklch, var(--colors-neutral) 40%, transparent);
 }
 
 @keyframes fadeIn {

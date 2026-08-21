@@ -1,10 +1,8 @@
 <template>
   <div class="user">
     <header class="detail-header">
-      <button @click="goBack" class="back-button" type="button">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+      <button @click="goBack" class="back-button" type="button" aria-label="Back">
+        <NqIcon name="arrow-left" :size="24" />
       </button>
       <h1>{{ handle || "User" }}</h1>
     </header>
@@ -12,7 +10,7 @@
     <div v-if="loading" class="loading">Loading...</div>
 
     <div v-else-if="profile" class="content">
-      <div class="profile-section">
+      <div class="profile-section nq-card">
         <Identicon :address="profile.walletAddress" :size="64" alt="Identicon" />
         <div class="profile-info">
           <h2>{{ displayName(profile.handle, profile.walletAddress) }}</h2>
@@ -24,8 +22,7 @@
         <button
           v-if="!profile.isSelf"
           type="button"
-          class="follow-btn"
-          :class="{ following: profile.isFollowing }"
+          :class="profile.isFollowing ? 'nq-pill-secondary' : 'nq-pill-blue'"
           :disabled="followBusy"
           @click="toggleFollow"
         >
@@ -96,6 +93,7 @@ import { displayName, abbreviateWallet } from "@nimcharts/shared";
 import type { PublicProfile } from "@nimcharts/shared";
 import Identicon from "@/components/Identicon.vue";
 import ActivityHeatmap from "@/components/ActivityHeatmap.vue";
+import NqIcon from "@/components/NqIcon.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -182,7 +180,7 @@ watch(wallet, loadProfile);
   justify-content: center;
 }
 
-.back-button svg {
+.back-button :deep(.nq-icon) {
   width: 24px;
   height: 24px;
 }
@@ -212,9 +210,6 @@ watch(wallet, loadProfile);
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
-  padding: 1.5rem;
-  background: var(--bg-surface);
-  border-radius: 16px;
   align-items: center;
 }
 
@@ -240,22 +235,6 @@ watch(wallet, loadProfile);
   margin: 0;
   font-size: 0.85rem;
   color: var(--text-secondary);
-}
-
-.follow-btn {
-  padding: 0.55rem 1.1rem;
-  border-radius: 999px;
-  border: 1px solid var(--primary);
-  background: var(--primary);
-  color: #fff;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.follow-btn.following {
-  background: transparent;
-  color: var(--text-primary);
-  border-color: var(--border);
 }
 
 .favorites-section h3 {
@@ -290,22 +269,6 @@ watch(wallet, loadProfile);
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.gold-badge {
-  position: absolute;
-  top: 0.35rem;
-  right: 0.35rem;
-  z-index: 2;
-  width: 1.4rem;
-  height: 1.4rem;
-  display: grid;
-  place-content: center;
-  border-radius: 999px;
-  background: #c9a227;
-  color: #0a0a0f;
-  font-size: 0.75rem;
-  line-height: 1;
 }
 
 .poster-placeholder {
