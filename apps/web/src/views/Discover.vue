@@ -1,37 +1,11 @@
 <template>
-  <div class="discover">
-    <header
-      v-if="!loading && mode === 'overlap'"
-      class="page-header"
-    >
-      <div
-        class="discover-tabs"
-        role="tablist"
-        aria-label="Discover feeds"
-      >
-        <button
-          type="button"
-          role="tab"
-          class="discover-tab"
-          :class="{ active: activeTab === 'for-you' }"
-          :aria-selected="activeTab === 'for-you'"
-          @click="activeTab = 'for-you'"
-        >
-          For You
-        </button>
-        <button
-          type="button"
-          role="tab"
-          class="discover-tab"
-          :class="{ active: activeTab === 'following' }"
-          :aria-selected="activeTab === 'following'"
-          @click="activeTab = 'following'"
-        >
-          Following
-        </button>
-      </div>
-    </header>
-
+  <div
+    class="discover"
+    :class="{
+      'discover--overlap': !loading && mode === 'overlap',
+      'discover--for-you': !loading && mode === 'overlap' && activeTab === 'for-you',
+    }"
+  >
     <div v-if="loading" class="loading">
       <NqSpinner />
     </div>
@@ -77,44 +51,13 @@
           No overlap suggestions yet — favorite a few more titles.
         </div>
 
-        <div v-else class="suggestions">
-          <div
-            v-for="suggestion in suggestions"
-            :key="suggestion.title.id"
-            class="suggestion-card"
-            @click="handleSuggestionClick(suggestion)"
-          >
-            <div class="card-poster poster-press">
-              <PosterImg
-                v-if="suggestion.title.posterUrl"
-                :src="suggestion.title.posterUrl"
-                :alt="suggestion.title.title"
-              />
-              <div v-else class="poster-placeholder">
-                {{ suggestion.title.title.slice(0, 1) }}
-              </div>
-            </div>
-            <div class="card-info">
-              <h3>{{ suggestion.title.title }}</h3>
-              <p class="card-meta">
-                {{ suggestion.title.year }} · {{ suggestion.title.mediaType }}
-              </p>
-              <div v-if="suggestion.sampleWallets.length" class="card-liked">
-                <NqIcon name="heart" :size="16" class="thumb" />
-                <div class="liked-faces">
-                  <Identicon
-                    v-for="wallet in suggestion.sampleWallets.slice(0, 3)"
-                    :key="wallet"
-                    class="liked-face"
-                    :address="wallet"
-                    :size="22"
-                    alt=""
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ForYouPicker
+          v-else
+          :suggestions="suggestions"
+          :is-favorite="favoritesStore.isFavorite"
+          @toggle-favorite="toggleFavorite"
+          @open="goToTitle"
+        />
       </section>
 
       <section v-else class="feed-section">
@@ -176,6 +119,37 @@
         </div>
       </section>
     </div>
+
+    <nav
+      v-if="!loading && mode === 'overlap'"
+      class="discover-feed-tabs"
+      aria-label="Discover feeds"
+    >
+      <div class="discover-feed-tabs-inner">
+        <div class="discover-tabs" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            class="discover-tab"
+            :class="{ active: activeTab === 'for-you' }"
+            :aria-selected="activeTab === 'for-you'"
+            @click="activeTab = 'for-you'"
+          >
+            For You
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="discover-tab"
+            :class="{ active: activeTab === 'following' }"
+            :aria-selected="activeTab === 'following'"
+            @click="activeTab = 'following'"
+          >
+            Following
+          </button>
+        </div>
+      </div>
+    </nav>
   </div>
 </template>
 
@@ -195,7 +169,7 @@ import type {
 } from "@nimcharts/shared";
 import TitleCard from "@/components/TitleCard.vue";
 import Identicon from "@/components/Identicon.vue";
-import NqIcon from "@/components/NqIcon.vue";
+import ForYouPicker from "@/components/ForYouPicker.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
 import PosterImg from "@/components/PosterImg.vue";
 
@@ -343,10 +317,6 @@ const goToUser = (wallet: string) => {
   router.push({ name: "user", params: { wallet } });
 };
 
-const handleSuggestionClick = (suggestion: OverlapSuggestion) => {
-  router.push({ name: "title", params: { id: suggestion.title.id } });
-};
-
 onMounted(() => {
   loadDiscover();
 });
@@ -357,10 +327,37 @@ onMounted(() => {
   padding-bottom: 2rem;
 }
 
-.page-header {
-  padding: 0.25rem 1rem 0;
-  background: var(--bg-surface);
-  border-bottom: 1px solid var(--border);
+.discover--overlap {
+  --discover-feed-tabs-height: 2.85rem;
+  padding-bottom: calc(var(--discover-feed-tabs-height) + 0.75rem);
+}
+
+.discover--for-you {
+  padding-bottom: 0;
+}
+
+.discover--for-you .discover-body {
+  padding: 0;
+  gap: 0;
+}
+
+.discover-feed-tabs {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--bottom-tabs-height);
+  z-index: 45;
+  display: flex;
+  justify-content: center;
+  background: rgba(10, 10, 15, 0.92);
+  border-top: 1px solid var(--border);
+}
+
+.discover-feed-tabs-inner {
+  width: 100%;
+  max-width: var(--column-max);
+  padding-inline: var(--column-pad);
+  box-sizing: border-box;
 }
 
 .discover-tabs {
@@ -390,9 +387,9 @@ onMounted(() => {
   position: absolute;
   left: 20%;
   right: 20%;
-  bottom: 0;
+  top: 0;
   height: 2px;
-  border-radius: 2px 2px 0 0;
+  border-radius: 0 0 2px 2px;
   background: var(--primary);
 }
 
@@ -402,12 +399,12 @@ onMounted(() => {
 
 .loading {
   text-align: center;
-  padding: 3rem 1rem;
+  padding: 3rem 0;
   color: var(--text-secondary);
 }
 
 .onboarding-prompt {
-  padding: 2rem 1rem;
+  padding: 2rem 0;
   text-align: center;
   background: var(--bg-surface);
 }
@@ -428,7 +425,7 @@ onMounted(() => {
 }
 
 .search-box {
-  padding: 1rem;
+  padding: 1rem 0;
 }
 
 .search-input {
@@ -439,11 +436,11 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
-  padding: 0 1rem 1rem;
+  padding: 0 0 1rem;
 }
 
 .discover-body {
-  padding: 1rem;
+  padding: 1rem 0;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -596,110 +593,5 @@ onMounted(() => {
   display: grid;
   place-items: center;
   height: 100%;
-}
-
-.suggestions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-}
-
-.suggestion-card {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: stretch;
-  min-height: 78px;
-  background: var(--bg-surface);
-  border-radius: 12px;
-  overflow: hidden;
-  cursor: pointer;
-  padding: 0;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.suggestion-card:active {
-  background: var(--bg-surface);
-}
-
-.suggestion-card:active .card-poster.poster-press::after {
-  opacity: 1;
-}
-
-.card-poster {
-  position: relative;
-  align-self: stretch;
-  aspect-ratio: 2 / 3;
-  overflow: hidden;
-  background: var(--bg-primary);
-}
-
-.card-poster img,
-.poster-placeholder {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.card-poster img {
-  display: block;
-}
-
-.poster-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-secondary);
-  font-weight: 700;
-}
-
-.card-info {
-  min-width: 0;
-  padding: 0.55rem 0.75rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.card-info h3 {
-  margin: 0 0 0.2rem 0;
-  font-size: 0.98rem;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.card-meta {
-  margin: 0 0 0.45rem 0;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-}
-
-.card-liked {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.thumb {
-  color: var(--primary);
-  flex-shrink: 0;
-}
-
-.liked-faces {
-  display: flex;
-  align-items: center;
-}
-
-.liked-face {
-  margin-left: -6px;
-  box-shadow: 0 0 0 1.5px var(--bg-surface);
-  border-radius: 50%;
-}
-
-.liked-face:first-child {
-  margin-left: 0;
 }
 </style>
