@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host --port 5174",
-    "build": "vue-tsc --noEmit && vite build",
+    "build": "pnpm run --dir ../../packages/shared build && vue-tsc --noEmit && vite build",
     "preview": "vite preview",
-    "typecheck": "vue-tsc --noEmit",
+    "typecheck": "pnpm run --dir ../../packages/shared build && vue-tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
