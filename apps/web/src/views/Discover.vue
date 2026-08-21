@@ -595,14 +595,15 @@ onMounted(() => {
 }
 
 .suggestion-card {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: stretch;
+  min-height: 78px;
   background: var(--bg-surface);
   border-radius: 12px;
   overflow: hidden;
   cursor: pointer;
-  padding: 0.55rem;
+  padding: 0;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -616,33 +617,39 @@ onMounted(() => {
 
 .card-poster {
   position: relative;
-  width: 52px;
-  height: 78px;
-  flex-shrink: 0;
-  border-radius: 8px;
+  align-self: stretch;
+  aspect-ratio: 2 / 3;
   overflow: hidden;
   background: var(--bg-primary);
 }
 
-.card-poster img {
+.card-poster img,
+.poster-placeholder {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.card-poster img {
+  display: block;
 }
 
 .poster-placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
   color: var(--text-secondary);
   font-weight: 700;
 }
 
 .card-info {
-  flex: 1;
   min-width: 0;
-  padding: 0;
+  padding: 0.55rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .card-info h3 {
