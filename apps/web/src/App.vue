@@ -2,6 +2,7 @@
 import { onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "./stores/auth";
+import NqSpinner from "./components/NqSpinner.vue";
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -21,7 +22,10 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div v-if="!auth.ready && route.name !== 'public'" class="boot">Starting Cinima…</div>
+  <div v-if="!auth.ready && route.name !== 'public'" class="boot">
+    <NqSpinner label="Starting Cinima" />
+    <div aria-hidden="true">Starting Cinima…</div>
+  </div>
   <div v-else-if="auth.error && !auth.user && route.name !== 'public'" class="boot">
     <p>{{ auth.error }}</p>
     <button type="button" class="nq-pill-blue" @click="auth.boot()">Retry</button>

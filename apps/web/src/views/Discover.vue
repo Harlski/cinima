@@ -32,7 +32,9 @@
       </div>
     </header>
 
-    <div v-if="loading" class="loading">Loading...</div>
+    <div v-if="loading" class="loading">
+      <NqSpinner />
+    </div>
 
     <div v-else-if="mode === 'onboarding'" class="onboarding">
       <div class="onboarding-prompt">
@@ -188,6 +190,7 @@ import type {
 import TitleCard from "@/components/TitleCard.vue";
 import Identicon from "@/components/Identicon.vue";
 import NqIcon from "@/components/NqIcon.vue";
+import NqSpinner from "@/components/NqSpinner.vue";
 
 type FeedCard = {
   key: string;

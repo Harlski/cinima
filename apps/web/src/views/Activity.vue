@@ -4,7 +4,9 @@
       <h1>Activity</h1>
     </header>
 
-    <div v-if="loading" class="loading">Loading...</div>
+    <div v-if="loading" class="loading">
+      <NqSpinner />
+    </div>
 
     <div v-else-if="items.length === 0" class="empty">
       <p>No activity yet</p>
@@ -57,6 +59,7 @@ import { useApi } from "@/composables/useApi";
 import type { ActivityItem } from "@nimcharts/shared";
 import { displayName } from "@nimcharts/shared";
 import Identicon from "@/components/Identicon.vue";
+import NqSpinner from "@/components/NqSpinner.vue";
 
 const router = useRouter();
 const { request } = useApi();

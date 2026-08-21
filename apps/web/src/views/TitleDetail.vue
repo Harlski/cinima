@@ -9,7 +9,9 @@
       <h1>{{ title?.title || "Loading..." }}</h1>
     </header>
 
-    <div v-if="loading" class="loading">Loading...</div>
+    <div v-if="loading" class="loading">
+      <NqSpinner />
+    </div>
 
     <div v-else-if="title" class="content">
       <div class="poster-section">
@@ -93,7 +95,9 @@
           </button>
         </div>
 
-        <div v-if="loadingComments" class="loading-small">Loading comments...</div>
+        <div v-if="loadingComments" class="loading-small">
+          <NqSpinner :size="20" label="Loading comments" />
+        </div>
 
         <div v-else-if="comments.length === 0" class="empty-small">
           No comments yet
@@ -145,6 +149,7 @@ import type { TitleDetail, CommentDto } from "@nimcharts/shared";
 import HeatMap from "@/components/HeatMap.vue";
 import Identicon from "@/components/Identicon.vue";
 import UserChip from "@/components/UserChip.vue";
+import NqSpinner from "@/components/NqSpinner.vue";
 
 const route = useRoute();
 const router = useRouter();

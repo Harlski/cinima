@@ -49,7 +49,9 @@
       </ul>
     </div>
 
-    <div v-else-if="loading" class="loading">Searching...</div>
+    <div v-else-if="loading" class="loading">
+      <NqSpinner label="Searching" />
+    </div>
 
     <div v-else-if="searchQuery && results.length === 0" class="empty">
       No results found
@@ -76,6 +78,7 @@ import { useFavoritesStore } from "@/stores/favorites";
 import { useCatalogStore } from "@/stores/catalog";
 import TitleCard from "@/components/TitleCard.vue";
 import NqIcon from "@/components/NqIcon.vue";
+import NqSpinner from "@/components/NqSpinner.vue";
 import {
   clearSearchHistory,
   loadSearchHistory,

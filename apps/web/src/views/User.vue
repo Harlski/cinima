@@ -7,7 +7,9 @@
       <h1>{{ handle || "User" }}</h1>
     </header>
 
-    <div v-if="loading" class="loading">Loading...</div>
+    <div v-if="loading" class="loading">
+      <NqSpinner />
+    </div>
 
     <div v-else-if="profile" class="content">
       <div class="profile-section nq-card">
@@ -94,6 +96,7 @@ import type { PublicProfile } from "@nimcharts/shared";
 import Identicon from "@/components/Identicon.vue";
 import ActivityHeatmap from "@/components/ActivityHeatmap.vue";
 import NqIcon from "@/components/NqIcon.vue";
+import NqSpinner from "@/components/NqSpinner.vue";
 
 const route = useRoute();
 const router = useRouter();

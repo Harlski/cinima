@@ -1,6 +1,8 @@
 <template>
   <div class="public-profile">
-    <div v-if="loading" class="loading">Loading...</div>
+    <div v-if="loading" class="loading">
+      <NqSpinner />
+    </div>
 
     <div v-else-if="profile" class="content">
       <div class="profile-header">
@@ -86,6 +88,7 @@ import { useRoute } from "vue-router";
 import { abbreviateWallet, displayName } from "@nimcharts/shared";
 import type { PublicProfile } from "@nimcharts/shared";
 import Identicon from "@/components/Identicon.vue";
+import NqSpinner from "@/components/NqSpinner.vue";
 import ActivityHeatmap from "@/components/ActivityHeatmap.vue";
 
 const route = useRoute();

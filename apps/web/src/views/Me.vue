@@ -4,7 +4,9 @@
       <h1>Me</h1>
     </header>
 
-    <div v-if="loading" class="loading">Loading...</div>
+    <div v-if="loading" class="loading">
+      <NqSpinner />
+    </div>
 
     <div v-else class="content">
       <div class="profile-section nq-card">
@@ -134,6 +136,7 @@ import { useApi } from "@/composables/useApi";
 import { usePayments } from "@/composables/usePayments";
 import { useAuthStore } from "@/stores/auth";
 import Identicon from "@/components/Identicon.vue";
+import NqSpinner from "@/components/NqSpinner.vue";
 import ActivityHeatmap from "@/components/ActivityHeatmap.vue";
 import { LIFETIME_UNLOCK_NIM, LIFETIME_UNLOCK_LUNA, displayName, abbreviateWallet } from "@nimcharts/shared";
 import type { HeatmapDay, MeResponse, PublicProfile, TitleSummary } from "@nimcharts/shared";
