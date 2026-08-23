@@ -11,6 +11,7 @@ on:
       - "package.json"
       - "pnpm-workspace.yaml"
       - ".github/workflows/deploy-api.yml"
+  workflow_dispatch:
 
 concurrency:
   group: deploy-api-linode
@@ -53,29 +54,40 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Sync source to Linode
-        uses: burnett01/rsync-deployments@8.0.0
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
         with:
-          switches: -avzr --delete --exclude .git --exclude node_modules --exclude apps/web --exclude .env --exclude apps/api/data --exclude '**/dist'
-          path: ./
-          remote_path: ${{ secrets.LINODE_DEPLOY_PATH || '/opt/cinima' }}/
-          remote_host: ${{ secrets.LINODE_HOST }}
-          remote_user: ${{ secrets.LINODE_USER }}
-          remote_key: ${{ secrets.LINODE_SSH_KEY }}
+          ssh-private-key: ${{ secrets.LINODE_SSH_KEY }}
+
+      - name: Test SSH connection
+        run: |
+          set -eu
+          APP_DIR="${LINODE_DEPLOY_PATH:-/opt/cinima}"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan -H "$LINODE_HOST" >> ~/.ssh/known_hosts
+          ssh -o BatchMode=yes -o IdentitiesOnly=yes \
+            "${LINODE_USER}@${LINODE_HOST}" \
+            "mkdir -p '${APP_DIR}' && echo ssh_ok"
+
+      - name: Sync source to Linode
+        run: |
+          set -eu
+          APP_DIR="${LINODE_DEPLOY_PATH:-/opt/cinima}"
+          rsync -avzr --delete \
+            --exclude .git \
+            --exclude node_modules \
+            --exclude apps/web \
+            --exclude .env \
+            --exclude apps/api/data \
+            --exclude '**/dist' \
+            -e "ssh -o BatchMode=yes -o IdentitiesOnly=yes" \
+            ./ "${LINODE_USER}@${LINODE_HOST}:${APP_DIR}/"
 
       - name: Build and restart API
-        uses: appleboy/ssh-action@v1.2.0
-        env:
-          DEPLOY_PATH: ${{ secrets.LINODE_DEPLOY_PATH }}
-        with:
-          host: ${{ secrets.LINODE_HOST }}
-          username: ${{ secrets.LINODE_USER }}
-          key: ${{ secrets.LINODE_SSH_KEY }}
-          envs: DEPLOY_PATH
-          script_stop: true
-          script: |
-            set -euo pipefail
-            APP_DIR="${DEPLOY_PATH:-/opt/cinima}"
-            cd "$APP_DIR"
-            docker compose -f deploy/compose.api.yml up -d --build --remove-orphans
-            docker image prune -f
+        run: |
+          set -eu
+          APP_DIR="${LINODE_DEPLOY_PATH:-/opt/cinima}"
+          ssh -o BatchMode=yes -o IdentitiesOnly=yes \
+            "${LINODE_USER}@${LINODE_HOST}" \
+            "cd '${APP_DIR}' && docker compose -f deploy/compose.api.yml up -d --build --remove-orphans && docker image prune -f"
