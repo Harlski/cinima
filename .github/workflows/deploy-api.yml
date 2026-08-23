@@ -54,19 +54,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Start SSH agent
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.LINODE_SSH_KEY }}
+      - name: Configure SSH key
+        run: |
+          set -eu
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "$LINODE_SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keygen -y -f ~/.ssh/id_deploy >/dev/null
+          echo "Deploy key fingerprint (must match server authorized_keys):"
+          ssh-keygen -lf ~/.ssh/id_deploy
+          ssh-keyscan -H "$LINODE_HOST" >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
 
       - name: Test SSH connection
         run: |
           set -eu
           APP_DIR="${LINODE_DEPLOY_PATH:-/opt/cinima}"
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          ssh-keyscan -H "$LINODE_HOST" >> ~/.ssh/known_hosts
-          ssh -o BatchMode=yes -o IdentitiesOnly=yes \
+          ssh -i ~/.ssh/id_deploy -o BatchMode=yes -o IdentitiesOnly=yes \
             "${LINODE_USER}@${LINODE_HOST}" \
             "mkdir -p '${APP_DIR}' && echo ssh_ok"
 
@@ -81,13 +86,13 @@ jobs:
             --exclude .env \
             --exclude apps/api/data \
             --exclude '**/dist' \
-            -e "ssh -o BatchMode=yes -o IdentitiesOnly=yes" \
+            -e "ssh -i ~/.ssh/id_deploy -o BatchMode=yes -o IdentitiesOnly=yes" \
             ./ "${LINODE_USER}@${LINODE_HOST}:${APP_DIR}/"
 
       - name: Build and restart API
         run: |
           set -eu
           APP_DIR="${LINODE_DEPLOY_PATH:-/opt/cinima}"
-          ssh -o BatchMode=yes -o IdentitiesOnly=yes \
+          ssh -i ~/.ssh/id_deploy -o BatchMode=yes -o IdentitiesOnly=yes \
             "${LINODE_USER}@${LINODE_HOST}" \
             "cd '${APP_DIR}' && docker compose -f deploy/compose.api.yml up -d --build --remove-orphans && docker image prune -f"
