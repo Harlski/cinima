@@ -1,8 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "vite",
   "installCommand": "pnpm install",
-  "buildCommand": "pnpm --filter @cinima/web build",
+  "buildCommand": "pnpm --filter @cinima/shared build && pnpm --filter @cinima/web build",
   "outputDirectory": "apps/web/dist",
   "rewrites": [
     {
