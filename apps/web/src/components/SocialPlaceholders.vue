@@ -1,7 +1,16 @@
 <template>
-  <ul class="social-placeholders" aria-label="Cinima on social">
+  <ul class="social-placeholders" aria-label="Contact Cinima">
     <li v-for="channel in cinimaSocial" :key="channel.name">
+      <a
+        v-if="channel.href"
+        class="social-placeholder social-placeholder--live"
+        :href="channel.href"
+        :aria-label="channel.name === 'Email' ? `Email ${INQUIRIES_EMAIL}` : channel.name"
+      >
+        <NqIcon :name="channel.icon" :size="20" />
+      </a>
       <span
+        v-else
         class="social-placeholder"
         role="img"
         :aria-label="`${channel.name}, no link yet`"
@@ -14,7 +23,7 @@
 
 <script setup lang="ts">
 import NqIcon from "@/components/NqIcon.vue";
-import { cinimaSocial } from "@/lib/contact";
+import { INQUIRIES_EMAIL, cinimaSocial } from "@/lib/contact";
 </script>
 
 <style scoped>
@@ -38,6 +47,16 @@ import { cinimaSocial } from "@/lib/contact";
   background: var(--colors-neutral-200);
   color: var(--text-secondary);
   opacity: 0.55;
+  text-decoration: none;
+}
+
+.social-placeholder--live {
+  opacity: 1;
+  color: var(--text-primary);
+}
+
+.social-placeholder--live:hover {
+  background: var(--colors-neutral-300);
 }
 
 .social-placeholder :deep(.nq-icon) {

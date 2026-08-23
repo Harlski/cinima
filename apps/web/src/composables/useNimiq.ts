@@ -37,10 +37,10 @@ async function bootProvider() {
 /**
  * UI-facing Pay status. Provider itself stays outside Vue reactivity
  * (see `@/lib/nimiqPay`).
+ * Does not call init()/getNimiq() until ensureInit — Landing must not
+ * trigger a connect prompt before Enter CINIMA.
  */
 export function useNimiq() {
-  void bootProvider();
-
   return {
     isInPay: inPay,
     isReady: ready,

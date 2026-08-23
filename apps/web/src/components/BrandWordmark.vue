@@ -1,7 +1,13 @@
 <template>
   <span
     class="brand-wordmark"
-    :class="[sizeClass, { 'brand-wordmark--animate': animate }]"
+    :class="[
+      sizeClass,
+      {
+        'brand-wordmark--animate': animate,
+        'brand-wordmark--accent': accent,
+      },
+    ]"
     aria-label="Cinima"
   >
     <span
@@ -25,8 +31,10 @@ const props = withDefaults(
   defineProps<{
     size?: "sm" | "md" | "lg";
     animate?: boolean;
+    /** Static gold NIM letters (header look, no motion). */
+    accent?: boolean;
   }>(),
-  { size: "md", animate: false }
+  { size: "md", animate: false, accent: false }
 );
 
 const letters = [
@@ -75,6 +83,14 @@ const sizeClass = computed(() => `brand-wordmark--${props.size}`);
 .brand-wordmark__letter--nim {
   font-weight: 700;
   letter-spacing: 0.04em;
+}
+
+.brand-wordmark--accent .brand-wordmark__letter {
+  color: #fff;
+}
+
+.brand-wordmark--accent .brand-wordmark__letter--nim {
+  color: var(--gold);
 }
 
 /*

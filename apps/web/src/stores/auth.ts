@@ -3,7 +3,10 @@ import { ref, computed } from "vue";
 import { useApi } from "@/composables/useApi";
 import {
   demoEnabledOutsidePay,
+  detectNimiqPay,
+  getNimiq,
   isNimiqPay,
+  isNimiqPayUserAgent,
   listPayAccounts,
   signPayMessage,
 } from "@/lib/nimiqPay";
@@ -47,9 +50,16 @@ export const useAuthStore = defineStore("auth", () => {
         await devLogin();
         return;
       }
-      if (!isNimiqPay()) {
+
+      // Wait for host injection — sync isNimiqPay() is often still false on first paint.
+      const inPay =
+        isNimiqPay() ||
+        isNimiqPayUserAgent() ||
+        (await detectNimiqPay({ waitMs: 2_000 }));
+      if (!inPay) {
         throw new Error("Open Cinima inside Nimiq Pay (or use ?demo=1 locally)");
       }
+      await getNimiq();
 
       // Prompt 1: share accounts (native dialog)
       const accounts = await listPayAccounts();
@@ -106,8 +116,6 @@ export const useAuthStore = defineStore("auth", () => {
   const boot = async () => {
     error.value = null;
     try {
-      // Give the host a moment to inject window.nimiq / window.nimiqPay
-      await new Promise((r) => setTimeout(r, 50));
       if (token.value) await checkSession();
       if (!user.value) await authenticate();
     } catch (e) {

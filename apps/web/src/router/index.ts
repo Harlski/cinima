@@ -19,7 +19,8 @@ export const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: "/", name: "landing", component: Landing },
-    { path: "/gate", name: "gate", redirect: { name: "landing" } },
+    /** Always shows Landing, including inside Nimiq Pay (local preview / QA). */
+    { path: "/gate", name: "gate", component: Landing },
     {
       path: "/",
       component: AppShell,

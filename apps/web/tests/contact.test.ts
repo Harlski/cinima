@@ -4,30 +4,37 @@ import {
   cinimaSocial,
   inquiriesMailto,
   landingCopy,
-  unavailableCopy,
 } from "../src/lib/contact";
+import { landingPosters } from "../src/lib/landingPosters";
 
-describe("Unavailable contact", () => {
-  it("asks visitors to email inquiries@cinima.app", () => {
+describe("Landing contact", () => {
+  it("exposes inquiries@cinima.app as a mailto channel", () => {
     expect(INQUIRIES_EMAIL).toBe("inquiries@cinima.app");
     expect(inquiriesMailto()).toBe("mailto:inquiries@cinima.app");
-    expect(unavailableCopy.heading).toBe("Cinima isn't available yet");
-    expect(unavailableCopy.lead).toBe("For now, reach out to");
-  });
-
-  it("reserves X and Telegram with no links", () => {
     expect(cinimaSocial).toEqual([
       { name: "X", icon: "logos-twitter-mono", href: null },
       { name: "Telegram", icon: "logos-telegram-mono", href: null },
+      { name: "Email", icon: "envelope", href: "mailto:inquiries@cinima.app" },
     ]);
   });
 });
 
 describe("Landing copy", () => {
-  it("explains Cinima and that it is Pay-only", () => {
+  it("explains Cinima with Explore and Enter CTAs", () => {
     expect(landingCopy.kicker).toBe("A Nimiq Pay Mini App");
     expect(landingCopy.title).toMatch(/taste discovery/i);
-    expect(landingCopy.payOnly).toMatch(/only available inside Nimiq Pay/i);
-    expect(landingCopy.cta).toMatch(/NIMIQ PAY/i);
+    expect(landingCopy.ctaExplore).toMatch(/NIMIQ PAY/i);
+    expect(landingCopy.ctaEnter).toBe("Enter CINIMA");
+    expect(landingCopy).not.toHaveProperty("payOnly");
+  });
+});
+
+describe("Landing poster marquee", () => {
+  it("lists static poster assets for the hero scroll", () => {
+    expect(landingPosters.length).toBeGreaterThanOrEqual(12);
+    for (const poster of landingPosters) {
+      expect(poster.src).toMatch(/^\/landing\/posters\/.+\.webp$/);
+      expect(poster.id).toBeTruthy();
+    }
   });
 });

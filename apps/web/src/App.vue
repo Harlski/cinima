@@ -2,7 +2,7 @@
 import { onMounted, ref } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "./stores/auth";
-import { demoEnabledOutsidePay, isNimiqPay } from "./lib/nimiqPay";
+import { isLandingFrontDoor } from "./lib/landingGate";
 import NqSpinner from "./components/NqSpinner.vue";
 
 const auth = useAuthStore();
@@ -10,34 +10,30 @@ const router = useRouter();
 const route = useRoute();
 const reveal = ref(false);
 
-const isPublicRoute = () =>
-  route.name === "landing" ||
-  route.name === "gate" ||
+const isShareRoute = () =>
   route.name === "public" ||
   route.name === "title-share" ||
   route.name === "short-share";
 
-const shouldSoftBootLanding = () =>
-  !!auth.token || demoEnabledOutsidePay() || isNimiqPay();
-
 onMounted(async () => {
-  // Public landing / share pages skip forced auth boot
-  if (isPublicRoute()) {
-    if (route.name === "landing" || route.name === "gate") {
-      if (shouldSoftBootLanding()) {
-        await auth.boot();
-        if (auth.user) {
-          await router.replace({ name: "discover" });
-        }
-      } else {
-        auth.ready = true;
-      }
-    } else {
-      auth.ready = true;
-    }
+  // Wait until the initial URL is resolved. Otherwise route.name is still
+  // undefined (START_LOCATION) and we would wrongly auth.boot() on `/`.
+  await router.isReady();
+
+  if (isShareRoute()) {
+    auth.ready = true;
     reveal.value = true;
     return;
   }
+
+  // Landing / gate: public front door. Never auto-boot wallet auth here.
+  // Inside Pay, user taps "Enter CINIMA" to move into the app, then signing runs.
+  if (isLandingFrontDoor(route)) {
+    auth.ready = true;
+    reveal.value = true;
+    return;
+  }
+
   await auth.boot();
   if (auth.error && !auth.user) {
     await router.replace({ name: "landing" });
@@ -47,7 +43,10 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div v-if="!reveal && !isPublicRoute()" class="boot">
+  <div
+    v-if="!reveal && !isShareRoute()"
+    class="boot"
+  >
     <NqSpinner label="Starting Cinima" />
     <div aria-hidden="true">Starting Cinima…</div>
   </div>

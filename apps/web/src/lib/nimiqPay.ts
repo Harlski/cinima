@@ -16,6 +16,39 @@ export function isNimiqPay(): boolean {
   return window.nimiqPay != null || window.nimiq != null;
 }
 
+/** Pay WebView user agent — often present before window.nimiq* is injected. */
+export function isNimiqPayUserAgent(
+  ua = typeof navigator !== "undefined" ? navigator.userAgent : ""
+): boolean {
+  return /NimiqPay/i.test(ua);
+}
+
+/** Whether landing / cold start should attempt wallet auth (not the public marketing path). */
+export function shouldAttemptPayBoot(opts: {
+  hasToken: boolean;
+  demoEnabled: boolean;
+  inPay: boolean;
+  payUserAgent: boolean;
+}): boolean {
+  return opts.hasToken || opts.demoEnabled || opts.inPay || opts.payUserAgent;
+}
+
+/**
+ * Resolve whether we are (or are about to be) inside Nimiq Pay.
+ * Brief wait covers the race where `/` mounts before host injection.
+ */
+export async function detectNimiqPay(opts?: { waitMs?: number }): Promise<boolean> {
+  if (isNimiqPay() || isNimiqPayUserAgent()) return true;
+  const waitMs = opts?.waitMs ?? 0;
+  if (waitMs <= 0) return false;
+  const deadline = Date.now() + waitMs;
+  while (Date.now() < deadline) {
+    if (isNimiqPay()) return true;
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  return isNimiqPay();
+}
+
 export function getProviderErrorMessage(result: unknown): string | null {
   if (typeof result !== "object" || result === null || !("error" in result)) return null;
   const err = (result as ProviderError).error;

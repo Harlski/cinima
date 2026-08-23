@@ -65,9 +65,5 @@ One action that sends Thanks to every remaining peer who Favorited a title.
 _Avoid_: mass tip, blast, thank everyone as a separate mark
 
 **Landing**:
-The public root page that explains what Cinima is and that it runs only inside Nimiq Pay. Distinct from Public Profile and from the signed-in app shell.
-_Avoid_: marketing site, splash, home feed
-
-**Unavailable**:
-The public holding notice on the Landing when Cinima is not open for general use. It directs people to inquiries@cinima.app. Distinct from a missing Public Profile and from a transient API error.
-_Avoid_: maintenance page, coming soon, 404, down
+The public root page (`/` and `/gate`) that explains what Cinima is. Shows a scrolling strip of title-card posters (static files under `/landing/posters`, not live catalog). Outside Nimiq Pay the CTA is Explore (opens Pay); inside Pay the CTA is Enter, which connects the wallet while staying on Landing, shows a Welcome / Welcome Back identicon overlay, then enters Discover (Pick favorites onboarding or For You). Landing never auto-boots auth. Contact is X, Telegram, and Email (inquiries@cinima.app).
+_Avoid_: marketing site, splash, home feed, unavailable / coming-soon notice, auto sign-in on open, navigating into the app before wallet connect

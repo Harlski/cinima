@@ -3,71 +3,126 @@
     <AppBrandHeader fixed />
 
     <div class="landing-main">
+      <TitleMarquee class="landing-marquee" />
+
       <div class="landing-stack">
         <p class="landing-kicker">{{ landingCopy.kicker }}</p>
         <h1 class="landing-title">{{ landingCopy.title }}</h1>
         <p class="landing-lead">{{ landingCopy.lead }}</p>
-        <p class="landing-pay-note">{{ landingCopy.payOnly }}</p>
-        <a :href="payUrl" class="nq-pill-blue nq-pill-lg nq-pill-stretch landing-cta">
-          {{ landingCopy.cta }}
+
+        <button
+          v-if="inPay"
+          type="button"
+          class="landing-enter"
+          :disabled="entering"
+          :aria-label="entering ? 'Entering Cinima' : 'Enter Cinima'"
+          @click="enterCinima"
+        >
+          <template v-if="entering">Entering…</template>
+          <template v-else>
+            <span class="landing-enter-prefix" aria-hidden="true">Enter</span>
+            <BrandWordmark size="sm" accent aria-hidden="true" />
+          </template>
+        </button>
+        <a
+          v-else
+          :href="payUrl"
+          class="nq-pill-blue nq-pill-lg nq-pill-stretch landing-cta"
+        >
+          {{ landingCopy.ctaExplore }}
         </a>
 
-        <div class="unavailable-card">
-          <h2 class="unavailable-heading">{{ unavailableCopy.heading }}</h2>
-          <p class="unavailable-message">
-            {{ unavailableCopy.lead }}
-            <a class="unavailable-email" :href="inquiriesMailto()">{{
-              INQUIRIES_EMAIL
-            }}</a>
-          </p>
-          <SocialPlaceholders class="unavailable-social" />
-          <button
-            v-if="showRetry"
-            type="button"
-            class="nq-pill-secondary retry"
-            @click="retry"
-          >
-            Retry
-          </button>
-        </div>
+        <SocialPlaceholders class="landing-social" />
       </div>
 
       <TmdbAttribution variant="compact" class="landing-attr" />
     </div>
+
+    <WelcomeOverlay
+      :open="welcomeOpen"
+      :wallet-address="welcomeWallet"
+      :message="welcomeText"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import AppBrandHeader from "@/components/AppBrandHeader.vue";
+import BrandWordmark from "@/components/BrandWordmark.vue";
 import SocialPlaceholders from "@/components/SocialPlaceholders.vue";
+import TitleMarquee from "@/components/TitleMarquee.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";
-import {
-  INQUIRIES_EMAIL,
-  inquiriesMailto,
-  landingCopy,
-  unavailableCopy,
-} from "@/lib/contact";
+import WelcomeOverlay from "@/components/WelcomeOverlay.vue";
+import { landingCopy } from "@/lib/contact";
 import { payOpenHttpsUrl } from "@/lib/payLinks";
-import { isNimiqPay } from "@/lib/nimiqPay";
+import { detectNimiqPay, isNimiqPay, isNimiqPayUserAgent } from "@/lib/nimiqPay";
+import {
+  WELCOME_FADE_MS,
+  WELCOME_HOLD_MS,
+  isReturningUser,
+  sleep,
+  welcomeMessage,
+} from "@/lib/welcome";
 import { useAuthStore } from "@/stores/auth";
 
 const auth = useAuthStore();
 const router = useRouter();
 
-const showRetry = computed(() => isNimiqPay() && !auth.user);
+const inPay = ref(isNimiqPay() || isNimiqPayUserAgent());
+const entering = ref(false);
+const welcomeOpen = ref(false);
+const welcomeWallet = ref("");
+const welcomeText = ref<ReturnType<typeof welcomeMessage>>("Welcome!");
 
 const payUrl = computed(() => payOpenHttpsUrl());
 
-onMounted(() => {
-  if (auth.user) router.replace({ name: "discover" });
+let cancelled = false;
+
+onMounted(async () => {
+  // Late host injection: flip CTA to Enter without auto-booting.
+  if (!inPay.value && (await detectNimiqPay({ waitMs: 1_500 }))) {
+    if (!cancelled) inPay.value = true;
+  }
 });
 
-const retry = async () => {
-  await auth.boot();
-  if (auth.user) {
+onUnmounted(() => {
+  cancelled = true;
+});
+
+/**
+ * Connect on Landing first. After auth, show Welcome / Welcome Back,
+ * then enter Discover (onboarding or For You).
+ */
+const enterCinima = async () => {
+  if (entering.value) return;
+  entering.value = true;
+  const hadToken = !!auth.token;
+  try {
+    await auth.boot();
+    if (cancelled) return;
+    if (!auth.user) return;
+
+    welcomeWallet.value = auth.user.walletAddress;
+    welcomeText.value = welcomeMessage({
+      returning: isReturningUser({
+        hadToken,
+        handle: auth.user.handle,
+        favoriteCount: auth.user.favoriteCount,
+      }),
+    });
+    welcomeOpen.value = true;
+    await sleep(WELCOME_HOLD_MS);
+    if (cancelled) return;
+
+    welcomeOpen.value = false;
+    await sleep(WELCOME_FADE_MS);
+    if (cancelled) return;
+
     await router.replace({ name: "discover" });
+  } finally {
+    if (!cancelled) entering.value = false;
   }
 };
 </script>
@@ -88,24 +143,32 @@ const retry = async () => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 1.75rem;
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
-  padding: calc(var(--app-brand-row) + 1.25rem) 1.25rem
+  padding: calc(var(--app-brand-row) + 0.85rem) 0
     calc(1.25rem + env(safe-area-inset-bottom, 0px));
+}
+
+.landing-marquee {
+  width: 100%;
+  flex-shrink: 0;
+  padding-block: 0.5rem 0.35rem;
 }
 
 .landing-stack {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   text-align: center;
   width: 100%;
   max-width: 26rem;
   margin-inline: auto;
+  padding-inline: 1.25rem;
+  flex: 1;
+  gap: 0;
 }
 
 .landing-kicker {
@@ -126,75 +189,67 @@ const retry = async () => {
 }
 
 .landing-lead {
-  margin: 0 0 0.9rem;
+  margin: 0 0 1.35rem;
   font-size: 1.02rem;
   line-height: 1.55;
   color: var(--text-secondary);
 }
 
-.landing-pay-note {
-  margin: 0 0 1.25rem;
-  font-size: 0.95rem;
-  line-height: 1.5;
-  color: var(--text-secondary);
+.landing-enter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: auto;
+  margin-bottom: 1.5rem;
+  padding: 1.2rem 1.65rem;
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  background: var(--colors-neutral-200);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.landing-enter:hover:not(:disabled) {
+  background: var(--colors-neutral-300, var(--colors-neutral-200));
+}
+
+.landing-enter:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.landing-enter-prefix {
+  color: #fff;
+  font-weight: 600;
+}
+
+.landing-enter :deep(.brand-wordmark) {
+  font-size: 1.2rem;
 }
 
 .landing-cta {
-  margin-bottom: 1.75rem;
+  margin-bottom: 1.5rem;
   text-align: center;
   letter-spacing: 0.02em;
   color: #fff;
   text-decoration: none;
 }
 
-.unavailable-card {
-  width: 100%;
-  padding: 1.5rem 1.35rem 1.35rem;
-  border-radius: 0.75rem;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  text-align: center;
-}
-
-.unavailable-heading {
-  margin: 0 0 0.65rem;
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.unavailable-message {
-  margin: 0;
-  font-size: 0.98rem;
-  line-height: 1.55;
-  color: var(--text-secondary);
-}
-
-.unavailable-email {
-  color: var(--text-primary);
-  font-weight: 600;
-  text-decoration: none;
-  -webkit-user-select: text;
-  user-select: text;
-}
-
-.unavailable-email:hover {
-  color: var(--text-primary);
-  text-decoration: underline;
-}
-
-.unavailable-social {
-  margin-top: 1.25rem;
-}
-
-.retry {
-  margin-top: 1rem;
+.landing-social {
+  margin-top: 0;
 }
 
 .landing-attr {
   width: 100%;
   max-width: 26rem;
   margin-inline: auto;
+  padding-inline: 1.25rem;
   border-top: none;
   text-align: left;
   flex-shrink: 0;
