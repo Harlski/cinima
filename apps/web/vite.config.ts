@@ -24,11 +24,13 @@ export default defineConfig(({ mode }) => {
   const siteOrigin =
     process.env.VITE_SITE_ORIGIN ||
     (mode === "production" ? "https://cinima.app" : "http://localhost:5174");
+  const apiOrigin =
+    process.env.VITE_API_BASE?.replace(/\/$/, "") || "http://127.0.0.1:8787";
 
   return {
   plugins: [
     vue(),
-    shareOgPlugin(),
+    shareOgPlugin(apiOrigin),
     {
       name: "cinima-site-meta",
       transformIndexHtml: siteMetaHtml(siteOrigin),
