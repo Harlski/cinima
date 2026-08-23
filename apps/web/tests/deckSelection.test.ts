@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   deckScrollLeftToCenter,
   resolveDeckScrollIndex,
+  restoreDeckWindow,
+  syncDeckItems,
+  type DeckSelection,
 } from "../src/lib/deckSelection";
+
+function titles(...ids: string[]) {
+  return ids.map((id) => ({ title: { id } }));
+}
 
 describe("resolveDeckScrollIndex", () => {
   it("keeps an explicitly clicked edge item when scroll snap centers a neighbor", () => {
@@ -36,5 +43,49 @@ describe("deckScrollLeftToCenter", () => {
         0
       )
     ).toBe(0);
+  });
+});
+
+describe("restoreDeckWindow", () => {
+  it("extracts a remembered window from a larger pool", () => {
+    const remembered: DeckSelection = {
+      itemIds: ["b", "c", "d"],
+      selectedTitleId: "c",
+    };
+    const restored = restoreDeckWindow(titles("a", "b", "c", "d", "e"), remembered);
+    expect(restored.items.map((item) => item.title.id)).toEqual(["b", "c", "d"]);
+    expect(restored.selectedIndex).toBe(1);
+  });
+});
+
+describe("syncDeckItems", () => {
+  it("keeps parent order after a refresh reshuffles the same titles", () => {
+    const remembered: DeckSelection = {
+      itemIds: ["a", "b", "c", "d", "e", "f", "g"],
+      selectedTitleId: "d",
+    };
+    const refreshed = titles("c", "a", "g", "b", "f", "e", "d");
+    const synced = syncDeckItems(refreshed, remembered);
+
+    expect(synced.items.map((item) => item.title.id)).toEqual([
+      "c",
+      "a",
+      "g",
+      "b",
+      "f",
+      "e",
+      "d",
+    ]);
+    expect(synced.selectedIndex).toBe(6);
+  });
+
+  it("keeps parent order when refresh swaps in a new window", () => {
+    const remembered: DeckSelection = {
+      itemIds: ["a", "b", "c"],
+      selectedTitleId: "b",
+    };
+    const synced = syncDeckItems(titles("h", "i", "j"), remembered);
+    expect(synced.items.map((item) => item.title.id)).toEqual(["h", "i", "j"]);
+    expect(synced.selectedIndex).toBe(1);
   });
 });

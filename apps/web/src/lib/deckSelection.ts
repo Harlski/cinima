@@ -53,6 +53,24 @@ export function restoreDeckWindow<T extends { title: { id: string } }>(
   };
 }
 
+/** Trust parent item order (e.g. a refreshed suggestion window); keep selection if present. */
+export function syncDeckItems<T extends { title: { id: string } }>(
+  items: readonly T[],
+  remembered: DeckSelection | null
+): { items: T[]; selectedIndex: number } {
+  const list = [...items];
+  if (list.length === 0) {
+    return { items: list, selectedIndex: 0 };
+  }
+  const selectedIndex = remembered
+    ? list.findIndex((entry) => entry.title.id === remembered.selectedTitleId)
+    : -1;
+  return {
+    items: list,
+    selectedIndex: selectedIndex >= 0 ? selectedIndex : centerIndex(list.length),
+  };
+}
+
 function centerIndex(length: number): number {
   if (length <= 0) return 0;
   return Math.floor((length - 1) / 2);

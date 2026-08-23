@@ -3,8 +3,6 @@
     <AppBrandHeader fixed />
 
     <div class="landing-main">
-      <TitleMarquee class="landing-marquee" />
-
       <div class="landing-stack">
         <p class="landing-kicker">{{ landingCopy.kicker }}</p>
         <h1 class="landing-title">{{ landingCopy.title }}</h1>
@@ -31,9 +29,11 @@
         >
           {{ landingCopy.ctaExplore }}
         </a>
-
-        <SocialPlaceholders class="landing-social" />
       </div>
+
+      <TitleMarquee class="landing-marquee" />
+
+      <SocialPlaceholders class="landing-social" />
 
       <TmdbAttribution variant="compact" class="landing-attr" />
     </div>
@@ -42,6 +42,8 @@
       :open="welcomeOpen"
       :wallet-address="welcomeWallet"
       :message="welcomeText"
+      :force-pick-enabled="forcePickEnabled"
+      @force-pick="forceFavoritesPick"
     />
   </div>
 </template>
@@ -59,8 +61,10 @@ import { landingCopy } from "@/lib/contact";
 import { payOpenHttpsUrl } from "@/lib/payLinks";
 import { detectNimiqPay, isNimiqPay, isNimiqPayUserAgent } from "@/lib/nimiqPay";
 import {
+  FORCE_FAVORITES_PICK_QUERY,
   WELCOME_FADE_MS,
   WELCOME_HOLD_MS,
+  canForceFavoritesPick,
   isReturningUser,
   sleep,
   welcomeMessage,
@@ -75,10 +79,13 @@ const entering = ref(false);
 const welcomeOpen = ref(false);
 const welcomeWallet = ref("");
 const welcomeText = ref<ReturnType<typeof welcomeMessage>>("Welcome!");
+const forcePickEnabled = canForceFavoritesPick();
 
 const payUrl = computed(() => payOpenHttpsUrl());
 
 let cancelled = false;
+/** Bumped to cancel an in-flight welcome hold (e.g. force-pick). */
+let enterGeneration = 0;
 
 onMounted(async () => {
   // Late host injection: flip CTA to Enter without auto-booting.
@@ -98,10 +105,11 @@ onUnmounted(() => {
 const enterCinima = async () => {
   if (entering.value) return;
   entering.value = true;
+  const gen = ++enterGeneration;
   const hadToken = !!auth.token;
   try {
     await auth.boot();
-    if (cancelled) return;
+    if (cancelled || gen !== enterGeneration) return;
     if (!auth.user) return;
 
     welcomeWallet.value = auth.user.walletAddress;
@@ -114,16 +122,28 @@ const enterCinima = async () => {
     });
     welcomeOpen.value = true;
     await sleep(WELCOME_HOLD_MS);
-    if (cancelled) return;
+    if (cancelled || gen !== enterGeneration) return;
 
     welcomeOpen.value = false;
     await sleep(WELCOME_FADE_MS);
-    if (cancelled) return;
+    if (cancelled || gen !== enterGeneration) return;
 
     await router.replace({ name: "discover" });
   } finally {
-    if (!cancelled) entering.value = false;
+    if (!cancelled && gen === enterGeneration) entering.value = false;
   }
+};
+
+/** Local / demo: tap welcome identicon → Favorites onboarding. */
+const forceFavoritesPick = async () => {
+  if (!forcePickEnabled) return;
+  enterGeneration += 1;
+  welcomeOpen.value = false;
+  entering.value = false;
+  await router.replace({
+    name: "discover",
+    query: { [FORCE_FAVORITES_PICK_QUERY]: "1" },
+  });
 };
 </script>
 
@@ -149,12 +169,6 @@ const enterCinima = async () => {
   -webkit-overflow-scrolling: touch;
   padding: calc(var(--app-brand-row) + 0.85rem) 0
     calc(1.25rem + env(safe-area-inset-bottom, 0px));
-}
-
-.landing-marquee {
-  width: 100%;
-  flex-shrink: 0;
-  padding-block: 0.5rem 0.35rem;
 }
 
 .landing-stack {
@@ -189,7 +203,7 @@ const enterCinima = async () => {
 }
 
 .landing-lead {
-  margin: 0 0 1.35rem;
+  margin: 0 0 0.5rem;
   font-size: 1.02rem;
   line-height: 1.55;
   color: var(--text-secondary);
@@ -201,9 +215,10 @@ const enterCinima = async () => {
   justify-content: center;
   gap: 0.5rem;
   width: auto;
-  margin-bottom: 1.5rem;
+  margin-top: 2.75rem;
+  margin-bottom: 0;
   padding: 1.2rem 1.65rem;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(255, 255, 255, 0.35);
   border-radius: 0.9rem;
   background: var(--colors-neutral-200);
   color: #fff;
@@ -212,11 +227,19 @@ const enterCinima = async () => {
   font-size: 1.1rem;
   font-weight: 700;
   letter-spacing: 0.01em;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 0 18px rgba(255, 255, 255, 0.35),
+    0 0 36px rgba(255, 255, 255, 0.18);
   -webkit-tap-highlight-color: transparent;
 }
 
 .landing-enter:hover:not(:disabled) {
   background: var(--colors-neutral-300, var(--colors-neutral-200));
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.2),
+    0 0 22px rgba(255, 255, 255, 0.45),
+    0 0 44px rgba(255, 255, 255, 0.22);
 }
 
 .landing-enter:disabled {
@@ -234,15 +257,24 @@ const enterCinima = async () => {
 }
 
 .landing-cta {
-  margin-bottom: 1.5rem;
+  margin-bottom: 0;
   text-align: center;
   letter-spacing: 0.02em;
   color: #fff;
   text-decoration: none;
 }
 
+.landing-marquee {
+  width: 100%;
+  flex-shrink: 0;
+  margin-top: 0.5rem;
+  padding-block: 0.75rem 1rem;
+}
+
 .landing-social {
-  margin-top: 0;
+  margin-top: 0.25rem;
+  margin-bottom: 1rem;
+  flex-shrink: 0;
 }
 
 .landing-attr {

@@ -64,6 +64,10 @@ _Avoid_: tip, like, kudos, shout-out
 One action that sends Thanks to every remaining peer who Favorited a title.
 _Avoid_: mass tip, blast, thank everyone as a separate mark
 
+**Favorites onboarding**:
+The Discover gate for accounts under the Favorite minimum. Shows three scrolling poster rows drawn from the local Catalog cache: recognizable recent movies and TV (with posters), ranked by peer Favorite overlap then popularity. Selection is local until Continue commits Favorites; Skip remembers the choice on the account and enters For You with popular cached suggestions. No title detail or search on this screen.
+_Avoid_: swipe deck, search-to-unlock, auto-favorite on tap, live catalog fetch on this screen
+
 **Landing**:
-The public root page (`/` and `/gate`) that explains what Cinima is. Shows a scrolling strip of title-card posters (static files under `/landing/posters`, not live catalog). Outside Nimiq Pay the CTA is Explore (opens Pay); inside Pay the CTA is Enter, which connects the wallet while staying on Landing, shows a Welcome / Welcome Back identicon overlay, then enters Discover (Pick favorites onboarding or For You). Landing never auto-boots auth. Contact is X, Telegram, and Email (inquiries@cinima.app).
-_Avoid_: marketing site, splash, home feed, unavailable / coming-soon notice, auto sign-in on open, navigating into the app before wallet connect
+The public root page (`/` and `/gate`) that explains what Cinima is. Shows a scrolling strip of title-card posters loaded from the TMDB image CDN (curated `poster_path` list; not vendored in the repo), with TMDB attribution on the page. Outside Nimiq Pay the CTA is Explore (opens Pay); inside Pay the CTA is Enter, which connects the wallet while staying on Landing, shows a Welcome / Welcome Back identicon overlay, then enters Discover (Favorites onboarding or For You). Landing never auto-boots auth. Contact is X, Telegram, and Email (inquiries@cinima.app).
+_Avoid_: marketing site, splash, home feed, unavailable / coming-soon notice, auto sign-in on open, navigating into the app before wallet connect, vendoring studio posters in git

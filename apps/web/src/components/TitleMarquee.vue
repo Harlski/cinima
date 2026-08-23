@@ -1,6 +1,10 @@
 <template>
   <div class="title-marquee" aria-hidden="true">
     <div class="title-marquee-track">
+      <!--
+        Two identical sets. Gap lives as padding-right on each set so
+        translateX(-50%) lands exactly on the loop point (no jump).
+      -->
       <ul
         v-for="copy in 2"
         :key="copy"
@@ -55,7 +59,7 @@ import { landingPosters } from "@/lib/landingPosters";
 .title-marquee-track {
   display: flex;
   width: max-content;
-  animation: title-marquee-scroll 48s linear infinite;
+  animation: title-marquee-scroll 55s linear infinite;
 }
 
 .title-marquee-list {
@@ -63,7 +67,8 @@ import { landingPosters } from "@/lib/landingPosters";
   align-items: stretch;
   gap: 0.55rem;
   margin: 0;
-  padding: 0 0.275rem;
+  /* Trailing gap equals item gap so set A | gap | set B loops cleanly. */
+  padding: 0 0.55rem 0 0;
   list-style: none;
 }
 

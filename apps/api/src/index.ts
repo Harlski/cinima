@@ -8,6 +8,7 @@ import { migrate } from "./db/migrate.js";
 import * as schema from "./db/schema.js";
 import { config } from "./lib/config.js";
 import { seedTitles } from "./seed/seed-titles.js";
+import { prefetchPopularCatalog } from "./services/catalog.js";
 import { seedDemoSocialGraph } from "./services/demoSocial.js";
 
 async function main() {
@@ -21,6 +22,24 @@ async function main() {
     await seedTitles(db);
   }
   await seedDemoSocialGraph();
+
+  if (config.tmdbApiKey) {
+    console.log("[catalog] prefetching popular recent titles…");
+    try {
+      const result = await prefetchPopularCatalog();
+      if (result.skipped) {
+        console.log(`[catalog] prefetch skipped (pool=${result.poolSize})`);
+      } else {
+        console.log(
+          `[catalog] prefetch done upserted=${result.upserted} pool=${result.poolSize}`
+        );
+      }
+    } catch (err) {
+      console.warn("[catalog] prefetch failed", err);
+    }
+  } else {
+    console.log("[catalog] TMDB_API_KEY unset — skipping popular prefetch");
+  }
 
   const hostname = process.env.HOST || "0.0.0.0";
   console.log(

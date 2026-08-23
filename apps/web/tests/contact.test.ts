@@ -30,10 +30,13 @@ describe("Landing copy", () => {
 });
 
 describe("Landing poster marquee", () => {
-  it("lists static poster assets for the hero scroll", () => {
+  it("lists recent TMDB CDN posters for the hero scroll", () => {
     expect(landingPosters.length).toBeGreaterThanOrEqual(12);
     for (const poster of landingPosters) {
-      expect(poster.src).toMatch(/^\/landing\/posters\/.+\.webp$/);
+      expect(poster.src).toMatch(
+        /^https:\/\/image\.tmdb\.org\/t\/p\/w185\/.+\.jpg$/
+      );
+      expect(poster.posterPath).toMatch(/^\//);
       expect(poster.id).toBeTruthy();
     }
   });

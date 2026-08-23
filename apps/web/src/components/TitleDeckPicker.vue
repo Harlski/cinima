@@ -43,6 +43,7 @@
           </div>
         </div>
         <div class="actions">
+          <span v-if="actionsPrefix" class="actions-prefix">{{ actionsPrefix }}</span>
           <button
             v-if="primaryActionLabel"
             type="button"
@@ -136,8 +137,8 @@ import {
   deckScrollLeftToCenter,
   loadDeckSelection,
   resolveDeckScrollIndex,
-  restoreDeckWindow,
   saveDeckSelection,
+  syncDeckItems,
 } from "@/lib/deckSelection";
 
 export type DeckItem = {
@@ -153,6 +154,7 @@ const props = withDefaults(
     dockBottomOffset?: string;
     showSocial?: boolean;
     showRefresh?: boolean;
+    actionsPrefix?: string;
     primaryActionLabel?: string;
     primaryActionActive?: boolean;
     secondaryActionLabel?: string;
@@ -180,7 +182,7 @@ const emit = defineEmits<{
 }>();
 
 const stripEl = ref<HTMLElement | null>(null);
-const restored = restoreDeckWindow(props.items, loadDeckSelection(props.selectionKey));
+const restored = syncDeckItems(props.items, loadDeckSelection(props.selectionKey));
 const deckItems = ref<DeckItem[]>(restored.items);
 const selectedIndex = ref(restored.selectedIndex);
 const suppressSelect = ref(false);
@@ -218,10 +220,12 @@ function persistVisibleCard() {
 }
 
 function resetFromPool() {
-  const next = restoreDeckWindow(props.items, loadDeckSelection(props.selectionKey));
+  const next = syncDeckItems(props.items, loadDeckSelection(props.selectionKey));
   deckItems.value = next.items;
   selectedIndex.value = next.selectedIndex;
   persistSelection();
+  const titleId = deckItems.value[selectedIndex.value]?.title.id;
+  if (titleId) emit("select", titleId);
   void snapToIndex(selectedIndex.value, "auto");
 }
 
@@ -500,11 +504,19 @@ function onResize() {
   flex-wrap: wrap;
 }
 
+.actions-prefix {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 .actions .nq-pill-stretch {
   flex: 1 1 auto;
   width: auto;
   min-height: 2.4rem;
-  min-width: 8.5rem;
+  min-width: 6.5rem;
 }
 
 .refresh-btn {

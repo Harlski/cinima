@@ -8,7 +8,7 @@ const dbFile = path.join(dataDir, "test.db");
 process.env.DATABASE_URL = `file:${dbFile}`;
 process.env.DEMO_MODE = "true";
 
-const WALLET = "NQ05 TESTWALLET FOR FAVORITE API TESTS0001";
+const WALLET = "NQ05TESTWALLETFORFAVORITEAPITESTS0001";
 const TITLE_ID = "movie:42";
 const TOKEN = "test-session-token-favorite-roundtrip";
 
@@ -106,4 +106,113 @@ describe("Favorite HTTP API", () => {
     expect(body.favoriteCount).toBe(0);
     expect(Array.isArray(body.onboardingCandidates)).toBe(true);
   });
+
+  it("ranks onboarding candidates by peer Favorite count among cached titles", async () => {
+    const headers = {
+      Authorization: `Bearer ${TOKEN}`,
+      "X-Cinima-Demo": "1",
+    };
+    const { db } = await import("../src/db/index.js");
+    const schema = await import("../src/db/schema.js");
+    const peer = "NQ05PEERWALLETFORONBOARDINGRANKTESTS01";
+    await db.insert(schema.users).values({
+      walletAddress: peer,
+      handle: null,
+      lifetimeUnlockedAt: null,
+      createdAt: new Date(),
+    });
+    const hotId = "movie:99";
+    const coldId = "movie:98";
+    await db.insert(schema.titles).values([
+      {
+        id: hotId,
+        mediaType: "movie",
+        tmdbId: 99,
+        title: "Hot Cached",
+        year: 2020,
+        posterPath: "/hot.jpg",
+        overview: "hot",
+        imdbId: null,
+        rating: "5.0",
+        popularity: 10,
+        fetchedAt: new Date(),
+        source: "seed",
+      },
+      {
+        id: coldId,
+        mediaType: "movie",
+        tmdbId: 98,
+        title: "Cold Cached",
+        year: 2021,
+        posterPath: "/cold.jpg",
+        overview: "cold",
+        imdbId: null,
+        rating: "9.5",
+        popularity: 90,
+        fetchedAt: new Date(),
+        source: "seed",
+      },
+    ]);
+    await db.insert(schema.favorites).values({
+      walletAddress: peer,
+      titleId: hotId,
+      createdAt: new Date(),
+      recommendedAt: null,
+    });
+
+    const res = await app.fetch(new Request("http://test/api/discover", { headers }));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      mode: string;
+      onboardingCandidates?: { id: string }[];
+    };
+    expect(body.mode).toBe("onboarding");
+    const ids = (body.onboardingCandidates ?? []).map((t) => t.id);
+    expect(ids.indexOf(hotId)).toBeLessThan(ids.indexOf(coldId));
+  });
+
+  it("skip onboarding returns overlap mode without Favorites", async () => {
+    const headers = {
+      Authorization: `Bearer ${TOKEN}`,
+      "X-Cinima-Demo": "1",
+    };
+    const res = await app.fetch(
+      new Request("http://test/api/discover/skip-onboarding", {
+        method: "POST",
+        headers,
+      })
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      mode: string;
+      favoriteCount: number;
+      suggestions?: unknown[];
+    };
+    expect(body.mode).toBe("overlap");
+    expect(body.favoriteCount).toBe(0);
+    expect(Array.isArray(body.suggestions)).toBe(true);
+
+    const again = await app.fetch(new Request("http://test/api/discover", { headers }));
+    const againBody = (await again.json()) as { mode: string };
+    expect(againBody.mode).toBe("overlap");
+  });
+
+
+  it("forceOnboarding returns onboarding mode even after skip", async () => {
+    const headers = {
+      Authorization: `Bearer ${TOKEN}`,
+      "X-Cinima-Demo": "1",
+    };
+    const res = await app.fetch(
+      new Request("http://test/api/discover?forceOnboarding=1", { headers })
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      mode: string;
+      onboardingCandidates?: unknown[];
+    };
+    expect(body.mode).toBe("onboarding");
+    expect(Array.isArray(body.onboardingCandidates)).toBe(true);
+  });
+
 });

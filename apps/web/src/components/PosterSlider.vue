@@ -16,8 +16,10 @@
       :key="title.id"
       type="button"
       class="media-item"
+      :class="{ 'is-selected': isSelected(title.id) }"
       role="listitem"
       :aria-label="title.title"
+      :aria-pressed="selectedSet ? isSelected(title.id) : undefined"
       :style="itemGridStyle(index)"
       @click="$emit('select', title)"
     >
@@ -50,12 +52,15 @@ const props = withDefaults(
     maxRows?: number;
     /** Size posters to the container width; no horizontal scroll */
     fit?: boolean;
+    /** When set, posters in this set render as selected */
+    selectedIds?: ReadonlySet<string> | readonly string[];
   }>(),
   {
     gold: "recommended",
     empty: "None yet",
     maxRows: 1,
     fit: false,
+    selectedIds: undefined,
   }
 );
 
@@ -152,6 +157,17 @@ watch(
 
 onUnmounted(() => observer?.disconnect());
 
+const selectedSet = computed(() => {
+  if (!props.selectedIds) return null;
+  return props.selectedIds instanceof Set
+    ? props.selectedIds
+    : new Set(props.selectedIds);
+});
+
+function isSelected(id: string): boolean {
+  return selectedSet.value?.has(id) ?? false;
+}
+
 function showGold(title: TitleSummary): boolean {
   return props.gold === "always" || Boolean(title.recommended);
 }
@@ -197,6 +213,10 @@ function showGold(title: TitleSummary): boolean {
 .poster-slider--fit {
   display: grid;
   width: 100%;
+  max-width: min(
+    100%,
+    calc(var(--poster-cols) * 7.25rem + (var(--poster-cols) - 1) * 0.75rem)
+  );
   gap: 0.75rem;
   overflow: hidden;
   scroll-snap-type: none;
@@ -219,13 +239,20 @@ function showGold(title: TitleSummary): boolean {
   flex: 0 0 7.25rem;
   aspect-ratio: 2 / 3;
   padding: 0;
-  border: 0;
+  border: 2px solid transparent;
   background: var(--bg-surface);
   border-radius: 10px;
   overflow: hidden;
   scroll-snap-align: start;
   cursor: pointer;
   color: inherit;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.media-item.is-selected {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px var(--gold);
 }
 
 .media-item img {
@@ -253,6 +280,13 @@ function showGold(title: TitleSummary): boolean {
   .poster-slider--rows {
     grid-template-columns: repeat(var(--poster-cols), 8.25rem);
     grid-template-rows: repeat(var(--poster-rows), calc(8.25rem * 3 / 2));
+  }
+
+  .poster-slider--fit {
+    max-width: min(
+      100%,
+      calc(var(--poster-cols) * 8.25rem + (var(--poster-cols) - 1) * 0.75rem)
+    );
   }
 }
 </style>

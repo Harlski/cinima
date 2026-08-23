@@ -11,8 +11,9 @@ import {
 } from "@cinima/shared";
 import { and, count, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { favorites, titles } from "../db/schema.js";
+import { favorites, titles, users } from "../db/schema.js";
 import { hasOverview, toTitleSummary } from "../lib/titles.js";
+import { POPULAR_PREFETCH_YEAR_FROM } from "./catalog.js";
 
 export class SocialTasteError extends Error {
   constructor(
@@ -171,27 +172,100 @@ export async function clearRecommend(wallet: string, titleId: string) {
     .where(and(eq(favorites.walletAddress, w), eq(favorites.titleId, titleId)));
 }
 
+async function popularSuggestions(excludeIds: Set<string>): Promise<OverlapSuggestion[]> {
+  const popular = await db
+    .select()
+    .from(titles)
+    .where(sql`TRIM(COALESCE(${titles.overview}, '')) != ''`)
+    .orderBy(sql`CAST(COALESCE(rating, '0') AS REAL) DESC`)
+    .limit(16);
+  return popular
+    .map(toTitleSummary)
+    .filter((t) => !excludeIds.has(t.id))
+    .map((title) => ({ title, sharedCount: 0, sampleWallets: [] }));
+}
+
+/** Cached titles with posters — peer Favorite count, then recent + popular. */
+async function onboardingCandidates(
+  wallet: string,
+  excludeIds: Set<string>
+): Promise<TitleSummary[]> {
+  const w = normalizeWallet(wallet);
+  const rows = await db
+    .select({
+      title: titles,
+      peerFavCount: sql<number>`count(${favorites.titleId})`.mapWith(Number),
+    })
+    .from(titles)
+    .leftJoin(
+      favorites,
+      and(eq(favorites.titleId, titles.id), sql`${favorites.walletAddress} != ${w}`)
+    )
+    .where(
+      and(
+        sql`${titles.posterPath} IS NOT NULL AND TRIM(${titles.posterPath}) != ''`,
+        sql`TRIM(COALESCE(${titles.overview}, '')) != ''`
+      )
+    )
+    .groupBy(titles.id)
+    .orderBy(
+      desc(sql`count(${favorites.titleId})`),
+      sql`CASE WHEN ${titles.year} >= ${POPULAR_PREFETCH_YEAR_FROM} THEN 0 ELSE 1 END`,
+      desc(titles.popularity),
+      sql`CAST(COALESCE(${titles.rating}, '0') AS REAL) DESC`
+    )
+    .limit(48);
+
+  return rows.map((r) => toTitleSummary(r.title)).filter((t) => !excludeIds.has(t.id));
+}
+
+export async function skipDiscoverOnboarding(wallet: string) {
+  const w = normalizeWallet(wallet);
+  await db
+    .update(users)
+    .set({ onboardingSkippedAt: new Date() })
+    .where(eq(users.walletAddress, w));
+}
+
 /** Taste-overlap Discover — Recommend overlap outranks plain Favorite overlap. */
-export async function discoverFor(wallet: string): Promise<DiscoverResponse> {
+export async function discoverFor(
+  wallet: string,
+  opts?: { forceOnboarding?: boolean }
+): Promise<DiscoverResponse> {
   const w = normalizeWallet(wallet);
   const favs = await db.select().from(favorites).where(eq(favorites.walletAddress, w));
+  const myTitleIds = favs.map((f) => f.titleId);
+  const myIds = new Set(myTitleIds);
 
-  if (favs.length < MIN_FAVORITES_FOR_DISCOVER) {
-    const myIds = new Set(favs.map((f) => f.titleId));
-    const candidates = await db
-      .select()
-      .from(titles)
-      .orderBy(sql`CAST(COALESCE(rating, '0') AS REAL) DESC`)
-      .limit(30);
+  /** Demo / local: force Favorites onboarding UI regardless of skip or Favorite count. */
+  if (opts?.forceOnboarding) {
     return {
       mode: "onboarding",
       favoriteCount: favs.length,
       minFavorites: MIN_FAVORITES_FOR_DISCOVER,
-      onboardingCandidates: candidates.map(toTitleSummary).filter((t) => !myIds.has(t.id)),
+      onboardingCandidates: await onboardingCandidates(w, myIds),
     };
   }
 
-  const myTitleIds = favs.map((f) => f.titleId);
+  if (favs.length < MIN_FAVORITES_FOR_DISCOVER) {
+    const [user] = await db.select().from(users).where(eq(users.walletAddress, w)).limit(1);
+    if (user?.onboardingSkippedAt) {
+      return {
+        mode: "overlap",
+        favoriteCount: favs.length,
+        minFavorites: MIN_FAVORITES_FOR_DISCOVER,
+        suggestions: await popularSuggestions(myIds),
+      };
+    }
+
+    return {
+      mode: "onboarding",
+      favoriteCount: favs.length,
+      minFavorites: MIN_FAVORITES_FOR_DISCOVER,
+      onboardingCandidates: await onboardingCandidates(w, myIds),
+    };
+  }
+
   const peerFavs = await db
     .select()
     .from(favorites)
@@ -256,17 +330,7 @@ export async function discoverFor(wallet: string): Promise<DiscoverResponse> {
   }
 
   if (!suggestions.length) {
-    const popular = await db
-      .select()
-      .from(titles)
-      .where(sql`TRIM(COALESCE(${titles.overview}, '')) != ''`)
-      .orderBy(sql`CAST(COALESCE(rating, '0') AS REAL) DESC`)
-      .limit(16);
-    const mine = new Set(myTitleIds);
-    suggestions = popular
-      .map(toTitleSummary)
-      .filter((t) => !mine.has(t.id))
-      .map((title) => ({ title, sharedCount: 0, sampleWallets: [] }));
+    suggestions = await popularSuggestions(myIds);
   }
 
   return {

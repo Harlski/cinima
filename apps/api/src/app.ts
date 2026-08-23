@@ -50,6 +50,7 @@ import {
   addFavorite,
   clearRecommend,
   discoverFor,
+  skipDiscoverOnboarding,
   favoriteCount,
   isFavorited,
   isRecommended,
@@ -440,6 +441,17 @@ app.get("/api/titles/:id/comments", requirePay, requireAuth, async (c) => {
 // --- Favorites / Discover (social taste module) ---
 app.get("/api/discover", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
+  const forceOnboarding = c.req.query("forceOnboarding") === "1";
+  return c.json(
+    await discoverFor(user.walletAddress, {
+      forceOnboarding: forceOnboarding && config.demoMode,
+    })
+  );
+});
+
+app.post("/api/discover/skip-onboarding", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  await skipDiscoverOnboarding(user.walletAddress);
   return c.json(await discoverFor(user.walletAddress));
 });
 

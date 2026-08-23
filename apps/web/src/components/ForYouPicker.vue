@@ -6,6 +6,7 @@
     :dock-bottom-offset="dockBottomOffset"
     show-social
     show-refresh
+    actions-prefix="Add to"
     :primary-action-label="watchlistLabel"
     :primary-action-active="watchlisted"
     :secondary-action-label="favoriteLabel"
@@ -22,7 +23,7 @@
 import { computed, ref, watch } from "vue";
 import type { OverlapSuggestion } from "@cinima/shared";
 import TitleDeckPicker, { type DeckItem } from "@/components/TitleDeckPicker.vue";
-import { loadDeckSelection, restoreDeckWindow } from "@/lib/deckSelection";
+import { loadDeckSelection, restoreDeckWindow, saveDeckSelection } from "@/lib/deckSelection";
 import { centerIndex, initialSuggestionWindow, nextSuggestionWindow } from "@/lib/suggestionDeck";
 
 const props = defineProps<{
@@ -86,10 +87,8 @@ const favorited = computed(() =>
 const watchlisted = computed(() =>
   selectedTitleId.value ? props.isOnWatchlist(selectedTitleId.value) : false
 );
-const favoriteLabel = computed(() => (favorited.value ? "Favorited" : "Add to Favorites"));
-const watchlistLabel = computed(() =>
-  watchlisted.value ? "In My List" : "Add to My List"
-);
+const favoriteLabel = "Favorites";
+const watchlistLabel = "My List";
 
 function resetFromPool() {
   const next = buildWindow(props.suggestions);
@@ -103,8 +102,15 @@ function resetFromPool() {
 function refresh() {
   const currentIds = windowSuggestions.value.map((item) => item.title.id);
   const next = nextSuggestionWindow(props.suggestions, currentIds);
+  const selectedIndex = centerIndex(next.length);
+  const selectedId = next[selectedIndex]?.title.id ?? "";
+  // Persist before props update so TitleDeckPicker sync keeps this window, not the prior one.
+  saveDeckSelection("for-you", {
+    itemIds: next.map((item) => item.title.id),
+    selectedTitleId: selectedId,
+  });
   windowSuggestions.value = next;
-  selectedTitleId.value = next[centerIndex(next.length)]?.title.id ?? "";
+  selectedTitleId.value = selectedId;
 }
 
 watch(

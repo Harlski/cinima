@@ -13,6 +13,26 @@ export const useFavoritesStore = defineStore("favorites", () => {
   const isRecommended = (titleId: string) => recommends.value.has(titleId);
   const count = computed(() => favorites.value.size);
 
+  const addMany = async (titleIds: string[]) => {
+    const unique = [...new Set(titleIds)].filter((id) => !favorites.value.has(id));
+    if (!unique.length) return;
+    for (const titleId of unique) {
+      favorites.value.add(titleId);
+    }
+    try {
+      await Promise.all(
+        unique.map((titleId) =>
+          request(`/favorites/${encodeURIComponent(titleId)}`, { method: "POST" })
+        )
+      );
+    } catch (err) {
+      for (const titleId of unique) {
+        favorites.value.delete(titleId);
+      }
+      throw err;
+    }
+  };
+
   const toggle = async (titleId: string) => {
     const wasFavorite = favorites.value.has(titleId);
     if (wasFavorite) {
@@ -68,6 +88,7 @@ export const useFavoritesStore = defineStore("favorites", () => {
     isFavorite,
     isRecommended,
     toggle,
+    addMany,
     setRecommend,
     clearRecommend,
     load,

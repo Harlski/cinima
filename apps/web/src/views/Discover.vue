@@ -2,6 +2,7 @@
   <div
     class="discover"
     :class="{
+      'discover--onboarding': mode === 'onboarding',
       'discover--overlap': !loading && mode === 'overlap',
       'discover--for-you': !loading && mode === 'overlap' && activeTab === 'for-you',
     }"
@@ -10,42 +11,14 @@
       <NqSpinner />
     </div>
 
-    <div v-else-if="mode === 'onboarding'" class="onboarding">
-      <div class="onboarding-prompt">
-        <h2>Pick your favorites</h2>
-        <p>
-          Add at least {{ minFavorites }} titles to unlock personalized
-          suggestions
-        </p>
-        <div class="progress nq-pill-blue">
-          {{ favoriteCount }} / {{ minFavorites }}
-        </div>
-      </div>
-
-      <div class="search-box">
-        <input
-          v-model="searchQuery"
-          @input="onSearch"
-          type="text"
-          placeholder="Search titles..."
-          class="search-input nq-input-box"
-        />
-      </div>
-
-      <div class="results">
-        <TitleCard
-          v-for="title in searchResults"
-          :key="title.id"
-          variant="horizontal"
-          :title="title"
-          :favorited="favoritesStore.isFavorite(title.id)"
-          :watchlisted="watchlistStore.isOnWatchlist(title.id)"
-          @toggle-favorite="toggleFavorite"
-          @toggle-watchlist="toggleWatchlist"
-          @click="goToTitle(title.id)"
-        />
-      </div>
-    </div>
+    <FavoritesOnboarding
+      v-else-if="mode === 'onboarding'"
+      :candidates="onboardingCandidates"
+      :min-favorites="minFavorites"
+      :busy="onboardingBusy"
+      @continue="onOnboardingContinue"
+      @skip="onOnboardingSkip"
+    />
 
     <div v-else class="discover-body">
       <section v-if="activeTab === 'for-you'" class="suggestions-section">
@@ -125,46 +98,48 @@
       </section>
     </div>
 
-    <nav
-      v-if="!loading && mode === 'overlap'"
-      class="discover-feed-tabs"
-      aria-label="Discover feeds"
-    >
-      <div class="discover-feed-tabs-inner">
-        <div class="discover-tabs" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            class="discover-tab"
-            :class="{ active: activeTab === 'for-you' }"
-            :aria-selected="activeTab === 'for-you'"
-            @click="activeTab = 'for-you'"
-          >
-            For You
-          </button>
-          <button
-            type="button"
-            role="tab"
-            class="discover-tab"
-            :class="{ active: activeTab === 'following' }"
-            :aria-selected="activeTab === 'following'"
-            @click="activeTab = 'following'"
-          >
-            Following
-          </button>
+    <Transition name="feed-tabs-slide">
+      <nav
+        v-if="!loading && mode === 'overlap'"
+        class="discover-feed-tabs"
+        aria-label="Discover feeds"
+      >
+        <div class="discover-feed-tabs-inner">
+          <div class="discover-tabs" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              class="discover-tab"
+              :class="{ active: activeTab === 'for-you' }"
+              :aria-selected="activeTab === 'for-you'"
+              @click="activeTab = 'for-you'"
+            >
+              For You
+            </button>
+            <button
+              type="button"
+              role="tab"
+              class="discover-tab"
+              :class="{ active: activeTab === 'following' }"
+              :aria-selected="activeTab === 'following'"
+              @click="activeTab = 'following'"
+            >
+              Following
+            </button>
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+    </Transition>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
+import { FORCE_FAVORITES_PICK_QUERY, canForceFavoritesPick } from "@/lib/welcome";
 import { useFavoritesStore } from "@/stores/favorites";
 import { useWatchlistStore } from "@/stores/watchlist";
-import { useCatalogStore } from "@/stores/catalog";
 import { displayName } from "@cinima/shared";
 import type {
   DiscoverResponse,
@@ -173,7 +148,7 @@ import type {
   OverlapSuggestion,
   TitleSummary,
 } from "@cinima/shared";
-import TitleCard from "@/components/TitleCard.vue";
+import FavoritesOnboarding from "@/components/FavoritesOnboarding.vue";
 import Identicon from "@/components/Identicon.vue";
 import ForYouPicker from "@/components/ForYouPicker.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
@@ -192,22 +167,20 @@ type FeedCard = {
 };
 
 const router = useRouter();
+const route = useRoute();
 const { request } = useApi();
 const favoritesStore = useFavoritesStore();
 const watchlistStore = useWatchlistStore();
-const catalogStore = useCatalogStore();
 
 const loading = ref(true);
 const mode = ref<"onboarding" | "overlap">("onboarding");
 const activeTab = ref<"for-you" | "following">("for-you");
 const favoriteCount = ref(0);
 const minFavorites = ref(3);
-const searchQuery = ref("");
-const searchResults = ref<any[]>([]);
+const onboardingCandidates = ref<TitleSummary[]>([]);
+const onboardingBusy = ref(false);
 const suggestions = ref<OverlapSuggestion[]>([]);
 const feed = ref<FollowingFeedItem[]>([]);
-
-let searchTimeout: ReturnType<typeof setTimeout>;
 
 /** Merge a user's favorites into one card; unlocks stay one-per-title. */
 const feedCards = computed((): FeedCard[] => {
@@ -279,8 +252,13 @@ function relativeTime(iso: string) {
 const loadDiscover = async () => {
   loading.value = true;
   try {
+    const forcePick =
+      canForceFavoritesPick() &&
+      String(route.query[FORCE_FAVORITES_PICK_QUERY] ?? "") === "1";
+    const discoverPath = forcePick ? "/discover?forceOnboarding=1" : "/discover";
+
     const [data, feedRes] = await Promise.all([
-      request<DiscoverResponse>("/discover"),
+      request<DiscoverResponse>(discoverPath),
       request<FollowingFeedResponse>("/feed").catch(() => ({ items: [] as FollowingFeedItem[] })),
     ]);
     mode.value = data.mode;
@@ -289,33 +267,25 @@ const loadDiscover = async () => {
     feed.value = feedRes.items;
 
     if (data.mode === "onboarding" && data.onboardingCandidates) {
-      searchResults.value = data.onboardingCandidates;
+      onboardingCandidates.value = data.onboardingCandidates;
     } else if (data.mode === "overlap" && data.suggestions) {
       suggestions.value = data.suggestions;
+    }
+
+    if (forcePick && route.query[FORCE_FAVORITES_PICK_QUERY]) {
+      const q = { ...route.query };
+      delete q[FORCE_FAVORITES_PICK_QUERY];
+      await router.replace({ name: "discover", query: q });
     }
   } finally {
     loading.value = false;
   }
 };
 
-const onSearch = () => {
-  clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(async () => {
-    if (searchQuery.value.trim()) {
-      searchResults.value = await catalogStore.search(searchQuery.value);
-    } else {
-      loadDiscover();
-    }
-  }, 300);
-};
 
 const toggleFavorite = async (titleId: string) => {
   await favoritesStore.toggle(titleId);
   favoriteCount.value = favoritesStore.count;
-
-  if (mode.value === "onboarding" && favoriteCount.value >= minFavorites.value) {
-    await loadDiscover();
-  }
 };
 
 const toggleWatchlist = async (titleOrId: string | TitleSummary) => {
@@ -335,6 +305,41 @@ const goToUser = (wallet: string) => {
   router.push({ name: "user", params: { wallet } });
 };
 
+
+const onOnboardingContinue = async (titleIds: string[]) => {
+  if (onboardingBusy.value) return;
+  onboardingBusy.value = true;
+  try {
+    await favoritesStore.addMany(titleIds);
+    favoriteCount.value = favoritesStore.count;
+    await loadDiscover();
+  } finally {
+    onboardingBusy.value = false;
+  }
+};
+
+const onOnboardingSkip = async () => {
+  if (onboardingBusy.value) return;
+  onboardingBusy.value = true;
+  try {
+    const data = await request<DiscoverResponse>("/discover/skip-onboarding", {
+      method: "POST",
+    });
+    mode.value = data.mode;
+    favoriteCount.value = data.favoriteCount;
+    minFavorites.value = data.minFavorites;
+    if (data.mode === "overlap" && data.suggestions) {
+      suggestions.value = data.suggestions;
+    }
+    const feedRes = await request<FollowingFeedResponse>("/feed").catch(
+      () => ({ items: [] as FollowingFeedItem[] })
+    );
+    feed.value = feedRes.items;
+  } finally {
+    onboardingBusy.value = false;
+  }
+};
+
 onMounted(() => {
   loadDiscover();
 });
@@ -343,6 +348,10 @@ onMounted(() => {
 <style scoped>
 .discover {
   padding-bottom: 2rem;
+}
+
+.discover--onboarding {
+  padding-bottom: 0;
 }
 
 .discover--overlap {
@@ -371,6 +380,26 @@ onMounted(() => {
   border-top: 1px solid var(--border);
   touch-action: none;
   overscroll-behavior: none;
+  will-change: transform;
+}
+
+/* Rise with the shell tab bar after Favorites onboarding (Continue / Skip) */
+.feed-tabs-slide-enter-active {
+  transition: transform 0.38s cubic-bezier(0.25, 0, 0, 1);
+}
+
+.feed-tabs-slide-enter-from {
+  transform: translateY(calc(100% + var(--bottom-tabs-bar-height, 4.5rem)));
+}
+
+.feed-tabs-slide-enter-to {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed-tabs-slide-enter-active {
+    transition: none;
+  }
 }
 
 .discover-feed-tabs-inner {
@@ -423,41 +452,12 @@ onMounted(() => {
   color: var(--text-secondary);
 }
 
-.onboarding-prompt {
-  padding: 2rem 0;
-  text-align: center;
-  background: var(--bg-surface);
-}
 
-.onboarding-prompt h2 {
-  font-size: 1.5rem;
-  margin: 0 0 0.5rem 0;
-  color: var(--text-primary);
-}
 
-.onboarding-prompt p {
-  color: var(--text-secondary);
-  margin: 0 0 1rem 0;
-}
 
-.progress {
-  display: inline-flex;
-}
 
-.search-box {
-  padding: 1rem 0;
-}
 
-.search-input {
-  width: 100%;
-}
 
-.results {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-  padding: 0 0 1rem;
-}
 
 .discover-body {
   padding: 1rem 0;

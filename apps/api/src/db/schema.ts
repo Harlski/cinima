@@ -6,6 +6,8 @@ export const users = sqliteTable("users", {
   /** Public X (Twitter) handle, without @ */
   xHandle: text("x_handle"),
   lifetimeUnlockedAt: integer("lifetime_unlocked_at", { mode: "timestamp_ms" }),
+  /** When set, Discover skips Favorites onboarding and uses popular overlap fallback */
+  onboardingSkippedAt: integer("onboarding_skipped_at", { mode: "timestamp_ms" }),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
 

@@ -2,8 +2,11 @@
 import { onMounted, ref } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "./stores/auth";
+import { useTouchScrollGuard } from "./composables/useTouchScrollGuard";
 import { isLandingFrontDoor } from "./lib/landingGate";
 import NqSpinner from "./components/NqSpinner.vue";
+
+useTouchScrollGuard();
 
 const auth = useAuthStore();
 const router = useRouter();

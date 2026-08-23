@@ -1,11 +1,31 @@
 import { CATALOG_TTL_DAYS, makeTitleId, parseTitleId, type MediaType } from "@cinima/shared";
-import { eq, like, or, sql } from "drizzle-orm";
+import { and, count, eq, like, or, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { episodes, ratingSnapshots, titles } from "../db/schema.js";
 import { config } from "../lib/config.js";
 import { toTitleSummary } from "../lib/titles.js";
 
 const TTL_MS = CATALOG_TTL_DAYS * 24 * 60 * 60 * 1000;
+
+/** Recent-year floor for onboarding / popular prefetch pool. */
+export const POPULAR_PREFETCH_YEAR_FROM = 2015;
+/** Enough posters for three onboarding slider rows with room to scroll. */
+export const POPULAR_PREFETCH_POOL_MIN = 48;
+const PREFETCH_PAGES_PER_KIND = 3;
+
+type TmdbListItem = {
+  id: number;
+  title?: string;
+  name?: string;
+  original_title?: string;
+  original_name?: string;
+  release_date?: string;
+  first_air_date?: string;
+  poster_path?: string | null;
+  overview?: string;
+  vote_average?: number;
+  popularity?: number;
+};
 
 function isStale(fetchedAt: Date | null | undefined): boolean {
   if (!fetchedAt) return true;
@@ -233,4 +253,120 @@ export async function listPopular(limit = 40) {
     .orderBy(sql`CAST(COALESCE(rating, '0') AS REAL) DESC`)
     .limit(limit);
   return rows.map(toTitleSummary);
+}
+
+/** Map a TMDB discover/popular list row into our titles upsert shape (no detail fetch). */
+export function titleValuesFromTmdbListItem(mediaType: MediaType, item: TmdbListItem) {
+  const tmdbId = Number(item.id);
+  const name =
+    mediaType === "movie"
+      ? String(item.title ?? item.original_title ?? "Untitled")
+      : String(item.name ?? item.original_name ?? "Untitled");
+  const year =
+    mediaType === "movie"
+      ? yearFromDate(item.release_date)
+      : yearFromDate(item.first_air_date);
+  return {
+    id: makeTitleId(mediaType, tmdbId),
+    mediaType,
+    tmdbId,
+    title: name,
+    year,
+    posterPath: item.poster_path || null,
+    overview: String(item.overview ?? "").trim() || null,
+    imdbId: null as string | null,
+    rating: ratingString(item.vote_average),
+    popularity: popularityNumber(item.popularity),
+    fetchedAt: new Date(),
+    source: "tmdb" as const,
+  };
+}
+
+async function upsertFromTmdbListItem(mediaType: MediaType, item: TmdbListItem): Promise<boolean> {
+  if (!Number.isInteger(item.id) || item.id <= 0) return false;
+  if (!item.poster_path) return false;
+  if (!String(item.overview ?? "").trim()) return false;
+
+  const values = titleValuesFromTmdbListItem(mediaType, item);
+  await db
+    .insert(titles)
+    .values(values)
+    .onConflictDoUpdate({
+      target: titles.id,
+      set: {
+        title: values.title,
+        year: values.year,
+        posterPath: values.posterPath,
+        overview: values.overview,
+        rating: values.rating,
+        popularity: values.popularity,
+        fetchedAt: values.fetchedAt,
+        source: values.source,
+      },
+    });
+  return true;
+}
+
+async function countQualityRecentTitles(): Promise<number> {
+  const [row] = await db
+    .select({ c: count() })
+    .from(titles)
+    .where(
+      and(
+        sql`${titles.posterPath} IS NOT NULL AND TRIM(${titles.posterPath}) != ''`,
+        sql`TRIM(COALESCE(${titles.overview}, '')) != ''`,
+        sql`${titles.year} >= ${POPULAR_PREFETCH_YEAR_FROM}`
+      )
+    );
+  return Number(row?.c ?? 0);
+}
+
+async function fetchDiscoverPage(
+  mediaType: MediaType,
+  page: number
+): Promise<TmdbListItem[]> {
+  const year = POPULAR_PREFETCH_YEAR_FROM;
+  const path =
+    mediaType === "movie"
+      ? `/discover/movie?include_adult=false&language=en-US&sort_by=popularity.desc&primary_release_date.gte=${year}-01-01&vote_count.gte=150&page=${page}`
+      : `/discover/tv?include_adult=false&language=en-US&sort_by=popularity.desc&first_air_date.gte=${year}-01-01&vote_count.gte=100&page=${page}`;
+  const data = (await tmdbFetch(path)) as { results?: TmdbListItem[] } | null;
+  return data?.results ?? [];
+}
+
+/**
+ * Prefetch popular recent movies + TV into the local titles cache.
+ * Skips when the pool already has enough poster+overview titles from recent years.
+ * Uses discover list payloads only (no per-title detail / episode sync).
+ */
+export async function prefetchPopularCatalog(opts?: {
+  pagesPerKind?: number;
+  force?: boolean;
+}): Promise<{ upserted: number; skipped: boolean; poolSize: number }> {
+  if (!config.tmdbApiKey) {
+    return { upserted: 0, skipped: true, poolSize: await countQualityRecentTitles() };
+  }
+
+  const poolBefore = await countQualityRecentTitles();
+  if (!opts?.force && poolBefore >= POPULAR_PREFETCH_POOL_MIN) {
+    return { upserted: 0, skipped: true, poolSize: poolBefore };
+  }
+
+  const pages = Math.max(1, Math.min(opts?.pagesPerKind ?? PREFETCH_PAGES_PER_KIND, 5));
+  let upserted = 0;
+
+  for (const mediaType of ["movie", "tv"] as const) {
+    for (let page = 1; page <= pages; page++) {
+      const results = await fetchDiscoverPage(mediaType, page);
+      for (const item of results) {
+        if (await upsertFromTmdbListItem(mediaType, item)) upserted += 1;
+      }
+    }
+  }
+
+  return {
+    upserted,
+    skipped: false,
+    poolSize: await countQualityRecentTitles(),
+  };
 }

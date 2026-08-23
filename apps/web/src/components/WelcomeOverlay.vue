@@ -8,7 +8,23 @@
         aria-live="polite"
       >
         <div class="welcome-card">
+          <button
+            v-if="forcePickEnabled"
+            type="button"
+            class="welcome-identicon-btn"
+            title="Dev: open Favorites onboarding"
+            aria-label="Dev: open Favorites onboarding"
+            @click="$emit('force-pick')"
+          >
+            <Identicon
+              class="welcome-identicon"
+              :address="walletAddress"
+              :size="88"
+              alt=""
+            />
+          </button>
           <Identicon
+            v-else
             class="welcome-identicon"
             :address="walletAddress"
             :size="88"
@@ -24,10 +40,19 @@
 <script setup lang="ts">
 import Identicon from "@/components/Identicon.vue";
 
-defineProps<{
-  open: boolean;
-  walletAddress: string;
-  message: string;
+withDefaults(
+  defineProps<{
+    open: boolean;
+    walletAddress: string;
+    message: string;
+    /** Local / demo: identicon is tappable to force Favorites onboarding */
+    forcePickEnabled?: boolean;
+  }>(),
+  { forcePickEnabled: false }
+);
+
+defineEmits<{
+  "force-pick": [];
 }>();
 </script>
 
@@ -53,8 +78,27 @@ defineProps<{
   text-align: center;
 }
 
+.welcome-identicon-btn {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 50%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.welcome-identicon-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 4px;
+}
+
+.welcome-identicon-btn:active .welcome-identicon {
+  transform: scale(0.96);
+}
+
 .welcome-identicon {
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  transition: transform 0.12s ease;
 }
 
 .welcome-message {
@@ -118,6 +162,10 @@ defineProps<{
   .welcome-enter-active .welcome-card,
   .welcome-leave-active .welcome-card {
     animation: none;
+  }
+
+  .welcome-identicon-btn:active .welcome-identicon {
+    transform: none;
   }
 }
 </style>

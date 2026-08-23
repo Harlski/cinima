@@ -44,8 +44,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
-import { RouterView, RouterLink } from "vue-router";
+import { computed, onMounted, watch } from "vue";
+import { RouterView, RouterLink, useRoute } from "vue-router";
 import { ACTIVITY_UI_VISIBLE } from "@cinima/shared";
 import { useViewportChromeLock } from "@/composables/useViewportChromeLock";
 import { useFavoritesStore } from "@/stores/favorites";
@@ -57,10 +57,25 @@ import NqIcon from "@/components/NqIcon.vue";
 
 useViewportChromeLock();
 
+const route = useRoute();
 const favoritesStore = useFavoritesStore();
 const watchlistStore = useWatchlistStore();
 const authStore = useAuthStore();
 const walletAddress = computed(() => authStore.user?.walletAddress || "");
+
+function resetAppContentScroll() {
+  const el = document.querySelector(".app-content");
+  if (el instanceof HTMLElement) el.scrollTop = 0;
+}
+
+// Search uses fixed stage/dock; any leftover shell scroll from rubber-band
+// would shift Discover / My List / Me after leaving Search.
+watch(
+  () => route.name,
+  (name, prev) => {
+    if (name === "search" || prev === "search") resetAppContentScroll();
+  }
+);
 
 onMounted(() => {
   favoritesStore.load();
@@ -75,9 +90,11 @@ onMounted(() => {
   --bottom-tabs-pad-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
   /* 26px matches Me identicon (svg tabs are 24px) */
   --bottom-tabs-inner: calc(0.5rem + 26px + 0.25rem + 1.125rem + 0.5rem);
-  --bottom-tabs-height: calc(
+  /* Visual bar height — never collapsed (used for positioning + slide) */
+  --bottom-tabs-bar-height: calc(
     var(--bottom-tabs-pad-top) + var(--bottom-tabs-inner) + var(--bottom-tabs-pad-bottom)
   );
+  --bottom-tabs-height: var(--bottom-tabs-bar-height);
   --bottom-tabs-inset: calc(
     var(--bottom-tabs-height) + var(--vv-bottom-inset, 0px)
   );
@@ -100,6 +117,18 @@ onMounted(() => {
   isolation: isolate;
   padding-top: var(--app-brand-row);
   padding-bottom: var(--bottom-tabs-inset);
+  transition: padding-bottom 0.38s cubic-bezier(0.25, 0, 0, 1);
+}
+
+/* Favorites onboarding: full-bleed pick UI; tab bar stays mounted for slide-in */
+.app-shell:has(.discover--onboarding) {
+  --bottom-tabs-height: 0px;
+  --bottom-tabs-inset: calc(env(safe-area-inset-bottom, 0px) + var(--vv-bottom-inset, 0px));
+}
+
+.app-shell:has(.discover--onboarding) .app-content {
+  /* Snap inset closed when entering onboarding — no slide-down */
+  transition: none;
 }
 
 .bottom-tabs {
@@ -107,7 +136,7 @@ onMounted(() => {
   left: 0;
   right: 0;
   top: calc(
-    var(--vv-offset-top, 0px) + var(--vv-height, 100dvh) - var(--bottom-tabs-height)
+    var(--vv-offset-top, 0px) + var(--vv-height, 100dvh) - var(--bottom-tabs-bar-height)
   );
   bottom: auto;
   z-index: 50;
@@ -118,6 +147,20 @@ onMounted(() => {
   /* Extra clearance below tabs — Nimiq Pay / Android often report 0 for safe-area */
   padding-bottom: var(--bottom-tabs-pad-bottom);
   touch-action: none;
+  transform: translateY(0);
+  visibility: visible;
+  transition:
+    transform 0.38s cubic-bezier(0.25, 0, 0, 1),
+    visibility 0s linear 0s;
+  will-change: transform;
+}
+
+.app-shell:has(.discover--onboarding) .bottom-tabs {
+  transform: translateY(100%);
+  pointer-events: none;
+  visibility: hidden;
+  /* Instant hide on enter; slide-up uses the default transition when leaving */
+  transition: none;
 }
 
 .tab {
@@ -184,5 +227,16 @@ onMounted(() => {
 .page-enter-from,
 .page-leave-to {
   opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-content,
+  .bottom-tabs {
+    transition: none;
+  }
+
+  .app-shell:has(.discover--onboarding) .bottom-tabs {
+    transition: none;
+  }
 }
 </style>

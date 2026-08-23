@@ -356,7 +356,11 @@ onUnmounted(() => {
 
 <style scoped>
 .search {
+  height: 100%;
   min-height: 100%;
+  overflow: hidden;
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 .search-dock {
@@ -368,6 +372,8 @@ onUnmounted(() => {
   display: flex;
   justify-content: center;
   pointer-events: none;
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 .search-dock-inner {
@@ -527,7 +533,8 @@ onUnmounted(() => {
   max-height: 100%;
   min-height: 0;
   overflow-y: auto;
-  overscroll-behavior: contain;
+  overscroll-behavior: none;
+  touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
@@ -540,6 +547,8 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 0.45rem;
   min-height: 0;
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 .history-head {
@@ -582,6 +591,8 @@ onUnmounted(() => {
   gap: 0.25rem;
   max-height: min(42dvh, 18rem);
   overflow-y: auto;
+  overscroll-behavior: none;
+  touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
 }
 

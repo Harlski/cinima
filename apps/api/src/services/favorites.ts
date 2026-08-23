@@ -15,4 +15,5 @@ export {
   setRecommend,
   clearRecommend,
   discoverFor,
+  skipDiscoverOnboarding,
 } from "./socialTaste.js";
