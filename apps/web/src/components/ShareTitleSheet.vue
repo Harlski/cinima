@@ -1,5 +1,22 @@
 <template>
-  <div class="share-modal" role="presentation" @click.self="$emit('close')">
+  <ShareLinkSheet
+    v-if="handle && !loading && shareUrl"
+    title="Share"
+    :hint="copy"
+    :headline="copy"
+    :description="titleName"
+    :url="shareUrl"
+    :image-url="posterUrl"
+    @close="$emit('close')"
+  />
+
+  <div v-else-if="handle && loading" class="share-modal" role="presentation" @click.self="$emit('close')">
+    <div class="share-dialog nq-card" role="dialog" aria-modal="true">
+      <NqSpinner />
+    </div>
+  </div>
+
+  <div v-else class="share-modal" role="presentation" @click.self="$emit('close')">
     <div
       class="share-dialog nq-card"
       role="dialog"
@@ -11,70 +28,33 @@
       </button>
 
       <h2 id="title-share-sheet">Share</h2>
-
-      <template v-if="!handle">
-        <p>Claim a shareable handle on Me so this Title Share can name you.</p>
-        <button type="button" class="nq-pill-blue nq-pill-stretch" @click="$emit('claim')">
-          Go to Me
-        </button>
-      </template>
-
-      <template v-else>
-        <p>{{ copy }}</p>
-        <div class="share-actions">
-          <button type="button" class="nq-pill-secondary nq-pill-stretch" @click="copyLink">
-            <NqIcon :name="copied ? 'check' : 'copy'" :size="18" />
-            {{ copied ? "Copied" : "Copy link" }}
-          </button>
-          <button
-            v-if="canNativeShare"
-            type="button"
-            class="nq-pill-blue nq-pill-stretch"
-            @click="nativeShare"
-          >
-            <NqIcon name="duotone-paper-plane" :size="18" />
-            Share
-          </button>
-          <a
-            class="nq-pill-secondary nq-pill-stretch"
-            :href="xUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <NqIcon name="logos-twitter-mono" :size="18" />
-            X
-          </a>
-          <a
-            class="nq-pill-secondary nq-pill-stretch"
-            :href="fbUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <NqIcon name="logos-facebook-mono" :size="18" />
-            Facebook
-          </a>
-        </div>
-      </template>
+      <p>Claim a shareable handle on Me so this Title Share can name you.</p>
+      <button type="button" class="nq-pill-blue nq-pill-stretch" @click="$emit('claim')">
+        Go to Me
+      </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import {
-  facebookShareUrl,
+  shortShareUrl,
   titleShareCopy,
-  titleShareUrl,
-  xShareUrl,
   type MediaType,
+  type ShareLinkCreated,
 } from "@cinima/shared";
 import NqIcon from "@/components/NqIcon.vue";
+import NqSpinner from "@/components/NqSpinner.vue";
+import ShareLinkSheet from "@/components/ShareLinkSheet.vue";
+import { useApi } from "@/composables/useApi";
 
 const props = defineProps<{
   handle: string | null;
   titleName: string;
   mediaType: MediaType;
   tmdbId: number;
+  posterUrl?: string | null;
 }>();
 
 defineEmits<{
@@ -82,48 +62,34 @@ defineEmits<{
   claim: [];
 }>();
 
-const copied = ref(false);
-const canNativeShare = computed(
-  () => typeof navigator !== "undefined" && typeof navigator.share === "function"
-);
-
-const shareUrl = computed(() => {
-  if (!props.handle) return "";
-  return titleShareUrl(window.location.origin, props.handle, props.mediaType, props.tmdbId);
-});
+const { request } = useApi();
+const loading = ref(true);
+const shareUrl = ref("");
 
 const copy = computed(() =>
   props.handle ? titleShareCopy(props.handle, props.titleName) : ""
 );
 
-const xUrl = computed(() => xShareUrl(shareUrl.value, copy.value));
-const fbUrl = computed(() => facebookShareUrl(shareUrl.value, copy.value));
-
-const copyLink = async () => {
-  if (!shareUrl.value) return;
-  try {
-    await navigator.clipboard.writeText(shareUrl.value);
-    copied.value = true;
-    window.setTimeout(() => {
-      copied.value = false;
-    }, 1600);
-  } catch {
-    copied.value = false;
+onMounted(async () => {
+  if (!props.handle) {
+    loading.value = false;
+    return;
   }
-};
-
-const nativeShare = async () => {
-  if (!shareUrl.value || !navigator.share) return;
   try {
-    await navigator.share({
-      title: copy.value,
-      text: copy.value,
-      url: shareUrl.value,
+    const data = await request<ShareLinkCreated>("/share/title", {
+      method: "POST",
+      body: JSON.stringify({
+        mediaType: props.mediaType,
+        tmdbId: props.tmdbId,
+      }),
     });
+    shareUrl.value = shortShareUrl(window.location.origin, data.code);
   } catch {
-    /* user cancelled */
+    shareUrl.value = "";
+  } finally {
+    loading.value = false;
   }
-};
+});
 </script>
 
 <style scoped>
@@ -171,20 +137,5 @@ const nativeShare = async () => {
   color: var(--text-secondary);
   font-size: 0.92rem;
   line-height: 1.45;
-}
-
-.share-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-}
-
-.share-actions .nq-pill-stretch,
-.share-actions a.nq-pill-stretch {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  text-decoration: none;
 }
 </style>

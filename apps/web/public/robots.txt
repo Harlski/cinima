@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /s/
+Disallow: /gate
+Disallow: /discover
+Disallow: /my-list
+Disallow: /search
+Disallow: /activity
+Disallow: /me
+Disallow: /title/
+Disallow: /user/

@@ -6,6 +6,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 const dataDir = mkdtempSync(path.join(tmpdir(), "cinima-public-"));
 process.env.DATABASE_URL = `file:${path.join(dataDir, "test.db")}`;
 process.env.DEMO_MODE = "true";
+process.env.WEB_ORIGIN = "https://cinima.app";
 
 const WALLET = "NQ05PUBLICPROFILETESTWALLET0000001";
 const TOKEN = "test-session-token-public-profile";
@@ -100,5 +101,20 @@ describe("Public Profile HTTP API", () => {
     const pub = await app.fetch(new Request("http://test/api/public/pubuser"));
     const body = (await pub.json()) as { xHandle: string | null };
     expect(body.xHandle).toBe("Cinephile");
+  });
+
+  it("returns Open Graph HTML when the client asks for HTML", async () => {
+    const res = await app.fetch(
+      new Request("http://test/api/public/pubuser", {
+        headers: { Accept: "text/html" },
+      })
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type") || "").toContain("text/html");
+    const html = await res.text();
+    expect(html).toContain("pubuser on Cinima");
+    expect(html).toContain('property="og:site_name" content="Cinima"');
+    expect(html).toContain("https://cinima.app/pubuser");
+    expect(html).toContain("1 Favorite");
   });
 });

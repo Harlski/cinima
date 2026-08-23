@@ -1,0 +1,21 @@
+# Optional reverse proxy for api.cinima.app on Linode.
+# Install as root (deploy user does not need sudo for normal deploys):
+#   apt install nginx certbot python3-certbot-nginx
+#   cp deploy/nginx-api.conf.example /etc/nginx/sites-available/cinima-api
+#   ln -s /etc/nginx/sites-available/cinima-api /etc/nginx/sites-enabled/
+#   nginx -t && systemctl reload nginx
+#   certbot --nginx -d api.cinima.app
+
+server {
+    listen 80;
+    server_name api.cinima.app;
+
+    location / {
+        proxy_pass http://127.0.0.1:8787;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

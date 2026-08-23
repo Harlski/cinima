@@ -20,5 +20,13 @@ function resolveUrl(): string {
   return raw;
 }
 
-export const client = createClient({ url: resolveUrl() });
+function resolveAuthToken(): string | undefined {
+  const token = process.env.DATABASE_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN;
+  return token || undefined;
+}
+
+export const client = createClient({
+  url: resolveUrl(),
+  authToken: resolveAuthToken(),
+});
 export const db = drizzle(client, { schema });

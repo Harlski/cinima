@@ -11,7 +11,7 @@ const reveal = ref(false);
 
 onMounted(async () => {
   // Public profiles skip auth boot
-  if (route.name === "public" || route.name === "title-share") {
+  if (route.name === "public" || route.name === "title-share" || route.name === "short-share") {
     auth.ready = true;
     reveal.value = true;
     return;
@@ -25,7 +25,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div v-if="!reveal && route.name !== 'public' && route.name !== 'title-share'" class="boot">
+  <div v-if="!reveal && route.name !== 'public' && route.name !== 'title-share' && route.name !== 'short-share'" class="boot">
     <NqSpinner label="Starting Cinima" />
     <div aria-hidden="true">Starting Cinima…</div>
   </div>

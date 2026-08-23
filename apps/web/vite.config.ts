@@ -1,10 +1,39 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import path from "node:path";
-import { titleShareOgPlugin } from "./vite.titleShareOg";
+import {
+  SITE_DESCRIPTION,
+  SITE_LOCALE,
+  SITE_NAME,
+  SITE_THEME_COLOR,
+} from "@cinima/shared";
+import { shareOgPlugin } from "./vite.shareOg";
 
-export default defineConfig({
-  plugins: [vue(), titleShareOgPlugin()],
+function siteMetaHtml(origin: string): (html: string) => string {
+  const siteOrigin = origin.replace(/\/$/, "");
+  return (html) =>
+    html
+      .replaceAll("__SITE_NAME__", SITE_NAME)
+      .replaceAll("__SITE_DESCRIPTION__", SITE_DESCRIPTION)
+      .replaceAll("__SITE_THEME_COLOR__", SITE_THEME_COLOR)
+      .replaceAll("__SITE_LOCALE__", SITE_LOCALE)
+      .replaceAll("__SITE_ORIGIN__", siteOrigin);
+}
+
+export default defineConfig(({ mode }) => {
+  const siteOrigin =
+    process.env.VITE_SITE_ORIGIN ||
+    (mode === "production" ? "https://cinima.app" : "http://localhost:5174");
+
+  return {
+  plugins: [
+    vue(),
+    shareOgPlugin(),
+    {
+      name: "cinima-site-meta",
+      transformIndexHtml: siteMetaHtml(siteOrigin),
+    },
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
@@ -29,4 +58,5 @@ export default defineConfig({
     // nimiq-css utilities use native nesting; Pay WebView is modern.
     cssTarget: ["chrome111", "safari16"],
   },
+};
 });

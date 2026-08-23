@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 import AppShell from "../views/AppShell.vue";
 import Discover from "../views/Discover.vue";
+import MyList from "../views/MyList.vue";
 import Search from "../views/Search.vue";
 import Activity from "../views/Activity.vue";
 import Me from "../views/Me.vue";
@@ -8,19 +9,11 @@ import TitleDetail from "../views/TitleDetail.vue";
 import User from "../views/User.vue";
 import PublicProfile from "../views/PublicProfile.vue";
 import TitleShare from "../views/TitleShare.vue";
+import ShortShare from "../views/ShortShare.vue";
 import PayGate from "../views/PayGate.vue";
+import { RESERVED_PUBLIC_HANDLES } from "@cinima/shared";
 
-const RESERVED = new Set([
-  "gate",
-  "discover",
-  "search",
-  "activity",
-  "me",
-  "title",
-  "user",
-  "api",
-  "health",
-]);
+const RESERVED = RESERVED_PUBLIC_HANDLES;
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -32,12 +25,19 @@ export const router = createRouter({
       children: [
         { path: "", redirect: "/discover" },
         { path: "discover", name: "discover", component: Discover },
+        { path: "my-list", name: "my-list", component: MyList },
         { path: "search", name: "search", component: Search },
         { path: "activity", name: "activity", component: Activity },
         { path: "me", name: "me", component: Me },
         { path: "title/:id", name: "title", component: TitleDetail, props: true },
         { path: "user/:wallet", name: "user", component: User, props: true },
       ],
+    },
+    {
+      path: "/s/:code",
+      name: "short-share",
+      component: ShortShare,
+      props: true,
     },
     {
       path: "/:handle/t/:mediaType/:tmdbId",

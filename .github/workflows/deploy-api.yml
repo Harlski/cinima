@@ -1,0 +1,51 @@
+name: Deploy API to Linode
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/api/**"
+      - "packages/shared/**"
+      - "deploy/**"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/deploy-api.yml"
+
+concurrency:
+  group: deploy-api-linode
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sync source to Linode
+        uses: burnett01/rsync-deployments@7.0.2
+        with:
+          switches: -avzr --delete --exclude .git --exclude node_modules --exclude apps/web --exclude .env --exclude apps/api/data --exclude '**/dist'
+          path: ./
+          remote_path: ${{ secrets.LINODE_DEPLOY_PATH || '/opt/cinima' }}/
+          remote_host: ${{ secrets.LINODE_HOST }}
+          remote_user: ${{ secrets.LINODE_USER }}
+          remote_key: ${{ secrets.LINODE_SSH_KEY }}
+
+      - name: Build and restart API
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          DEPLOY_PATH: ${{ secrets.LINODE_DEPLOY_PATH }}
+        with:
+          host: ${{ secrets.LINODE_HOST }}
+          username: ${{ secrets.LINODE_USER }}
+          key: ${{ secrets.LINODE_SSH_KEY }}
+          envs: DEPLOY_PATH
+          script_stop: true
+          script: |
+            set -euo pipefail
+            APP_DIR="${DEPLOY_PATH:-/opt/cinima}"
+            cd "$APP_DIR"
+            docker compose -f deploy/compose.api.yml up -d --build --remove-orphans
+            docker image prune -f

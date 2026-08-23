@@ -70,6 +70,7 @@ export type TitleDetail = TitleSummary & {
   unlocked: boolean;
   favorited: boolean;
   recommended: boolean;
+  watchlisted: boolean;
   episodes: EpisodeCell[];
   commentCount: number;
 };
@@ -122,6 +123,25 @@ export type TitleShare = {
   title: TitleSummary;
 };
 
+export type ShareLinkKind = "title" | "profile";
+
+export type ShareLinkCreated = {
+  code: string;
+  kind: ShareLinkKind;
+};
+
+export type ResolvedTitleShareLink = TitleShare & {
+  kind: "title";
+  code: string;
+};
+
+export type ResolvedProfileShareLink = PublicProfile & {
+  kind: "profile";
+  code: string;
+};
+
+export type ResolvedShareLink = ResolvedTitleShareLink | ResolvedProfileShareLink;
+
 export type HeatmapDay = {
   /** ISO date YYYY-MM-DD (UTC) */
   date: string;
@@ -172,10 +192,15 @@ export type ActivityItem =
       createdAt: string;
     };
 
+export type WatchlistResponse = {
+  items: TitleSummary[];
+};
+
 export type MeResponse = {
   user: SessionUser;
   favorites: TitleSummary[];
   recommends: TitleSummary[];
+  watchlist: TitleSummary[];
   unlocks: TitleSummary[];
   shareUrl: string | null;
   needsHandlePrompt: boolean;

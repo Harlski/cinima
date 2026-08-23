@@ -1,0 +1,27 @@
+# Cinima API on Linode (or any VPS). Run from repo root:
+#   docker compose -f deploy/compose.api.yml up -d --build
+name: cinima-api
+
+services:
+  api:
+    image: cinima-api:local
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    container_name: cinima-api
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    ports:
+      - "127.0.0.1:8787:8787"
+    volumes:
+      - cinima-api-data:/app/apps/api/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8787/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+
+volumes:
+  cinima-api-data:

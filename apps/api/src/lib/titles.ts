@@ -4,11 +4,19 @@ import type { titles } from "../db/schema.js";
 type TitleRow = typeof titles.$inferSelect;
 
 const TMDB_IMG = "https://image.tmdb.org/t/p/w342";
+const TMDB_OG_IMG = "https://image.tmdb.org/t/p/w780";
 
 export function posterUrl(posterPath: string | null | undefined): string | null {
   if (!posterPath) return null;
   if (posterPath.startsWith("http")) return posterPath;
   return `${TMDB_IMG}${posterPath.startsWith("/") ? "" : "/"}${posterPath}`;
+}
+
+/** Larger poster for Open Graph / Twitter card previews. */
+export function ogPosterUrl(posterPath: string | null | undefined): string | null {
+  if (!posterPath) return null;
+  if (posterPath.startsWith("http")) return posterPath;
+  return `${TMDB_OG_IMG}${posterPath.startsWith("/") ? "" : "/"}${posterPath}`;
 }
 
 export function hasOverview(overview: string | null | undefined): boolean {

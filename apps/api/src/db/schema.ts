@@ -84,6 +84,16 @@ export const favorites = sqliteTable(
   (t) => [uniqueIndex("favorites_unique").on(t.walletAddress, t.titleId)]
 );
 
+export const watchlist = sqliteTable(
+  "watchlist",
+  {
+    walletAddress: text("wallet_address").notNull(),
+    titleId: text("title_id").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [uniqueIndex("watchlist_unique").on(t.walletAddress, t.titleId)]
+);
+
 export const unlocks = sqliteTable(
   "unlocks",
   {
@@ -131,3 +141,13 @@ export const follows = sqliteTable(
     index("follows_followee").on(t.followeeWallet),
   ]
 );
+
+export const shareLinks = sqliteTable("share_links", {
+  code: text("code").primaryKey(),
+  kind: text("kind").notNull(),
+  handle: text("handle").notNull(),
+  mediaType: text("media_type"),
+  tmdbId: integer("tmdb_id"),
+  walletAddress: text("wallet_address").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+});

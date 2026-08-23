@@ -39,7 +39,9 @@
           variant="horizontal"
           :title="title"
           :favorited="favoritesStore.isFavorite(title.id)"
+          :watchlisted="watchlistStore.isOnWatchlist(title.id)"
           @toggle-favorite="toggleFavorite"
+          @toggle-watchlist="toggleWatchlist"
           @click="goToTitle(title.id)"
         />
       </div>
@@ -55,7 +57,10 @@
           v-else
           :suggestions="suggestions"
           :is-favorite="favoritesStore.isFavorite"
+          :is-on-watchlist="watchlistStore.isOnWatchlist"
+          dock-bottom-offset="var(--discover-feed-tabs-height, 2.85rem)"
           @toggle-favorite="toggleFavorite"
+          @toggle-watchlist="toggleWatchlist"
           @open="goToTitle"
         />
       </section>
@@ -158,6 +163,7 @@ import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
 import { useFavoritesStore } from "@/stores/favorites";
+import { useWatchlistStore } from "@/stores/watchlist";
 import { useCatalogStore } from "@/stores/catalog";
 import { displayName } from "@cinima/shared";
 import type {
@@ -188,6 +194,7 @@ type FeedCard = {
 const router = useRouter();
 const { request } = useApi();
 const favoritesStore = useFavoritesStore();
+const watchlistStore = useWatchlistStore();
 const catalogStore = useCatalogStore();
 
 const loading = ref(true);
@@ -311,6 +318,15 @@ const toggleFavorite = async (titleId: string) => {
   }
 };
 
+const toggleWatchlist = async (titleOrId: string | TitleSummary) => {
+  if (typeof titleOrId === "string") {
+    const suggestion = suggestions.value.find((s) => s.title.id === titleOrId);
+    await watchlistStore.toggle(titleOrId, suggestion?.title);
+    return;
+  }
+  await watchlistStore.toggle(titleOrId.id, titleOrId);
+};
+
 const goToTitle = (titleId: string) => {
   router.push({ name: "title", params: { id: titleId } });
 };
@@ -353,6 +369,8 @@ onMounted(() => {
   justify-content: center;
   background: rgba(10, 10, 15, 0.92);
   border-top: 1px solid var(--border);
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 .discover-feed-tabs-inner {

@@ -28,14 +28,13 @@
               <NqIcon name="logos-twitter-mono" :size="20" />
             </button>
             <button
-              v-if="shareUrl"
               type="button"
               class="icon-btn"
-              :class="{ on: copied }"
-              :aria-label="copied ? 'Copied' : 'Copy profile link'"
-              @click="copyShareLink"
+              :class="{ on: shareOpen }"
+              aria-label="Share profile"
+              @click="openShare"
             >
-              <NqIcon :name="copied ? 'check' : 'copy'" :size="20" />
+              <NqIcon name="link" :size="20" />
             </button>
           </div>
         </template>
@@ -98,6 +97,15 @@
         </button>
       </div>
     </div>
+    <ShareLinkSheet
+      v-if="shareOpen && sharePreview"
+      title="Share profile"
+      :headline="sharePreview.headline"
+      :description="sharePreview.description"
+      :url="sharePreview.url"
+      :image-url="sharePreview.imageUrl"
+      @close="shareOpen = false"
+    />
   </div>
 </template>
 
@@ -112,7 +120,12 @@ import ActivityHeatmap from "@/components/ActivityHeatmap.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";
 import ProfileTaste from "@/components/ProfileTaste.vue";
 import UserCard from "@/components/UserCard.vue";
-import { displayName } from "@cinima/shared";
+import ShareLinkSheet from "@/components/ShareLinkSheet.vue";
+import {
+  displayName,
+  profileShareCopy,
+  profileShareDescription,
+} from "@cinima/shared";
 import type { HeatmapDay, MeResponse, PublicProfile, TitleSummary } from "@cinima/shared";
 
 const router = useRouter();
@@ -131,7 +144,21 @@ const xHandle = ref<string | null>(null);
 const heatmap = ref<HeatmapDay[]>([]);
 const heatmapMeta = ref<{ followerCount: number; followingCount: number } | null>(null);
 const xEditorOpen = ref(false);
-const copied = ref(false);
+const shareOpen = ref(false);
+
+const sharePreview = computed(() => {
+  if (!shareUrl.value || !user.value?.handle) return null;
+  const imageUrl =
+    recommends.value.find((t) => t.posterUrl)?.posterUrl ??
+    favorites.value.find((t) => t.posterUrl)?.posterUrl ??
+    null;
+  return {
+    url: shareUrl.value,
+    headline: profileShareCopy(user.value.handle),
+    description: profileShareDescription(recommends.value.length, favorites.value.length),
+    imageUrl,
+  };
+});
 
 const loadMe = async () => {
   loading.value = true;
@@ -168,17 +195,12 @@ const openXEditor = () => {
   xEditorOpen.value = true;
 };
 
-const copyShareLink = async () => {
-  if (!shareUrl.value) return;
-  try {
-    await navigator.clipboard.writeText(shareUrl.value);
-    copied.value = true;
-    window.setTimeout(() => {
-      copied.value = false;
-    }, 1600);
-  } catch {
-    copied.value = false;
+const openShare = () => {
+  if (!shareUrl.value) {
+    needsHandlePrompt.value = true;
+    return;
   }
+  shareOpen.value = true;
 };
 
 const saveHandle = async () => {

@@ -6,7 +6,7 @@
       <div class="app-column">
         <RouterView v-slot="{ Component }">
           <Transition name="page" mode="out-in">
-            <KeepAlive include="Discover">
+            <KeepAlive include="Discover,MyList">
               <component :is="Component" />
             </KeepAlive>
           </Transition>
@@ -17,6 +17,10 @@
       <RouterLink to="/discover" class="tab">
         <NqIcon name="cinema-tickets" :size="24" />
         <span>Discover</span>
+      </RouterLink>
+      <RouterLink to="/my-list" class="tab">
+        <NqIcon name="tickets" :size="24" />
+        <span>My List</span>
       </RouterLink>
       <RouterLink to="/search" class="tab">
         <NqIcon name="magnifying-glass" :size="24" />
@@ -44,6 +48,7 @@ import { computed, onMounted } from "vue";
 import { RouterView, RouterLink } from "vue-router";
 import { useViewportChromeLock } from "@/composables/useViewportChromeLock";
 import { useFavoritesStore } from "@/stores/favorites";
+import { useWatchlistStore } from "@/stores/watchlist";
 import { useAuthStore } from "@/stores/auth";
 import AppBrandHeader from "@/components/AppBrandHeader.vue";
 import Identicon from "@/components/Identicon.vue";
@@ -52,11 +57,13 @@ import NqIcon from "@/components/NqIcon.vue";
 useViewportChromeLock();
 
 const favoritesStore = useFavoritesStore();
+const watchlistStore = useWatchlistStore();
 const authStore = useAuthStore();
 const walletAddress = computed(() => authStore.user?.walletAddress || "");
 
 onMounted(() => {
   favoritesStore.load();
+  watchlistStore.load();
 });
 </script>
 

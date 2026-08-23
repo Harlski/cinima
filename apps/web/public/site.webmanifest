@@ -1,0 +1,17 @@
+{
+  "name": "Cinima",
+  "short_name": "Cinima",
+  "description": "Social taste discovery for movies and TV. Share favorites and find titles through taste overlap.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1c1f33",
+  "theme_color": "#1c1f33",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

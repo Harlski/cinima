@@ -26,7 +26,11 @@ _Avoid_: twitter username as Cinima identity
 
 **Favorite**:
 A user’s mark that they enjoy a movie or show. Binary per user and title; the baseline taste signal.
-_Avoid_: like, watchlist, save, bookmark
+_Avoid_: like, bookmark
+
+**My List**:
+A user’s private save-for-later queue of titles they intend to watch. Distinct from Favorite (taste signal) and Recommend (gold-star upgrade). Shown on the My List tab as a browsable deck.
+_Avoid_: watchlist as UI label (use “My List”), save, bookmark
 
 **Recommend**:
 A gold-star upgrade on a Favorite, meaning this title stands out among the user’s favorites — not a separate mark from Favorite. A user may hold at most five movie Recommends and five TV Recommends at a time; a sixth of that media type is blocked until one of that type is removed. Unfavoriting clears Recommend. Shared Recommends are a stronger taste-overlap signal than shared Favorites alone.

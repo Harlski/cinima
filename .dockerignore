@@ -1,0 +1,14 @@
+.git
+.github
+**/.env
+**/.env.*
+!**/.env.example
+**/node_modules
+**/dist
+**/data
+**/*.db
+**/*.db-*
+apps/web
+.cursor
+*.md
+!README.md

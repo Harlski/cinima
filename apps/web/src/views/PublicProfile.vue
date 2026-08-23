@@ -47,9 +47,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import type { PublicProfile, TitleSummary } from "@cinima/shared";
+import { profileShareCopy } from "@cinima/shared";
 import AppBrandHeader from "@/components/AppBrandHeader.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";
@@ -89,6 +90,9 @@ const loadProfile = async () => {
       return;
     }
     profile.value = await response.json();
+    if (profile.value) {
+      document.title = `${profileShareCopy(profile.value.handle)} - Cinima`;
+    }
   } catch {
     profile.value = null;
   } finally {
@@ -102,6 +106,11 @@ onMounted(() => {
 });
 onUnmounted(() => {
   window.removeEventListener("keydown", onKeydown);
+  document.title = "Cinima";
+});
+
+watch(handle, () => {
+  loadProfile();
 });
 </script>
 

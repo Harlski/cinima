@@ -16,13 +16,25 @@ import {
   type TitleSuggester,
   type TitleDetail,
   type FollowingFeedResponse,
+  type WatchlistResponse,
+  type ShareLinkCreated,
+  shortShareUrl,
+  titleShareUrl,
 } from "@cinima/shared";
 import { db } from "./db/index.js";
 import * as schema from "./db/schema.js";
 import { config } from "./lib/config.js";
 import { bearerToken, isPayContext } from "./lib/util.js";
-import { toTitleSummary } from "./lib/titles.js";
+import { toTitleSummary, ogPosterUrl } from "./lib/titles.js";
 import { titleShareOgHtml } from "./lib/titleShareHtml.js";
+import { profileShareOgHtml } from "./lib/profileShareHtml.js";
+import {
+  getOrCreateProfileShareLink,
+  getOrCreateTitleShareLink,
+  resolveShareLink,
+  resolveShareLinkOgPosterFromDb,
+  resolveShareLinkOgPoster,
+} from "./services/shareLinks.js";
 import { searchCatalog, ensureTitleFresh, getEpisodesForTitle } from "./services/catalog.js";
 import { lookupWalletByHandle } from "./services/nimconnect.js";
 import {
@@ -46,6 +58,12 @@ import {
   removeFavorite,
   setRecommend,
 } from "./services/favorites.js";
+import {
+  addToWatchlist,
+  isOnWatchlist,
+  listWatchlist,
+  removeFromWatchlist,
+} from "./services/watchlist.js";
 import {
   addThanks,
   listSuggesters,
@@ -256,6 +274,7 @@ app.get("/api/me", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
   const favoritesList = await listFavorites(user.walletAddress);
   const recommendsList = await listRecommends(user.walletAddress);
+  const watchlistList = await listWatchlist(user.walletAddress);
   const unlockRows = await db
     .select()
     .from(schema.unlocks)
@@ -263,12 +282,17 @@ app.get("/api/me", requirePay, requireAuth, async (c) => {
     .where(eq(schema.unlocks.walletAddress, user.walletAddress))
     .orderBy(desc(schema.unlocks.createdAt));
 
+  const profileShareCode = user.handle
+    ? await getOrCreateProfileShareLink(user.walletAddress, user.handle)
+    : null;
+
   const response: MeResponse = {
     user: c.get("sessionUser"),
     favorites: favoritesList,
     recommends: recommendsList,
+    watchlist: watchlistList,
     unlocks: unlockRows.map((r) => toTitleSummary(r.titles)),
-    shareUrl: user.handle ? `${config.webOrigin}/${user.handle}` : null,
+    shareUrl: profileShareCode ? shortShareUrl(config.webOrigin, profileShareCode) : null,
     needsHandlePrompt: !user.handle,
     xHandle: user.xHandle ?? null,
   };
@@ -291,7 +315,8 @@ app.post("/api/me/handle", requirePay, requireAuth, async (c) => {
 
   await db.update(schema.users).set({ handle: cleaned }).where(eq(schema.users.walletAddress, user.walletAddress));
   const sessionUser = await sessionUserFor(user.walletAddress);
-  return c.json({ user: sessionUser, shareUrl: `${config.webOrigin}/${cleaned}` });
+  const code = await getOrCreateProfileShareLink(user.walletAddress, cleaned);
+  return c.json({ user: sessionUser, shareUrl: shortShareUrl(config.webOrigin, code) });
 });
 
 app.post("/api/me/x-handle", requirePay, requireAuth, async (c) => {
@@ -354,6 +379,7 @@ app.get("/api/titles/:id", requirePay, requireAuth, async (c) => {
 
   const favorited = await isFavorited(user.walletAddress, id);
   const recommended = favorited ? await isRecommended(user.walletAddress, id) : false;
+  const watchlisted = await isOnWatchlist(user.walletAddress, id);
 
   const eps = await getEpisodesForTitle(id).catch(() =>
     db.select().from(schema.episodes).where(eq(schema.episodes.titleId, id))
@@ -379,6 +405,7 @@ app.get("/api/titles/:id", requirePay, requireAuth, async (c) => {
     unlocked: true,
     favorited,
     recommended,
+    watchlisted,
     episodes: episodeCells,
     commentCount,
   };
@@ -457,6 +484,27 @@ app.delete("/api/recommends/:titleId", requirePay, requireAuth, async (c) => {
     throw e;
   }
   return c.json({ ok: true, user: await sessionUserFor(user.walletAddress) });
+});
+
+app.get("/api/watchlist", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  const items = await listWatchlist(user.walletAddress);
+  const response: WatchlistResponse = { items };
+  return c.json(response);
+});
+
+app.post("/api/watchlist/:titleId", requirePay, requireAuth, async (c) => {
+  const titleId = decodeURIComponent(c.req.param("titleId"));
+  const user = c.get("user");
+  await addToWatchlist(user.walletAddress, titleId);
+  return c.json({ ok: true });
+});
+
+app.delete("/api/watchlist/:titleId", requirePay, requireAuth, async (c) => {
+  const titleId = decodeURIComponent(c.req.param("titleId"));
+  const user = c.get("user");
+  await removeFromWatchlist(user.walletAddress, titleId);
+  return c.json({ ok: true });
 });
 
 // --- Payments (retired: TMDB catalog data is not sold) ---
@@ -711,14 +759,13 @@ app.get("/api/public/:handle/t/:mediaType/:tmdbId", async (c) => {
 
   const summary = toTitleSummary(title);
   if (wantsHtml(c.req.header("accept"))) {
+    const pageUrl = titleShareUrl(config.webOrigin, user.handle, mediaType, tmdbId);
     return c.html(
       titleShareOgHtml({
-        origin: config.webOrigin,
+        pageUrl,
         handle: user.handle,
-        mediaType,
-        tmdbId,
         titleName: summary.title,
-        posterUrl: summary.posterUrl,
+        posterUrl: ogPosterUrl(title.posterPath),
       })
     );
   }
@@ -735,12 +782,32 @@ app.get("/api/public/:handle/t/:mediaType/:tmdbId", async (c) => {
 app.get("/api/public/:username", async (c) => {
   const user = await findPublicUserByHandle(c.req.param("username"));
   if (!user?.handle) return c.json({ error: "not_found" }, 404);
+  const favorites = await listFavorites(user.walletAddress);
+  const recommends = await listRecommends(user.walletAddress);
   const counts = await followCounts(user.walletAddress);
+
+  if (wantsHtml(c.req.header("accept"))) {
+    const pageUrl = `${config.webOrigin}/${user.handle}`;
+    const previewPoster =
+      recommends.find((t) => t.posterUrl)?.posterUrl ??
+      favorites.find((t) => t.posterUrl)?.posterUrl ??
+      null;
+    return c.html(
+      profileShareOgHtml({
+        pageUrl,
+        handle: user.handle,
+        recommendCount: recommends.length,
+        favoriteCount: favorites.length,
+        imageUrl: previewPoster,
+      })
+    );
+  }
+
   const response: PublicProfile = {
     handle: user.handle,
     walletAddress: user.walletAddress,
-    favorites: await listFavorites(user.walletAddress),
-    recommends: await listRecommends(user.walletAddress),
+    favorites,
+    recommends,
     followerCount: counts.followerCount,
     followingCount: counts.followingCount,
     isFollowing: false,
@@ -749,6 +816,68 @@ app.get("/api/public/:username", async (c) => {
     xHandle: user.xHandle ?? null,
   };
   return c.json(response);
+});
+
+app.post("/api/share/title", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  if (!user.handle) return c.json({ error: "handle_required" }, 400);
+
+  const body = await c.req.json<{ mediaType?: string; tmdbId?: number }>();
+  const mediaType = body?.mediaType;
+  const tmdbId = Number(body?.tmdbId);
+  if ((mediaType !== "movie" && mediaType !== "tv") || !Number.isInteger(tmdbId) || tmdbId <= 0) {
+    return c.json({ error: "invalid_body" }, 400);
+  }
+
+  const code = await getOrCreateTitleShareLink(
+    user.walletAddress,
+    user.handle,
+    mediaType,
+    tmdbId
+  );
+  const response: ShareLinkCreated = { code, kind: "title" };
+  return c.json(response);
+});
+
+app.post("/api/share/profile", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  if (!user.handle) return c.json({ error: "handle_required" }, 400);
+
+  const code = await getOrCreateProfileShareLink(user.walletAddress, user.handle);
+  const response: ShareLinkCreated = { code, kind: "profile" };
+  return c.json(response);
+});
+
+app.get("/api/s/:code", async (c) => {
+  const resolved = await resolveShareLink(c.req.param("code"));
+  if (!resolved) return c.json({ error: "not_found" }, 404);
+
+  if (wantsHtml(c.req.header("accept"))) {
+    const pageUrl = shortShareUrl(config.webOrigin, resolved.code);
+    if (resolved.kind === "title") {
+      const posterUrl = await resolveShareLinkOgPosterFromDb(resolved);
+      return c.html(
+        titleShareOgHtml({
+          pageUrl,
+          handle: resolved.handle,
+          titleName: resolved.title.title,
+          posterUrl,
+        })
+      );
+    }
+
+    return c.html(
+      profileShareOgHtml({
+        pageUrl,
+        handle: resolved.handle,
+        recommendCount: resolved.recommends.length,
+        favoriteCount: resolved.favorites.length,
+        imageUrl: resolveShareLinkOgPoster(resolved),
+      })
+    );
+  }
+
+  return c.json(resolved);
 });
 
 export { app };

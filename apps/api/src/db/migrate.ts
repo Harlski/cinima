@@ -62,6 +62,12 @@ const statements = [
     recommended_at INTEGER
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS favorites_unique ON favorites(wallet_address, title_id)`,
+  `CREATE TABLE IF NOT EXISTS watchlist (
+    wallet_address TEXT NOT NULL,
+    title_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS watchlist_unique ON watchlist(wallet_address, title_id)`,
   `CREATE TABLE IF NOT EXISTS unlocks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     wallet_address TEXT NOT NULL,
@@ -94,6 +100,15 @@ const statements = [
   `CREATE UNIQUE INDEX IF NOT EXISTS follows_unique ON follows(follower_wallet, followee_wallet)`,
   `CREATE INDEX IF NOT EXISTS follows_follower ON follows(follower_wallet)`,
   `CREATE INDEX IF NOT EXISTS follows_followee ON follows(followee_wallet)`,
+  `CREATE TABLE IF NOT EXISTS share_links (
+    code TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    handle TEXT NOT NULL,
+    media_type TEXT,
+    tmdb_id INTEGER,
+    wallet_address TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  )`,
 ];
 
 export async function migrate() {

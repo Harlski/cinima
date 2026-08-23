@@ -20,7 +20,9 @@
             variant="horizontal"
             :title="title"
             :favorited="favoritesStore.isFavorite(title.id)"
+            :watchlisted="watchlistStore.isOnWatchlist(title.id)"
             @toggle-favorite="toggleFavorite"
+            @toggle-watchlist="toggleWatchlist"
             @click="goToTitle(title.id)"
           />
         </div>
@@ -116,6 +118,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useFavoritesStore } from "@/stores/favorites";
+import { useWatchlistStore } from "@/stores/watchlist";
 import { useCatalogStore } from "@/stores/catalog";
 import TitleCard from "@/components/TitleCard.vue";
 import NqIcon from "@/components/NqIcon.vue";
@@ -148,6 +151,7 @@ import type { TitleSummary } from "@cinima/shared";
 const route = useRoute();
 const router = useRouter();
 const favoritesStore = useFavoritesStore();
+const watchlistStore = useWatchlistStore();
 const catalogStore = useCatalogStore();
 
 const searchQuery = ref(parseSearchQuery(route.query.q));
@@ -311,6 +315,10 @@ const clearHistory = () => {
 
 const toggleFavorite = async (titleId: string) => {
   await favoritesStore.toggle(titleId);
+};
+
+const toggleWatchlist = async (title: TitleSummary) => {
+  await watchlistStore.toggle(title.id, title);
 };
 
 const goToTitle = async (titleId: string) => {

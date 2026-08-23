@@ -40,6 +40,15 @@
 
           <button
             type="button"
+            @click="toggleWatchlist"
+            class="nq-pill-stretch"
+            :class="title.watchlisted ? 'nq-pill-gold' : 'nq-pill-secondary'"
+          >
+            {{ title.watchlisted ? "In My List" : "Add to My List" }}
+          </button>
+
+          <button
+            type="button"
             @click="toggleFavorite"
             class="nq-pill-stretch"
             :class="title.favorited ? 'nq-pill-blue' : 'nq-pill-secondary'"
@@ -195,6 +204,7 @@
       :title-name="title.title"
       :media-type="title.mediaType"
       :tmdb-id="title.tmdbId"
+      :poster-url="title.posterUrl"
       @close="shareOpen = false"
       @claim="goClaimHandle"
     />
@@ -207,6 +217,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
 import { useAuthStore } from "@/stores/auth";
 import { useFavoritesStore } from "@/stores/favorites";
+import { useWatchlistStore } from "@/stores/watchlist";
 import { useCatalogStore } from "@/stores/catalog";
 import { displayName, imdbTitleUrl } from "@cinima/shared";
 import type { TitleDetail, CommentDto, TitleSuggester } from "@cinima/shared";
@@ -224,6 +235,7 @@ const router = useRouter();
 const { request } = useApi();
 const authStore = useAuthStore();
 const favoritesStore = useFavoritesStore();
+const watchlistStore = useWatchlistStore();
 const catalogStore = useCatalogStore();
 
 const titleId = computed(() => route.params.id as string);
@@ -280,6 +292,13 @@ const toggleFavorite = async () => {
   await favoritesStore.toggle(title.value.id);
   title.value.favorited = !wasFavorited;
   if (wasFavorited) title.value.recommended = false;
+};
+
+const toggleWatchlist = async () => {
+  if (!title.value) return;
+  const wasWatchlisted = title.value.watchlisted;
+  await watchlistStore.toggle(title.value.id, title.value);
+  title.value.watchlisted = !wasWatchlisted;
 };
 
 const toggleRecommend = async () => {

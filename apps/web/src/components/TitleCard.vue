@@ -28,6 +28,16 @@
 
       <button
         type="button"
+        class="watchlist-button"
+        :class="{ watchlisted }"
+        :aria-label="watchlisted ? 'Remove from My List' : 'Add to My List'"
+        @click.stop="$emit('toggle-watchlist', title)"
+      >
+        <NqIcon name="plus-circle" :size="20" />
+      </button>
+
+      <button
+        type="button"
         class="favorite-button"
         :class="{ favorited }"
         :aria-label="favorited ? 'Remove favorite' : 'Add favorite'"
@@ -49,16 +59,19 @@ const props = withDefaults(
   defineProps<{
     title: TitleSummary;
     favorited: boolean;
+    watchlisted?: boolean;
     variant?: "poster" | "horizontal";
   }>(),
   {
     variant: "poster",
+    watchlisted: false,
   }
 );
 
 defineEmits<{
   click: [];
   "toggle-favorite": [titleId: string];
+  "toggle-watchlist": [title: TitleSummary];
 }>();
 
 const mediaLabel = computed(() => {
@@ -234,12 +247,32 @@ const mediaLabel = computed(() => {
   -webkit-tap-highlight-color: transparent;
 }
 
-.favorite-button :deep(.nq-icon) {
+.watchlist-button {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.favorite-button :deep(.nq-icon),
+.watchlist-button :deep(.nq-icon) {
   width: 20px;
   height: 20px;
 }
 
 .favorite-button.favorited {
   color: var(--primary);
+}
+
+.watchlist-button.watchlisted {
+  color: var(--gold);
 }
 </style>
