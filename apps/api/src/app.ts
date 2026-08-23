@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 import {
   makeTitleId,
   normalizeWallet,
+  openInPayUrl,
   type ActivityItem,
   type CommentDto,
   type EpisodeCell,
@@ -36,7 +37,6 @@ import {
   resolveShareLinkOgPoster,
 } from "./services/shareLinks.js";
 import { searchCatalog, ensureTitleFresh, getEpisodesForTitle } from "./services/catalog.js";
-import { lookupWalletByHandle } from "./services/nimconnect.js";
 import {
   activityHeatmap,
   followCounts,
@@ -103,7 +103,7 @@ const requirePay = async (c: any, next: any) => {
     const payload: GatePayload = {
       gate: true,
       message: "Cinima runs inside Nimiq Pay.",
-      openInPayUrl: "https://www.nimiq.com/pay/",
+      openInPayUrl: openInPayUrl(config.webOrigin),
     };
     return c.json(payload, 403);
   }
@@ -158,7 +158,7 @@ app.get("/api/gate", (c) => {
   return c.json({
     gate: true,
     message: "Cinima runs inside Nimiq Pay.",
-    openInPayUrl: "https://www.nimiq.com/pay/",
+    openInPayUrl: openInPayUrl(config.webOrigin),
   } satisfies GatePayload);
 });
 
@@ -717,17 +717,7 @@ app.get("/api/activity", requirePay, requireAuth, async (c) => {
 
 async function findPublicUserByHandle(username: string) {
   const handle = username.replace(/^@/, "").toLowerCase();
-  let user = await db.query.users.findFirst({ where: eq(schema.users.handle, handle) });
-  if (!user) {
-    const wallet = await lookupWalletByHandle(handle).catch(() => null);
-    if (wallet) {
-      user = await db.query.users.findFirst({ where: eq(schema.users.walletAddress, wallet) });
-      if (user && !user.handle) {
-        await db.update(schema.users).set({ handle }).where(eq(schema.users.walletAddress, wallet));
-        user = { ...user, handle };
-      }
-    }
-  }
+  const user = await db.query.users.findFirst({ where: eq(schema.users.handle, handle) });
   return user?.handle ? user : null;
 }
 

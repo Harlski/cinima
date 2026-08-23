@@ -10,24 +10,29 @@ import User from "../views/User.vue";
 import PublicProfile from "../views/PublicProfile.vue";
 import TitleShare from "../views/TitleShare.vue";
 import ShortShare from "../views/ShortShare.vue";
-import PayGate from "../views/PayGate.vue";
-import { RESERVED_PUBLIC_HANDLES } from "@cinima/shared";
+import Landing from "../views/Landing.vue";
+import { ACTIVITY_UI_VISIBLE, RESERVED_PUBLIC_HANDLES } from "@cinima/shared";
 
 const RESERVED = RESERVED_PUBLIC_HANDLES;
 
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: "/gate", name: "gate", component: PayGate },
+    { path: "/", name: "landing", component: Landing },
+    { path: "/gate", name: "gate", redirect: { name: "landing" } },
     {
       path: "/",
       component: AppShell,
       children: [
-        { path: "", redirect: "/discover" },
         { path: "discover", name: "discover", component: Discover },
         { path: "my-list", name: "my-list", component: MyList },
         { path: "search", name: "search", component: Search },
-        { path: "activity", name: "activity", component: Activity },
+        {
+          path: "activity",
+          name: "activity",
+          component: Activity,
+          beforeEnter: () => (ACTIVITY_UI_VISIBLE ? true : { name: "discover" }),
+        },
         { path: "me", name: "me", component: Me },
         { path: "title/:id", name: "title", component: TitleDetail, props: true },
         { path: "user/:wallet", name: "user", component: User, props: true },

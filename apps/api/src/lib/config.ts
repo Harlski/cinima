@@ -37,11 +37,8 @@ export const config = {
   get tmdbApiKey() {
     return envString("TMDB_API_KEY");
   },
-  get nimConnectBaseUrl() {
-    return envString("NIMCONNECT_BASE_URL", "https://nimconnect.nimiq.com").replace(/\/$/, "");
-  },
   get webOrigin() {
-    return envString("WEB_ORIGIN", "http://localhost:5173");
+    return envString("WEB_ORIGIN", "http://localhost:5174");
   },
   prices: {
     unlockNim: UNLOCK_NIM,

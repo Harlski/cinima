@@ -26,7 +26,7 @@
         <NqIcon name="magnifying-glass" :size="24" />
         <span>Search</span>
       </RouterLink>
-      <RouterLink to="/activity" class="tab">
+      <RouterLink v-if="ACTIVITY_UI_VISIBLE" to="/activity" class="tab">
         <NqIcon name="bell" :size="24" />
         <span>Activity</span>
       </RouterLink>
@@ -46,6 +46,7 @@
 <script setup lang="ts">
 import { computed, onMounted } from "vue";
 import { RouterView, RouterLink } from "vue-router";
+import { ACTIVITY_UI_VISIBLE } from "@cinima/shared";
 import { useViewportChromeLock } from "@/composables/useViewportChromeLock";
 import { useFavoritesStore } from "@/stores/favorites";
 import { useWatchlistStore } from "@/stores/watchlist";

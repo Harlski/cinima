@@ -3,6 +3,7 @@ import {
   INQUIRIES_EMAIL,
   cinimaSocial,
   inquiriesMailto,
+  landingCopy,
   unavailableCopy,
 } from "../src/lib/contact";
 
@@ -19,5 +20,14 @@ describe("Unavailable contact", () => {
       { name: "X", icon: "logos-twitter-mono", href: null },
       { name: "Telegram", icon: "logos-telegram-mono", href: null },
     ]);
+  });
+});
+
+describe("Landing copy", () => {
+  it("explains Cinima and that it is Pay-only", () => {
+    expect(landingCopy.kicker).toBe("A Nimiq Pay Mini App");
+    expect(landingCopy.title).toMatch(/taste discovery/i);
+    expect(landingCopy.payOnly).toMatch(/only available inside Nimiq Pay/i);
+    expect(landingCopy.cta).toMatch(/NIMIQ PAY/i);
   });
 });

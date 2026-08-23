@@ -2,13 +2,14 @@
   <section class="media-section">
     <div class="section-heading">
       <h2>Recommends</h2>
-      <KindTabs v-model="mediaKind" aria-label="Recommend media type" />
+      <KindTabs v-model="recommendKind" aria-label="Recommend media type" />
     </div>
     <PosterSlider
       :titles="visibleRecommends"
       gold="always"
+      fit
       :max-rows="2"
-      :empty="mediaKind === 'tv' ? 'No TV Recommends yet' : 'No movie Recommends yet'"
+      :empty="recommendKind === 'tv' ? 'No TV Recommends yet' : 'No movie Recommends yet'"
       @select="$emit('select', $event)"
     />
   </section>
@@ -16,13 +17,13 @@
   <section class="media-section">
     <div class="section-heading">
       <h2>Favorites</h2>
-      <KindTabs v-model="mediaKind" aria-label="Favorite media type" />
+      <KindTabs v-model="favoriteKind" aria-label="Favorite media type" />
     </div>
     <PosterSlider
       :titles="visibleFavorites"
       gold="recommended"
       :max-rows="2"
-      :empty="mediaKind === 'tv' ? 'No TV shows yet' : 'No movies yet'"
+      :empty="favoriteKind === 'tv' ? 'No TV shows yet' : 'No movies yet'"
       @select="$emit('select', $event)"
     />
   </section>
@@ -43,7 +44,8 @@ defineEmits<{
   select: [title: TitleSummary];
 }>();
 
-const mediaKind = ref<MediaType>("movie");
+const recommendKind = ref<MediaType>("movie");
+const favoriteKind = ref<MediaType>("movie");
 
 const movieFavorites = computed(
   () => props.favorites.filter((t) => t.mediaType === "movie")
@@ -55,16 +57,18 @@ const movieRecommends = computed(
 const tvRecommends = computed(() => props.recommends.filter((t) => t.mediaType === "tv"));
 
 const visibleFavorites = computed<TitleSummary[]>(() =>
-  mediaKind.value === "tv" ? tvFavorites.value : movieFavorites.value
+  favoriteKind.value === "tv" ? tvFavorites.value : movieFavorites.value
 );
 const visibleRecommends = computed<TitleSummary[]>(() =>
-  mediaKind.value === "tv" ? tvRecommends.value : movieRecommends.value
+  recommendKind.value === "tv" ? tvRecommends.value : movieRecommends.value
 );
 
-watch([tvFavorites, movieFavorites, tvRecommends, movieRecommends], ([tv, movie, tvRec, movieRec]) => {
-  const tvCount = tv.length + tvRec.length;
-  const movieCount = movie.length + movieRec.length;
-  mediaKind.value = tvCount > movieCount ? "tv" : "movie";
+watch([tvRecommends, movieRecommends], ([tv, movie]) => {
+  recommendKind.value = tv.length > movie.length ? "tv" : "movie";
+});
+
+watch([tvFavorites, movieFavorites], ([tv, movie]) => {
+  favoriteKind.value = tv.length > movie.length ? "tv" : "movie";
 });
 </script>
 

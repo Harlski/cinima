@@ -40,11 +40,15 @@
         </template>
       </UserCard>
 
-      <ActivityHeatmap v-if="heatmap.length" :days="heatmap" title="Your activity" />
+      <ActivityHeatmap
+        v-if="ACTIVITY_UI_VISIBLE && heatmap.length"
+        :days="heatmap"
+        title="Your activity"
+      />
 
       <div v-if="needsHandlePrompt" class="handle-prompt nq-card">
         <h3>Claim a shareable handle</h3>
-        <p>Soft NimConnect-style identity for your public favorites URL.</p>
+        <p>Your public Cinima identity, stored on this server and tied to your wallet.</p>
         <div class="share-link">
           <input v-model="handleDraft" class="nq-input-box" placeholder="yourname" maxlength="24" />
           <button type="button" class="nq-pill-blue" @click="saveHandle">Save</button>
@@ -122,6 +126,7 @@ import ProfileTaste from "@/components/ProfileTaste.vue";
 import UserCard from "@/components/UserCard.vue";
 import ShareLinkSheet from "@/components/ShareLinkSheet.vue";
 import {
+  ACTIVITY_UI_VISIBLE,
   displayName,
   profileShareCopy,
   profileShareDescription,

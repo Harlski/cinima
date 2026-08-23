@@ -33,8 +33,8 @@ A user’s private save-for-later queue of titles they intend to watch. Distinct
 _Avoid_: watchlist as UI label (use “My List”), save, bookmark
 
 **Recommend**:
-A gold-star upgrade on a Favorite, meaning this title stands out among the user’s favorites — not a separate mark from Favorite. A user may hold at most five movie Recommends and five TV Recommends at a time; a sixth of that media type is blocked until one of that type is removed. Unfavoriting clears Recommend. Shared Recommends are a stronger taste-overlap signal than shared Favorites alone.
-_Avoid_: rating, review, super-like (unless used only as UI synonym), highlight, top 5 as a separate mark
+A gold-star upgrade on a Favorite, meaning this title stands out among the user’s favorites — not a separate mark from Favorite. A user may hold at most six movie Recommends and six TV Recommends at a time; a seventh of that media type is blocked until one of that type is removed. Unfavoriting clears Recommend. Shared Recommends are a stronger taste-overlap signal than shared Favorites alone.
+_Avoid_: rating, review, super-like (unless used only as UI synonym), highlight, top pick as a separate mark
 
 **Rating**:
 A TMDB community vote average for a title or episode. Catalog data, always visible to signed-in users.
@@ -64,6 +64,10 @@ _Avoid_: tip, like, kudos, shout-out
 One action that sends Thanks to every remaining peer who Favorited a title.
 _Avoid_: mass tip, blast, thank everyone as a separate mark
 
+**Landing**:
+The public root page that explains what Cinima is and that it runs only inside Nimiq Pay. Distinct from Public Profile and from the signed-in app shell.
+_Avoid_: marketing site, splash, home feed
+
 **Unavailable**:
-The public holding state when Cinima is not open for general use. It directs people to inquiries@cinima.app. Distinct from a missing Public Profile and from a transient API error.
+The public holding notice on the Landing when Cinima is not open for general use. It directs people to inquiries@cinima.app. Distinct from a missing Public Profile and from a transient API error.
 _Avoid_: maintenance page, coming soon, 404, down

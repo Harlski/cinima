@@ -12,7 +12,6 @@ interface ImportMetaEnv {
   readonly VITE_TREASURY_ADDRESS?: string;
   readonly VITE_ALLOW_DEV_BYPASS?: string;
   readonly VITE_DEMO_MODE?: string;
-  readonly VITE_PAY_APP_URL?: string;
   readonly VITE_SITE_ORIGIN?: string;
 }
 

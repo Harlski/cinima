@@ -1,4 +1,5 @@
 import type { SessionUser } from "@cinima/shared";
+import { openInPayUrl } from "@cinima/shared";
 import { createMiddleware } from "hono/factory";
 import { sessionFromToken } from "../services/auth.js";
 import { bearerToken, isPayContext } from "../lib/util.js";
@@ -29,7 +30,7 @@ export const requirePay = createMiddleware<AppEnv>(async (c, next) => {
       {
         gate: true,
         message: "Cinima runs inside Nimiq Pay.",
-        openInPayUrl: "https://www.nimiq.com/pay/",
+        openInPayUrl: openInPayUrl(config.webOrigin),
       },
       403
     );

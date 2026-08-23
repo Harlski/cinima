@@ -58,6 +58,7 @@ import PayTitleModal from "@/components/PayTitleModal.vue";
 import ProfileTaste from "@/components/ProfileTaste.vue";
 import UserCard from "@/components/UserCard.vue";
 import { isNimiqPay } from "@/lib/nimiqPay";
+import { payOpenHttpsUrl } from "@/lib/payLinks";
 
 const route = useRoute();
 
@@ -66,10 +67,7 @@ const loading = ref(true);
 const profile = ref<PublicProfile | null>(null);
 const gateTitle = ref<TitleSummary | null>(null);
 
-const payUrl = computed(() => {
-  const base = import.meta.env.VITE_PAY_APP_URL || "https://www.nimiq.com/pay/";
-  return `${base}?app=${encodeURIComponent(window.location.origin)}`;
-});
+const payUrl = computed(() => payOpenHttpsUrl());
 
 const onSelectTitle = (title: TitleSummary) => {
   if (isNimiqPay()) return;

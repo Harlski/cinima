@@ -8,10 +8,10 @@ This application uses TMDB and the TMDB APIs but is not endorsed, certified, or 
 
 ## Features
 
-- Pay-only *identity* gate for the main app (Nimiq Pay host); public `/:username` profiles and Title Share `/:handle/t/{movie|tv}/{tmdbId}` pages stay open on the web
+- Public Landing at `/` (what Cinima is + Pay-only); Pay-only *identity* for the main app; public `/:username` profiles and Title Share `/:handle/t/{movie|tv}/{tmdbId}` pages stay open on the web
 - Wallet session auth via signed challenge (`nimiq.sign`), plus local `?demo=1` bypass
 - Catalog sync TMDB → LibSQL/SQLite cache (seed catalog when keys missing)
-- Bottom tabs: Discover / Search / Activity / Me (+ title stack)
+- Bottom tabs: Discover / My List / Search / Me (+ title stack)
 - Cold start: favorite ≥3 titles, then Discover switches to taste overlap
 - Ratings and TV heat-maps are always visible (TMDB `vote_average`)
 - Free flat comments and thanks (no treasury payments)
@@ -41,6 +41,13 @@ pnpm dev
 
 In Nimiq Pay Discover, paste your machine's LAN URL for the Vite app (binds `0.0.0.0` via `server.host`). Do not use `?demo=1` inside Pay; the injected wallet is used instead.
 
+Share / open links use the [official mini app intents](https://nimiq.dev/mini-apps):
+
+- Custom scheme: `nimiqpay://miniapp?url=cinima.app`
+- HTTPS: `https://nimpay.app/miniapps/open/cinima.app`
+
+Web CTAs and API `openInPayUrl` use the HTTPS form (with the live origin / `WEB_ORIGIN` host).
+
 Integration follows [nimiq.dev/mini-apps](https://nimiq.dev/mini-apps): `init()` → `listAccounts()` → `sign()` for login. The provider is **never** stored in a Vue `ref` (private fields break under Proxy).
 
 With `DEMO_MODE=true` / `VITE_DEMO_MODE=1`, demo auth is used **only outside Pay** (desktop `?demo=1`).
@@ -59,7 +66,6 @@ With `DEMO_MODE=true` / `VITE_DEMO_MODE=1`, demo auth is used **only outside Pay
 | Variable | Purpose |
 |---|---|
 | `TMDB_API_KEY` | Live search / detail / ratings sync (optional) |
-| `NIMCONNECT_BASE_URL` | Soft handle lookup (degrades if unknown) |
 | `DEMO_MODE` / `VITE_DEMO_MODE` | Local demo auth |
 
 ## License

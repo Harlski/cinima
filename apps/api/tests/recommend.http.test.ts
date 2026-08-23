@@ -10,8 +10,8 @@ process.env.DEMO_MODE = "true";
 
 const WALLET = "NQ05RECOMMENDTESTWALLET000000000001";
 const TOKEN = "test-session-token-recommend";
-const TITLE_IDS = Array.from({ length: 6 }, (_, i) => `movie:${100 + i}`);
-const TV_IDS = Array.from({ length: 6 }, (_, i) => `tv:${200 + i}`);
+const TITLE_IDS = Array.from({ length: MAX_RECOMMENDS + 1 }, (_, i) => `movie:${100 + i}`);
+const TV_IDS = Array.from({ length: MAX_RECOMMENDS + 1 }, (_, i) => `tv:${200 + i}`);
 
 describe("Recommend HTTP API", () => {
   let app: { fetch: (request: Request) => Response | Promise<Response> };
@@ -144,7 +144,7 @@ describe("Recommend HTTP API", () => {
     expect(title2.recommended).toBe(false);
   });
 
-  it("blocks a sixth Recommend at the hard cap", async () => {
+  it("blocks a seventh Recommend at the hard cap", async () => {
     for (let i = 0; i < MAX_RECOMMENDS; i++) {
       const res = await app.fetch(
         new Request(`http://test/api/recommends/${encodeURIComponent(TITLE_IDS[i])}`, {
@@ -154,14 +154,14 @@ describe("Recommend HTTP API", () => {
       );
       expect(res.status).toBe(200);
     }
-    const sixth = await app.fetch(
-      new Request(`http://test/api/recommends/${encodeURIComponent(TITLE_IDS[5])}`, {
+    const overCap = await app.fetch(
+      new Request(`http://test/api/recommends/${encodeURIComponent(TITLE_IDS[MAX_RECOMMENDS])}`, {
         method: "POST",
         headers,
       })
     );
-    expect(sixth.status).toBe(409);
-    const body = (await sixth.json()) as { error: string };
+    expect(overCap.status).toBe(409);
+    const body = (await overCap.json()) as { error: string };
     expect(body.error).toBe("recommend_cap");
   });
 
@@ -274,14 +274,14 @@ describe("Recommend HTTP API", () => {
       expect(res.status).toBe(200);
     }
 
-    const sixthTv = await app.fetch(
-      new Request(`http://test/api/recommends/${encodeURIComponent(TV_IDS[5])}`, {
+    const overCapTv = await app.fetch(
+      new Request(`http://test/api/recommends/${encodeURIComponent(TV_IDS[MAX_RECOMMENDS])}`, {
         method: "POST",
         headers,
       })
     );
-    expect(sixthTv.status).toBe(409);
-    const tvBody = (await sixthTv.json()) as { error: string; message: string };
+    expect(overCapTv.status).toBe(409);
+    const tvBody = (await overCapTv.json()) as { error: string; message: string };
     expect(tvBody.error).toBe("recommend_cap");
     expect(tvBody.message).toMatch(/TV/i);
 
@@ -293,14 +293,14 @@ describe("Recommend HTTP API", () => {
     expect(me.recommends.filter((r) => r.mediaType === "movie").length).toBe(MAX_RECOMMENDS);
     expect(me.recommends.filter((r) => r.mediaType === "tv").length).toBe(MAX_RECOMMENDS);
 
-    const sixthMovie = await app.fetch(
-      new Request(`http://test/api/recommends/${encodeURIComponent(TITLE_IDS[5])}`, {
+    const overCapMovie = await app.fetch(
+      new Request(`http://test/api/recommends/${encodeURIComponent(TITLE_IDS[MAX_RECOMMENDS])}`, {
         method: "POST",
         headers,
       })
     );
-    expect(sixthMovie.status).toBe(409);
-    const movieBody = (await sixthMovie.json()) as { error: string; message: string };
+    expect(overCapMovie.status).toBe(409);
+    const movieBody = (await overCapMovie.json()) as { error: string; message: string };
     expect(movieBody.message).toMatch(/movie/i);
   });
 });

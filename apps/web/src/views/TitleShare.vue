@@ -79,6 +79,7 @@ import PayTitleModal from "@/components/PayTitleModal.vue";
 import PosterImg from "@/components/PosterImg.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";
 import { isNimiqPay } from "@/lib/nimiqPay";
+import { payOpenHttpsUrl } from "@/lib/payLinks";
 
 const route = useRoute();
 
@@ -100,10 +101,7 @@ const mediaLabel = computed(() =>
   payload.value?.title.mediaType === "tv" ? "TV" : "Movie"
 );
 
-const payUrl = computed(() => {
-  const base = import.meta.env.VITE_PAY_APP_URL || "https://www.nimiq.com/pay/";
-  return `${base}?app=${encodeURIComponent(window.location.origin)}`;
-});
+const payUrl = computed(() => payOpenHttpsUrl());
 
 const onSelectTitle = () => {
   if (!payload.value || isNimiqPay()) return;

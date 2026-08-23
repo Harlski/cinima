@@ -33,7 +33,11 @@
         </template>
       </UserCard>
 
-      <ActivityHeatmap :days="profile.heatmap" title="Activity" />
+      <ActivityHeatmap
+        v-if="ACTIVITY_UI_VISIBLE"
+        :days="profile.heatmap"
+        title="Activity"
+      />
 
       <ProfileTaste
         :favorites="profile.favorites"
@@ -48,7 +52,7 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
-import { displayName } from "@cinima/shared";
+import { ACTIVITY_UI_VISIBLE, displayName } from "@cinima/shared";
 import type { PublicProfile } from "@cinima/shared";
 import ActivityHeatmap from "@/components/ActivityHeatmap.vue";
 import NqIcon from "@/components/NqIcon.vue";
