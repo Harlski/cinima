@@ -19,12 +19,42 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      LINODE_HOST: ${{ secrets.LINODE_HOST }}
+      LINODE_USER: ${{ secrets.LINODE_USER }}
+      LINODE_DEPLOY_PATH: ${{ secrets.LINODE_DEPLOY_PATH }}
+      LINODE_SSH_KEY: ${{ secrets.LINODE_SSH_KEY }}
     steps:
+      - name: Verify deploy secrets
+        run: |
+          set -eu
+          missing=0
+          if [ -z "$LINODE_HOST" ]; then
+            echo "::error::LINODE_HOST secret is missing"
+            missing=1
+          fi
+          if [ -z "$LINODE_USER" ]; then
+            echo "::error::LINODE_USER secret is missing (set to: cinima)"
+            missing=1
+          fi
+          if [ -z "$LINODE_SSH_KEY" ]; then
+            echo "::error::LINODE_SSH_KEY secret is missing"
+            missing=1
+          fi
+          if [ -z "$LINODE_DEPLOY_PATH" ]; then
+            echo "LINODE_DEPLOY_PATH not set; using /opt/cinima"
+            LINODE_DEPLOY_PATH=/opt/cinima
+          fi
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+          echo "Deploy target: ${LINODE_USER}@${LINODE_HOST}:${LINODE_DEPLOY_PATH:-/opt/cinima}"
+
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Sync source to Linode
-        uses: burnett01/rsync-deployments@7.0.2
+        uses: burnett01/rsync-deployments@8.0.0
         with:
           switches: -avzr --delete --exclude .git --exclude node_modules --exclude apps/web --exclude .env --exclude apps/api/data --exclude '**/dist'
           path: ./
