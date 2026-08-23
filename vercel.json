@@ -6,47 +6,6 @@
   "outputDirectory": "apps/web/dist",
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "https://api.cinima.app/api/:path*"
-    },
-    {
-      "source": "/health",
-      "destination": "https://api.cinima.app/health"
-    },
-    {
-      "source": "/s/:code",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": "(?i).*(facebookexternalhit|Facebot|Twitterbot|WhatsApp|Slackbot|TelegramBot|LinkedInBot|Discordbot|Pinterest).*"
-        }
-      ],
-      "destination": "https://api.cinima.app/api/s/:code"
-    },
-    {
-      "source": "/:handle/t/:mediaType/:tmdbId",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": "(?i).*(facebookexternalhit|Facebot|Twitterbot|WhatsApp|Slackbot|TelegramBot|LinkedInBot|Discordbot|Pinterest).*"
-        }
-      ],
-      "destination": "https://api.cinima.app/api/public/:handle/t/:mediaType/:tmdbId"
-    },
-    {
-      "source": "/:handle",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": "(?i).*(facebookexternalhit|Facebot|Twitterbot|WhatsApp|Slackbot|TelegramBot|LinkedInBot|Discordbot|Pinterest).*"
-        }
-      ],
-      "destination": "https://api.cinima.app/api/public/:handle"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
