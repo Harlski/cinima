@@ -1,17 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
+  CINIMA_TELEGRAM_URL,
   CINIMA_X_URL,
   GET_NIMIQ_PAY_URL,
   INQUIRIES_EMAIL,
   cinimaSocial,
   inquiriesMailto,
   landingCopy,
+  payGateSocial,
   payOnlyGateCopy,
 } from "../src/lib/contact";
 import { landingPosters } from "../src/lib/landingPosters";
 
 describe("Landing contact", () => {
-  it("exposes X and Email; no Telegram", () => {
+  it("exposes X and Email on landing; Telegram reserved for pay-gate", () => {
     expect(INQUIRIES_EMAIL).toBe("cinima.app@gmail.com");
     expect(inquiriesMailto()).toBe("mailto:cinima.app@gmail.com");
     expect(CINIMA_X_URL).toBe("https://x.com/cinima_app");
@@ -19,7 +21,10 @@ describe("Landing contact", () => {
       { name: "X", icon: "logos-twitter-mono", href: "https://x.com/cinima_app" },
       { name: "Email", icon: "envelope", href: "mailto:cinima.app@gmail.com" },
     ]);
-    expect(cinimaSocial.some((c) => c.name === "Telegram")).toBe(false);
+    expect(payGateSocial).toEqual([
+      { name: "X", icon: "logos-twitter-mono", href: "https://x.com/cinima_app" },
+      { name: "Telegram", icon: "logos-telegram-mono", href: CINIMA_TELEGRAM_URL },
+    ]);
   });
 });
 

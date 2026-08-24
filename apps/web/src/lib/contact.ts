@@ -2,6 +2,9 @@ export const INQUIRIES_EMAIL = "cinima.app@gmail.com";
 
 export const CINIMA_X_URL = "https://x.com/cinima_app";
 
+/** Set when the Cinima Telegram channel is ready. */
+export const CINIMA_TELEGRAM_URL: string | null = null;
+
 /** Official Nimiq Pay marketing / store landing. */
 export const GET_NIMIQ_PAY_URL = "https://nimpay.app/";
 
@@ -31,12 +34,19 @@ export const payOnlyGateCopy = {
 } as const;
 
 export type CinimaSocialChannel = {
-  name: "X" | "Email";
-  icon: "logos-twitter-mono" | "envelope";
-  href: string;
+  name: "X" | "Email" | "Telegram";
+  icon: "logos-twitter-mono" | "envelope" | "logos-telegram-mono";
+  href: string | null;
 };
 
+/** Landing footer / landing modal inquiries. */
 export const cinimaSocial: CinimaSocialChannel[] = [
   { name: "X", icon: "logos-twitter-mono", href: CINIMA_X_URL },
   { name: "Email", icon: "envelope", href: inquiriesMailto() },
+];
+
+/** Public profile / share pay-gate socials. */
+export const payGateSocial: CinimaSocialChannel[] = [
+  { name: "X", icon: "logos-twitter-mono", href: CINIMA_X_URL },
+  { name: "Telegram", icon: "logos-telegram-mono", href: CINIMA_TELEGRAM_URL },
 ];

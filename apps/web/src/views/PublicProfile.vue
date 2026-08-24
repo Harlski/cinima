@@ -29,13 +29,7 @@
       </div>
     </div>
 
-    <nav class="pay-bar">
-      <div class="app-column">
-        <a :href="payUrl" class="nq-pill-blue nq-pill-lg nq-pill-stretch pay-cta">
-          Explore CINIMA on NIMIQ PAY
-        </a>
-      </div>
-    </nav>
+    <ExploreCinimaPayBar :already-installed-url="payUrl" />
 
     <PayTitleModal
       v-if="gateTitle"
@@ -52,13 +46,14 @@ import { useRoute } from "vue-router";
 import type { PublicProfile, TitleSummary } from "@cinima/shared";
 import { profileShareCopy, profileShareUrl } from "@cinima/shared";
 import AppBrandHeader from "@/components/AppBrandHeader.vue";
+import ExploreCinimaPayBar from "@/components/ExploreCinimaPayBar.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";
 import PayTitleModal from "@/components/PayTitleModal.vue";
 import ProfileTaste from "@/components/ProfileTaste.vue";
 import UserCard from "@/components/UserCard.vue";
 import { isNimiqPay } from "@/lib/nimiqPay";
-import { payAppOrigin, payOpenHttpsUrl } from "@/lib/payLinks";
+import { payAppOrigin, payOpenSchemeUrl } from "@/lib/payLinks";
 
 const route = useRoute();
 
@@ -68,8 +63,8 @@ const profile = ref<PublicProfile | null>(null);
 const gateTitle = ref<TitleSummary | null>(null);
 
 const payUrl = computed(() => {
-  if (!profile.value?.handle) return payOpenHttpsUrl();
-  return payOpenHttpsUrl(profileShareUrl(payAppOrigin(), profile.value.handle));
+  if (!profile.value?.handle) return payOpenSchemeUrl();
+  return payOpenSchemeUrl(profileShareUrl(payAppOrigin(), profile.value.handle));
 });
 
 const onSelectTitle = (title: TitleSummary) => {
@@ -117,8 +112,6 @@ watch(handle, () => {
 
 <style scoped>
 .public-profile {
-  --pay-bar-pad-top: 0.75rem;
-  --pay-bar-pad-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
   position: relative;
   z-index: 1;
   height: 100dvh;
@@ -153,21 +146,5 @@ watch(handle, () => {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-}
-
-.pay-bar {
-  position: relative;
-  flex-shrink: 0;
-  z-index: 50;
-  background: var(--bg-surface);
-  border-top: 1px solid var(--border);
-  padding-top: var(--pay-bar-pad-top);
-  padding-bottom: var(--pay-bar-pad-bottom);
-}
-
-.pay-cta {
-  text-align: center;
-  letter-spacing: 0.02em;
-  color: #fff;
 }
 </style>

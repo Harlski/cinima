@@ -62,13 +62,7 @@
       </div>
     </div>
 
-    <nav class="pay-bar">
-      <div class="app-column">
-        <a :href="payUrl" class="nq-pill-blue nq-pill-lg nq-pill-stretch pay-cta">
-          Explore CINIMA on NIMIQ PAY
-        </a>
-      </div>
-    </nav>
+    <ExploreCinimaPayBar :already-installed-url="payUrl" />
 
     <PayTitleModal
       v-if="gateTitle"
@@ -90,13 +84,14 @@ import {
   type TitleSummary,
 } from "@cinima/shared";
 import AppBrandHeader from "@/components/AppBrandHeader.vue";
+import ExploreCinimaPayBar from "@/components/ExploreCinimaPayBar.vue";
 import Identicon from "@/components/Identicon.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
 import PayTitleModal from "@/components/PayTitleModal.vue";
 import PosterImg from "@/components/PosterImg.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";
 import { isNimiqPay } from "@/lib/nimiqPay";
-import { payAppOrigin, payOpenHttpsUrl } from "@/lib/payLinks";
+import { payAppOrigin, payOpenSchemeUrl } from "@/lib/payLinks";
 import { formatTitleRating } from "@/lib/titleRating";
 
 const route = useRoute();
@@ -119,8 +114,8 @@ const mediaLabel = computed(() =>
 );
 
 const payUrl = computed(() => {
-  if (!payload.value) return payOpenHttpsUrl();
-  return payOpenHttpsUrl(
+  if (!payload.value) return payOpenSchemeUrl();
+  return payOpenSchemeUrl(
     titleShareUrl(
       payAppOrigin(),
       payload.value.handle,
@@ -173,8 +168,6 @@ watch(code, loadShare, { immediate: true });
 
 <style scoped>
 .title-share {
-  --pay-bar-pad-top: 0.75rem;
-  --pay-bar-pad-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
   position: relative;
   z-index: 1;
   height: 100dvh;
@@ -334,22 +327,6 @@ watch(code, loadShare, { immediate: true });
   margin-top: 0.35rem;
   max-width: 19.25rem;
   text-align: center;
-  color: #fff;
-}
-
-.pay-bar {
-  position: relative;
-  flex-shrink: 0;
-  z-index: 50;
-  background: var(--bg-surface);
-  border-top: 1px solid var(--border);
-  padding-top: var(--pay-bar-pad-top);
-  padding-bottom: var(--pay-bar-pad-bottom);
-}
-
-.pay-cta {
-  text-align: center;
-  letter-spacing: 0.02em;
   color: #fff;
 }
 </style>
