@@ -50,6 +50,12 @@ export default defineConfig(({ mode }) => {
     proxy: {
       "/api": "http://127.0.0.1:8787",
       "/health": "http://127.0.0.1:8787",
+      // Same-origin proxy so the X-header lab can fetch posters for PNG export (TMDB has no CORS).
+      "/tmdb-img": {
+        target: "https://image.tmdb.org",
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/tmdb-img/, "/t/p"),
+      },
     },
   },
   preview: {

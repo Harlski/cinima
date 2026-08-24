@@ -2,21 +2,14 @@
   <ul class="social-placeholders" aria-label="Contact Cinima">
     <li v-for="channel in cinimaSocial" :key="channel.name">
       <a
-        v-if="channel.href"
-        class="social-placeholder social-placeholder--live"
+        class="social-placeholder"
         :href="channel.href"
+        :target="channel.name === 'X' ? '_blank' : undefined"
+        :rel="channel.name === 'X' ? 'noopener noreferrer' : undefined"
         :aria-label="channel.name === 'Email' ? `Email ${INQUIRIES_EMAIL}` : channel.name"
       >
         <NqIcon :name="channel.icon" :size="20" />
       </a>
-      <span
-        v-else
-        class="social-placeholder"
-        role="img"
-        :aria-label="`${channel.name}, no link yet`"
-      >
-        <NqIcon :name="channel.icon" :size="20" />
-      </span>
     </li>
   </ul>
 </template>
@@ -45,17 +38,12 @@ import { INQUIRIES_EMAIL, cinimaSocial } from "@/lib/contact";
   height: 2.5rem;
   border-radius: 999px;
   background: var(--colors-neutral-200);
-  color: var(--text-secondary);
-  opacity: 0.55;
+  color: var(--text-primary);
+  opacity: 1;
   text-decoration: none;
 }
 
-.social-placeholder--live {
-  opacity: 1;
-  color: var(--text-primary);
-}
-
-.social-placeholder--live:hover {
+.social-placeholder:hover {
   background: var(--colors-neutral-300);
 }
 

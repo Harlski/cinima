@@ -22,7 +22,7 @@ const SEEDS: SeedTitle[] = [
     tmdbId: 27205,
     title: "Inception",
     year: 2010,
-    posterPath: "/oYuLEt3zBJxUQIF7ZoVAEjdUcDN.jpg",
+    posterPath: "/edv5CZvWj09upOsy2Y6IwDhK8bt.jpg",
     overview: "A thief who steals corporate secrets through dream-sharing technology is given the inverse task of planting an idea.",
     rating: "8.4",
     popularity: 90,

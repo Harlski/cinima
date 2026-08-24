@@ -2,6 +2,10 @@
   <section class="heatmap-section">
     <div class="heatmap-header">
       <h3>Episode Ratings</h3>
+      <p v-if="focusSeason != null" class="heatmap-sub">
+        Season {{ focusSeason }}
+        <span v-if="visibleEpisodeCount">· {{ visibleEpisodeCount }} eps</span>
+      </p>
     </div>
 
     <div
@@ -11,6 +15,7 @@
       aria-label="Season"
     >
       <button
+        v-if="!allSeasonsHidden"
         type="button"
         role="tab"
         class="season-tab"
@@ -35,59 +40,77 @@
     </div>
 
     <div class="heatmap-container">
-      <div class="heatmap-blur">
-        <div v-if="seasons.length === 0" class="empty">
-          No episode data available
+      <div v-if="seasons.length === 0" class="empty">
+        No episode data available
+      </div>
+
+      <!-- Long single season: wrap cells so the page stays short -->
+      <div v-else-if="compactGrid" class="compact-grid" role="list">
+        <button
+          v-for="ep in compactEpisodes"
+          :key="`${ep.season}-${ep.episode}`"
+          type="button"
+          role="listitem"
+          class="cell compact-cell"
+          :class="[
+            cellClassFor(ep),
+            { selected: isSelected(ep.season, ep.episode) },
+          ]"
+          :aria-label="getCellTitle(ep.season, ep.episode)"
+          @click="selectEpisode(ep.season, ep.episode)"
+        >
+          <span class="compact-ep">{{ ep.episode }}</span>
+          <span class="compact-rating">{{ cellValueFor(ep) }}</span>
+        </button>
+      </div>
+
+      <div v-else class="heatmap-grid">
+        <div class="season-labels">
+          <div class="label-header">E</div>
+          <div
+            v-for="ep in maxEpisodes"
+            :key="`row-${ep}`"
+            class="season-label"
+          >
+            {{ ep }}
+          </div>
         </div>
 
-        <div v-else class="heatmap-grid">
-          <div class="season-labels">
-            <div class="label-header">E</div>
+        <div class="episodes-grid">
+          <div class="episode-labels">
             <div
-              v-for="ep in maxEpisodes"
-              :key="`row-${ep}`"
-              class="season-label"
+              v-for="season in visibleSeasons"
+              :key="`col-${season}`"
+              class="episode-label"
             >
-              {{ ep }}
+              {{ season }}
             </div>
           </div>
 
-          <div class="episodes-grid">
-            <div class="episode-labels">
-              <div
-                v-for="season in visibleSeasons"
-                :key="`col-${season}`"
-                class="episode-label"
+          <div class="cells">
+            <div
+              v-for="season in visibleSeasons"
+              :key="season"
+              class="season-column"
+            >
+              <button
+                v-for="ep in maxEpisodes"
+                :key="`${season}-${ep}`"
+                type="button"
+                class="cell"
+                :class="[
+                  getCellClass(season, ep),
+                  {
+                    selectable: canSelect(season, ep),
+                    selected: isSelected(season, ep),
+                  },
+                ]"
+                :disabled="!canSelect(season, ep)"
+                :aria-label="getCellTitle(season, ep)"
+                @click="selectEpisode(season, ep)"
               >
-                {{ season }}
-              </div>
-            </div>
-
-            <div class="cells">
-              <div
-                v-for="season in visibleSeasons"
-                :key="season"
-                class="season-column"
-              >
-                <button
-                  v-for="ep in maxEpisodes"
-                  :key="`${season}-${ep}`"
-                  type="button"
-                  class="cell"
-                  :class="[
-                    getCellClass(season, ep),
-                    {
-                      selectable: canSelect(season, ep),
-                      selected: isSelected(season, ep),
-                    },
-                  ]"
-                  :disabled="!canSelect(season, ep)"
-                  :aria-label="getCellTitle(season, ep)"
-                  @click="selectEpisode(season, ep)"
-                >
-                  <span>{{ getCellValue(season, ep) }}</span>
-                </button>
-              </div>
+                <span>{{ getCellValue(season, ep) }}</span>
+              </button>
             </div>
           </div>
         </div>
@@ -101,6 +124,7 @@
         role="dialog"
         aria-modal="true"
         :aria-label="dialogLabel"
+        :style="{ paddingBottom: dialogBottomPad }"
         @keydown.escape.prevent="selected = null"
       >
         <button
@@ -152,16 +176,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { imdbTitleUrl, type EpisodeCell } from "@cinima/shared";
 import ExpandableText from "@/components/ExpandableText.vue";
 import {
+  episodeCountInSeasons,
+  hideAllSeasonsTab,
+  LONG_SERIES_EPISODE_THRESHOLD,
   maxEpisodeInSeasons,
+  useCompactEpisodeGrid,
   visibleHeatmapSeasons,
 } from "@/lib/heatmapSeasons";
-
-/** Above this episode count, default the grid to season 1 (user can still pick All). */
-const LONG_SERIES_EPISODE_THRESHOLD = 40;
 
 const props = defineProps<{
   episodes: EpisodeCell[];
@@ -171,6 +196,10 @@ const selected = ref<EpisodeCell | null>(null);
 const focusSeason = ref<number | null>(null);
 const longSeriesDefaulted = ref(false);
 const dialogEl = ref<HTMLElement | null>(null);
+const dialogBottomPad = ref(
+  "calc(1.25rem + env(safe-area-inset-bottom, 0px) + 5.25rem)"
+);
+
 const imdbUrl = computed(() => imdbTitleUrl(selected.value?.imdbId));
 const dialogLabel = computed(() => {
   if (!selected.value) return "Episode";
@@ -190,16 +219,62 @@ const seasons = computed(() => {
   return Array.from(s).sort((a, b) => a - b);
 });
 
+const allSeasonsHidden = computed(() =>
+  hideAllSeasonsTab(props.episodes.length, seasons.value.length)
+);
+
 const visibleSeasons = computed(() =>
   visibleHeatmapSeasons(seasons.value, focusSeason.value)
+);
+
+const visibleEpisodeCount = computed(() =>
+  episodeCountInSeasons(props.episodes, visibleSeasons.value)
 );
 
 const maxEpisodes = computed(() =>
   maxEpisodeInSeasons(props.episodes, visibleSeasons.value)
 );
 
+const compactGrid = computed(() =>
+  useCompactEpisodeGrid(visibleSeasons.value.length, visibleEpisodeCount.value)
+);
+
+const compactEpisodes = computed(() => {
+  const season = visibleSeasons.value[0];
+  if (season == null) return [] as EpisodeCell[];
+  return props.episodes
+    .filter((ep) => ep.season === season)
+    .slice()
+    .sort((a, b) => a.episode - b.episode);
+});
+
+function syncDialogBottomPad() {
+  const shell = document.querySelector(".app-shell");
+  if (shell) {
+    const inset = getComputedStyle(shell).getPropertyValue("--bottom-tabs-inset").trim();
+    if (inset) {
+      dialogBottomPad.value = `calc(${inset} + 0.85rem)`;
+      return;
+    }
+  }
+  dialogBottomPad.value =
+    "calc(1.25rem + env(safe-area-inset-bottom, 0px) + 5.25rem)";
+}
+
+onMounted(() => {
+  syncDialogBottomPad();
+  window.addEventListener("resize", syncDialogBottomPad);
+  window.visualViewport?.addEventListener("resize", syncDialogBottomPad);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", syncDialogBottomPad);
+  window.visualViewport?.removeEventListener("resize", syncDialogBottomPad);
+});
+
 watch(selected, async (value) => {
   if (!value) return;
+  syncDialogBottomPad();
   await nextTick();
   dialogEl.value?.focus();
 });
@@ -208,14 +283,19 @@ watch(
   seasons,
   (list) => {
     if (focusSeason.value != null && !list.includes(focusSeason.value)) {
-      focusSeason.value = null;
+      focusSeason.value = list[0] ?? null;
+    }
+    if (allSeasonsHidden.value && focusSeason.value == null && list.length) {
+      focusSeason.value = list[0] ?? null;
+      longSeriesDefaulted.value = true;
+      return;
     }
     // Once: long series open on season 1 so the grid stays scannable.
     if (
       !longSeriesDefaulted.value &&
       focusSeason.value == null &&
-      list.length > 1 &&
-      props.episodes.length > LONG_SERIES_EPISODE_THRESHOLD
+      props.episodes.length > LONG_SERIES_EPISODE_THRESHOLD &&
+      list.length > 0
     ) {
       focusSeason.value = list[0] ?? null;
       longSeriesDefaulted.value = true;
@@ -226,6 +306,10 @@ watch(
 
 const getCellValue = (season: number, episode: number): string => {
   const ep = episodeMap.value.get(`${season}-${episode}`);
+  return cellValueFor(ep);
+};
+
+const cellValueFor = (ep: EpisodeCell | undefined): string => {
   if (!ep) return "";
   if (ep.rating == null) return "—";
   return ep.rating.toFixed(1);
@@ -233,15 +317,19 @@ const getCellValue = (season: number, episode: number): string => {
 
 const getCellClass = (season: number, episode: number): string => {
   const ep = episodeMap.value.get(`${season}-${episode}`);
+  return cellClassFor(ep);
+};
+
+const cellClassFor = (ep: EpisodeCell | undefined): string => {
   if (!ep) return "cell-empty";
-  if (ep.rating == null) return "cell-locked";
+  if (ep.rating == null) return "cell-locked selectable";
 
   const rating = ep.rating;
-  if (rating >= 9.0) return "cell-excellent";
-  if (rating >= 8.0) return "cell-great";
-  if (rating >= 7.0) return "cell-good";
-  if (rating >= 6.0) return "cell-okay";
-  return "cell-poor";
+  if (rating >= 9.0) return "cell-excellent selectable";
+  if (rating >= 8.0) return "cell-great selectable";
+  if (rating >= 7.0) return "cell-good selectable";
+  if (rating >= 6.0) return "cell-okay selectable";
+  return "cell-poor selectable";
 };
 
 const getCellTitle = (season: number, episode: number): string => {
@@ -288,8 +376,10 @@ const ratingTone = (rating: number) => {
 
 .heatmap-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  align-items: center;
+  align-items: baseline;
+  gap: 0.35rem 1rem;
   margin-bottom: 1rem;
 }
 
@@ -299,11 +389,20 @@ const ratingTone = (rating: number) => {
   color: var(--text-primary);
 }
 
+.heatmap-sub {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
 .season-tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
   margin: -0.35rem 0 0.85rem;
+  max-height: 6.5rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .season-tab {
@@ -329,7 +428,10 @@ const ratingTone = (rating: number) => {
   background: var(--bg-surface);
   border-radius: 12px;
   padding: 1rem;
-  overflow-x: auto;
+  max-height: min(52dvh, 24rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .empty {
@@ -341,12 +443,47 @@ const ratingTone = (rating: number) => {
 .heatmap-grid {
   display: flex;
   gap: 0.5rem;
+  width: max-content;
+  min-width: 100%;
+}
+
+.compact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(2.85rem, 1fr));
+  gap: 0.35rem;
+}
+
+.compact-cell {
+  width: 100%;
+  min-height: 2.85rem;
+  height: auto;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.25rem 0.15rem;
+  cursor: pointer;
+}
+
+.compact-ep {
+  font-size: 0.62rem;
+  font-weight: 600;
+  opacity: 0.85;
+  line-height: 1;
+}
+
+.compact-rating {
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .season-labels {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--bg-surface);
 }
 
 .label-header {
@@ -481,7 +618,9 @@ const ratingTone = (rating: number) => {
   display: grid;
   place-items: end center;
   padding: 1rem;
-  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  padding-left: max(1rem, env(safe-area-inset-left, 0px));
+  padding-right: max(1rem, env(safe-area-inset-right, 0px));
+  /* padding-bottom set inline from app shell bottom-tabs inset */
 }
 
 .episode-dialog-backdrop {
@@ -496,7 +635,7 @@ const ratingTone = (rating: number) => {
   position: relative;
   z-index: 1;
   width: min(100%, 26rem);
-  max-height: min(70dvh, 32rem);
+  max-height: min(62dvh, 28rem);
   overflow: auto;
   padding: 1rem 1.1rem;
   background: var(--bg-surface);
@@ -574,7 +713,7 @@ const ratingTone = (rating: number) => {
     padding: 0.5rem;
   }
 
-  .cell,
+  .cell:not(.compact-cell),
   .season-label,
   .episode-label {
     width: 28px;
@@ -583,6 +722,10 @@ const ratingTone = (rating: number) => {
 
   .episode-label {
     height: 20px;
+  }
+
+  .compact-grid {
+    grid-template-columns: repeat(auto-fill, minmax(2.6rem, 1fr));
   }
 }
 </style>

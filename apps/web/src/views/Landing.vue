@@ -22,13 +22,16 @@
             <BrandWordmark size="sm" accent aria-hidden="true" />
           </template>
         </button>
-        <a
+        <button
           v-else
-          :href="payUrl"
-          class="nq-pill-blue nq-pill-lg nq-pill-stretch landing-cta"
+          type="button"
+          class="landing-enter"
+          :aria-label="landingCopy.ctaExplore"
+          @click="payOnlyOpen = true"
         >
-          {{ landingCopy.ctaExplore }}
-        </a>
+          <span class="landing-enter-prefix" aria-hidden="true">Explore</span>
+          <BrandWordmark size="sm" accent aria-hidden="true" />
+        </button>
       </div>
 
       <TitleMarquee class="landing-marquee" />
@@ -45,6 +48,12 @@
       :force-pick-enabled="forcePickEnabled"
       @force-pick="forceFavoritesPick"
     />
+
+    <PayOnlyGateModal
+      v-if="payOnlyOpen"
+      :already-installed-url="payUrl"
+      @close="payOnlyOpen = false"
+    />
   </div>
 </template>
 
@@ -53,12 +62,13 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import AppBrandHeader from "@/components/AppBrandHeader.vue";
 import BrandWordmark from "@/components/BrandWordmark.vue";
+import PayOnlyGateModal from "@/components/PayOnlyGateModal.vue";
 import SocialPlaceholders from "@/components/SocialPlaceholders.vue";
 import TitleMarquee from "@/components/TitleMarquee.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";
 import WelcomeOverlay from "@/components/WelcomeOverlay.vue";
 import { landingCopy } from "@/lib/contact";
-import { payOpenHttpsUrl } from "@/lib/payLinks";
+import { payOpenSchemeUrl } from "@/lib/payLinks";
 import { detectNimiqPay, isNimiqPay, isNimiqPayUserAgent } from "@/lib/nimiqPay";
 import {
   FORCE_FAVORITES_PICK_QUERY,
@@ -76,12 +86,13 @@ const router = useRouter();
 
 const inPay = ref(isNimiqPay() || isNimiqPayUserAgent());
 const entering = ref(false);
+const payOnlyOpen = ref(false);
 const welcomeOpen = ref(false);
 const welcomeWallet = ref("");
 const welcomeText = ref<ReturnType<typeof welcomeMessage>>("Welcome!");
 const forcePickEnabled = canForceFavoritesPick();
 
-const payUrl = computed(() => payOpenHttpsUrl());
+const payUrl = computed(() => payOpenSchemeUrl());
 
 let cancelled = false;
 /** Bumped to cancel an in-flight welcome hold (e.g. force-pick). */
@@ -255,14 +266,6 @@ const forceFavoritesPick = async () => {
 
 .landing-enter :deep(.brand-wordmark) {
   font-size: 1.2rem;
-}
-
-.landing-cta {
-  margin-bottom: 0;
-  text-align: center;
-  letter-spacing: 0.02em;
-  color: #fff;
-  text-decoration: none;
 }
 
 .landing-marquee {

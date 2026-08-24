@@ -8,7 +8,8 @@
     "build": "pnpm run --dir ../../packages/shared build && vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "pnpm run --dir ../../packages/shared build && vue-tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "compose:x-header": "tsx scripts/compose-x-header.ts"
   },
   "dependencies": {
     "@cinima/shared": "workspace:*",
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.1",
+    "sharp": "^0.35.3",
     "typescript": "^5.7.3",
     "vite": "^6.1.0",
     "vitest": "3",

@@ -13,11 +13,22 @@ import ShortShare from "../views/ShortShare.vue";
 import Landing from "../views/Landing.vue";
 import { ACTIVITY_UI_VISIBLE, RESERVED_PUBLIC_HANDLES } from "@cinima/shared";
 
+const devRoutes = import.meta.env.DEV
+  ? [
+      {
+        path: "/dev/x-header-lab",
+        name: "x-header-lab",
+        component: () => import("../views/dev/XHeaderLab.vue"),
+      },
+    ]
+  : [];
+
 const RESERVED = RESERVED_PUBLIC_HANDLES;
 
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
+    ...devRoutes,
     { path: "/", name: "landing", component: Landing },
     /** Always shows Landing, including inside Nimiq Pay (local preview / QA). */
     { path: "/gate", name: "gate", component: Landing },
