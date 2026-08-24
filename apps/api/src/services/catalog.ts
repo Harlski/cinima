@@ -1,5 +1,5 @@
 import { CATALOG_TTL_DAYS, makeTitleId, parseTitleId, type MediaType } from "@cinima/shared";
-import { and, count, eq, like, or, sql } from "drizzle-orm";
+import { and, count, eq, inArray, like, or, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { episodes, ratingSnapshots, titles } from "../db/schema.js";
 import { config } from "../lib/config.js";
@@ -203,18 +203,37 @@ export async function searchCatalog(query: string, limit = 24) {
       `/search/tv?query=${encodeURIComponent(q)}&include_adult=false`
     )) as { results?: Array<{ id: number }> } | null;
 
-    for (const id of (movieRes?.results ?? []).slice(0, 5).map((r) => r.id)) {
+    const movieIds = (movieRes?.results ?? []).slice(0, 8).map((r) => r.id);
+    const tvIds = (tvRes?.results ?? []).slice(0, 8).map((r) => r.id);
+
+    for (const id of movieIds) {
       await upsertFromTmdb("movie", id);
     }
-    for (const id of (tvRes?.results ?? []).slice(0, 5).map((r) => r.id)) {
+    for (const id of tvIds) {
       await upsertFromTmdb("tv", id);
     }
 
-    rows = await db
-      .select()
-      .from(titles)
-      .where(or(like(titles.title, `%${q}%`), like(titles.overview, `%${q}%`)))
-      .limit(limit);
+    const tmdbTitleIds = [
+      ...movieIds.map((id) => makeTitleId("movie", id)),
+      ...tvIds.map((id) => makeTitleId("tv", id)),
+    ];
+
+    if (tmdbTitleIds.length) {
+      const fromTmdb = await db
+        .select()
+        .from(titles)
+        .where(inArray(titles.id, tmdbTitleIds))
+        .limit(limit);
+      const byId = new Map(rows.map((r) => [r.id, r]));
+      for (const row of fromTmdb) byId.set(row.id, row);
+      rows = [...byId.values()].slice(0, limit);
+    } else {
+      rows = await db
+        .select()
+        .from(titles)
+        .where(or(like(titles.title, `%${q}%`), like(titles.overview, `%${q}%`)))
+        .limit(limit);
+    }
   }
 
   return rows.map(toTitleSummary);

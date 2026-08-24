@@ -9,8 +9,12 @@ export const FORCE_FAVORITES_PICK_QUERY = "pickFavorites";
 
 export function welcomeMessage(opts: {
   returning: boolean;
-}): "Welcome Back!" | "Welcome!" {
-  return opts.returning ? "Welcome Back!" : "Welcome!";
+  handle?: string | null;
+}): string {
+  if (!opts.returning) return "Welcome!";
+  const handle = opts.handle?.trim();
+  if (handle) return `Welcome Back, ${handle}!`;
+  return "Welcome Back!";
 }
 
 /**

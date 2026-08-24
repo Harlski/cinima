@@ -119,6 +119,7 @@ const enterCinima = async () => {
         handle: auth.user.handle,
         favoriteCount: auth.user.favoriteCount,
       }),
+      handle: auth.user.handle,
     });
     welcomeOpen.value = true;
     await sleep(WELCOME_HOLD_MS);

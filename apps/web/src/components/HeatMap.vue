@@ -4,6 +4,36 @@
       <h3>Episode Ratings</h3>
     </div>
 
+    <div
+      v-if="seasons.length > 1"
+      class="season-tabs"
+      role="tablist"
+      aria-label="Season"
+    >
+      <button
+        type="button"
+        role="tab"
+        class="season-tab"
+        :class="{ active: focusSeason === null }"
+        :aria-selected="focusSeason === null"
+        @click="focusSeason = null"
+      >
+        All
+      </button>
+      <button
+        v-for="season in seasons"
+        :key="`tab-${season}`"
+        type="button"
+        role="tab"
+        class="season-tab"
+        :class="{ active: focusSeason === season }"
+        :aria-selected="focusSeason === season"
+        @click="focusSeason = season"
+      >
+        S{{ season }}
+      </button>
+    </div>
+
     <div class="heatmap-container">
       <div class="heatmap-blur">
         <div v-if="seasons.length === 0" class="empty">
@@ -25,7 +55,7 @@
           <div class="episodes-grid">
             <div class="episode-labels">
               <div
-                v-for="season in seasons"
+                v-for="season in visibleSeasons"
                 :key="`col-${season}`"
                 class="episode-label"
               >
@@ -35,7 +65,7 @@
 
             <div class="cells">
               <div
-                v-for="season in seasons"
+                v-for="season in visibleSeasons"
                 :key="season"
                 class="season-column"
               >
@@ -64,55 +94,88 @@
       </div>
     </div>
 
-    <div v-if="selected" class="episode-detail">
-      <div class="detail-top">
-        <div>
-          <p class="detail-code">S{{ selected.season }} · E{{ selected.episode }}</p>
-          <h4>{{ selected.name || `Episode ${selected.episode}` }}</h4>
+    <Teleport to="body">
+      <div
+        v-if="selected"
+        class="episode-dialog-root"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="dialogLabel"
+        @keydown.escape.prevent="selected = null"
+      >
+        <button
+          type="button"
+          class="episode-dialog-backdrop"
+          aria-label="Close episode"
+          @click="selected = null"
+        />
+        <div class="episode-dialog" ref="dialogEl" tabindex="-1">
+          <div class="detail-top">
+            <div>
+              <p class="detail-code">S{{ selected.season }} · E{{ selected.episode }}</p>
+              <h4>{{ selected.name || `Episode ${selected.episode}` }}</h4>
+            </div>
+            <div
+              v-if="selected.rating != null"
+              class="detail-rating"
+              :class="ratingTone(selected.rating)"
+            >
+              {{ selected.rating.toFixed(1) }}
+            </div>
+            <div v-else class="detail-rating muted">—</div>
+          </div>
+          <p class="detail-meta">Episode rating</p>
+          <ExpandableText
+            v-if="selected.overview"
+            class="detail-overview"
+            :text="selected.overview"
+            :lines="4"
+          />
+          <div class="detail-actions">
+            <button type="button" class="nq-pill-secondary" @click="selected = null">
+              Close
+            </button>
+            <a
+              v-if="imdbUrl"
+              class="nq-pill-secondary"
+              :href="imdbUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View on IMDb
+            </a>
+          </div>
         </div>
-        <div
-          v-if="selected.rating != null"
-          class="detail-rating"
-          :class="ratingTone(selected.rating)"
-        >
-          {{ selected.rating.toFixed(1) }}
-        </div>
-        <div v-else class="detail-rating muted">---</div>
       </div>
-      <p class="detail-meta">Episode rating</p>
-      <ExpandableText
-        v-if="selected.overview"
-        class="detail-overview"
-        :text="selected.overview"
-        :lines="4"
-      />
-      <div class="detail-actions">
-        <button type="button" class="nq-pill-secondary" @click="selected = null">Close</button>
-        <a
-          v-if="imdbUrl"
-          class="nq-pill-secondary"
-          :href="imdbUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          View on IMDb
-        </a>
-      </div>
-    </div>
+    </Teleport>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 import { imdbTitleUrl, type EpisodeCell } from "@cinima/shared";
 import ExpandableText from "@/components/ExpandableText.vue";
+import {
+  maxEpisodeInSeasons,
+  visibleHeatmapSeasons,
+} from "@/lib/heatmapSeasons";
+
+/** Above this episode count, default the grid to season 1 (user can still pick All). */
+const LONG_SERIES_EPISODE_THRESHOLD = 40;
 
 const props = defineProps<{
   episodes: EpisodeCell[];
 }>();
 
 const selected = ref<EpisodeCell | null>(null);
+const focusSeason = ref<number | null>(null);
+const longSeriesDefaulted = ref(false);
+const dialogEl = ref<HTMLElement | null>(null);
 const imdbUrl = computed(() => imdbTitleUrl(selected.value?.imdbId));
+const dialogLabel = computed(() => {
+  if (!selected.value) return "Episode";
+  return selected.value.name || `Episode ${selected.value.episode}`;
+});
 
 const episodeMap = computed(() => {
   const map = new Map<string, EpisodeCell>();
@@ -127,18 +190,44 @@ const seasons = computed(() => {
   return Array.from(s).sort((a, b) => a - b);
 });
 
-const maxEpisodes = computed(() => {
-  const counts = props.episodes.reduce((acc, ep) => {
-    acc[ep.season] = Math.max(acc[ep.season] || 0, ep.episode);
-    return acc;
-  }, {} as Record<number, number>);
-  return Math.max(...Object.values(counts), 0);
+const visibleSeasons = computed(() =>
+  visibleHeatmapSeasons(seasons.value, focusSeason.value)
+);
+
+const maxEpisodes = computed(() =>
+  maxEpisodeInSeasons(props.episodes, visibleSeasons.value)
+);
+
+watch(selected, async (value) => {
+  if (!value) return;
+  await nextTick();
+  dialogEl.value?.focus();
 });
+
+watch(
+  seasons,
+  (list) => {
+    if (focusSeason.value != null && !list.includes(focusSeason.value)) {
+      focusSeason.value = null;
+    }
+    // Once: long series open on season 1 so the grid stays scannable.
+    if (
+      !longSeriesDefaulted.value &&
+      focusSeason.value == null &&
+      list.length > 1 &&
+      props.episodes.length > LONG_SERIES_EPISODE_THRESHOLD
+    ) {
+      focusSeason.value = list[0] ?? null;
+      longSeriesDefaulted.value = true;
+    }
+  },
+  { immediate: true }
+);
 
 const getCellValue = (season: number, episode: number): string => {
   const ep = episodeMap.value.get(`${season}-${episode}`);
   if (!ep) return "";
-  if (ep.rating == null) return "---";
+  if (ep.rating == null) return "—";
   return ep.rating.toFixed(1);
 };
 
@@ -208,6 +297,31 @@ const ratingTone = (rating: number) => {
   margin: 0;
   font-size: 1.1rem;
   color: var(--text-primary);
+}
+
+.season-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: -0.35rem 0 0.85rem;
+}
+
+.season-tab {
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border-radius: 999px;
+  padding: 0.28rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.season-tab.active {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
 }
 
 .heatmap-container {
@@ -360,12 +474,35 @@ const ratingTone = (rating: number) => {
   color: white;
 }
 
-.episode-detail {
-  margin-top: 0.75rem;
-  padding: 0.9rem 1rem;
+.episode-dialog-root {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: end center;
+  padding: 1rem;
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+.episode-dialog-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+}
+
+.episode-dialog {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 26rem);
+  max-height: min(70dvh, 32rem);
+  overflow: auto;
+  padding: 1rem 1.1rem;
   background: var(--bg-surface);
-  border-radius: 12px;
+  border-radius: 16px;
   border: 1px solid var(--border);
+  outline: none;
 }
 
 .detail-top {

@@ -28,4 +28,13 @@ describe("pay mini app intent links", () => {
       "nimiqpay://miniapp?url=localhost%3A5174"
     );
   });
+
+  it("keeps path in the host form for deep links", () => {
+    expect(payMiniAppHost("https://cinima.app/alice/t/movie/550")).toBe(
+      "cinima.app/alice/t/movie/550"
+    );
+    expect(openInPayUrl("https://cinima.app/alice/t/movie/550")).toBe(
+      "https://nimpay.app/miniapps/open/cinima.app/alice/t/movie/550"
+    );
+  });
 });

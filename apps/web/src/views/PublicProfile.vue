@@ -50,7 +50,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import type { PublicProfile, TitleSummary } from "@cinima/shared";
-import { profileShareCopy } from "@cinima/shared";
+import { profileShareCopy, profileShareUrl } from "@cinima/shared";
 import AppBrandHeader from "@/components/AppBrandHeader.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";
@@ -58,7 +58,7 @@ import PayTitleModal from "@/components/PayTitleModal.vue";
 import ProfileTaste from "@/components/ProfileTaste.vue";
 import UserCard from "@/components/UserCard.vue";
 import { isNimiqPay } from "@/lib/nimiqPay";
-import { payOpenHttpsUrl } from "@/lib/payLinks";
+import { payAppOrigin, payOpenHttpsUrl } from "@/lib/payLinks";
 
 const route = useRoute();
 
@@ -67,7 +67,10 @@ const loading = ref(true);
 const profile = ref<PublicProfile | null>(null);
 const gateTitle = ref<TitleSummary | null>(null);
 
-const payUrl = computed(() => payOpenHttpsUrl());
+const payUrl = computed(() => {
+  if (!profile.value?.handle) return payOpenHttpsUrl();
+  return payOpenHttpsUrl(profileShareUrl(payAppOrigin(), profile.value.handle));
+});
 
 const onSelectTitle = (title: TitleSummary) => {
   if (isNimiqPay()) return;

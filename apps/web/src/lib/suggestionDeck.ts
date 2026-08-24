@@ -7,9 +7,10 @@ export function centerIndex(length: number): number {
 
 export function initialSuggestionWindow<T>(
   pool: readonly T[],
-  size = SUGGESTION_WINDOW_SIZE
+  size = SUGGESTION_WINDOW_SIZE,
+  random: () => number = Math.random
 ): T[] {
-  return pool.slice(0, size);
+  return shuffle([...pool], random).slice(0, Math.min(size, pool.length));
 }
 
 export function nextSuggestionWindow<T extends { title: { id: string } }>(

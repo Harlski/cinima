@@ -28,10 +28,11 @@ const pool = [
 ];
 
 describe("restoreForYouWindow", () => {
-  it("uses the first window and center card when nothing is remembered", () => {
+  it("opens a shuffled window and centers when nothing is remembered", () => {
     const restored = restoreForYouWindow(pool, null);
-    expect(ids(restored.window)).toEqual(["a", "b", "c", "d", "e", "f", "g"]);
-    expect(restored.window[restored.selectedIndex]?.title.id).toBe("d");
+    expect(restored.window).toHaveLength(7);
+    expect(new Set(ids(restored.window)).size).toBe(7);
+    expect(restored.window[restored.selectedIndex]).toBeDefined();
   });
 
   it("lands on the remembered title in its remembered window", () => {
@@ -55,13 +56,13 @@ describe("restoreForYouWindow", () => {
     expect(restored.window[restored.selectedIndex]?.title.id).toBe("h");
   });
 
-  it("uses the first window when none of the remembered titles remain", () => {
+  it("falls back to a shuffled window when none of the remembered titles remain", () => {
     const restored = restoreForYouWindow(pool, {
       windowIds: ["x", "y"],
       selectedTitleId: "x",
     });
-    expect(ids(restored.window)).toEqual(["a", "b", "c", "d", "e", "f", "g"]);
-    expect(restored.window[restored.selectedIndex]?.title.id).toBe("d");
+    expect(restored.window).toHaveLength(7);
+    expect(restored.window[restored.selectedIndex]).toBeDefined();
   });
 
   it("centers the remaining window when the remembered title left the pool", () => {

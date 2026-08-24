@@ -8,7 +8,17 @@
       </div>
 
       <div v-else-if="payload" class="app-column content">
-        <p class="invite">{{ invitation }}</p>
+        <div class="invite-row">
+          <RouterLink class="invite-identity" :to="profilePath" :aria-label="`${payload.handle} profile`">
+            <Identicon
+              :address="payload.walletAddress"
+              :size="40"
+              :alt="`${payload.handle} identicon`"
+            />
+            <span class="invite-handle">{{ payload.handle }}</span>
+          </RouterLink>
+          <p class="invite">wants you to check out</p>
+        </div>
 
         <button
           type="button"
@@ -30,10 +40,10 @@
             <span v-if="payload.title.year">{{ payload.title.year }}</span>
             <span v-if="payload.title.year" class="dot">·</span>
             <span>{{ mediaLabel }}</span>
-            <template v-if="payload.title.rating != null">
-              <span class="dot">·</span>
-              <span class="rating">{{ payload.title.rating.toFixed(1) }}</span>
-            </template>
+            <span class="dot">·</span>
+            <span class="rating" :class="{ muted: payload.title.rating == null }">
+              {{ formatTitleRating(payload.title.rating) }}
+            </span>
           </p>
           <p v-if="payload.title.overview" class="overview">
             {{ payload.title.overview }}
@@ -74,17 +84,20 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import {
   titleShareCopy,
+  titleShareUrl,
   type ResolvedShareLink,
   type ResolvedTitleShareLink,
   type TitleSummary,
 } from "@cinima/shared";
 import AppBrandHeader from "@/components/AppBrandHeader.vue";
+import Identicon from "@/components/Identicon.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
 import PayTitleModal from "@/components/PayTitleModal.vue";
 import PosterImg from "@/components/PosterImg.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";
 import { isNimiqPay } from "@/lib/nimiqPay";
-import { payOpenHttpsUrl } from "@/lib/payLinks";
+import { payAppOrigin, payOpenHttpsUrl } from "@/lib/payLinks";
+import { formatTitleRating } from "@/lib/titleRating";
 
 const route = useRoute();
 const router = useRouter();
@@ -105,7 +118,17 @@ const mediaLabel = computed(() =>
   payload.value?.title.mediaType === "tv" ? "TV" : "Movie"
 );
 
-const payUrl = computed(() => payOpenHttpsUrl());
+const payUrl = computed(() => {
+  if (!payload.value) return payOpenHttpsUrl();
+  return payOpenHttpsUrl(
+    titleShareUrl(
+      payAppOrigin(),
+      payload.value.handle,
+      payload.value.title.mediaType,
+      payload.value.title.tmdbId
+    )
+  );
+});
 
 const onSelectTitle = () => {
   if (!payload.value || isNimiqPay()) return;
@@ -197,6 +220,32 @@ watch(code, loadShare, { immediate: true });
   font-size: 1rem;
   line-height: 1.45;
   font-weight: 600;
+}
+
+.invite-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.invite-identity {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: inherit;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.invite-handle {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.rating.muted {
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .hero {

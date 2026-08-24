@@ -10,7 +10,67 @@
           v-else-if="!showHistory && searchQuery && results.length === 0"
           class="empty"
         >
-          No results found
+          <p>No results found</p>
+          <div v-if="titleLookups.length" class="sparse-lookups-stage">
+            <h2>Last looked up</h2>
+            <ul class="lookup-list">
+              <li v-for="item in titleLookups" :key="item.id">
+                <button type="button" class="lookup-item" @click="openLookup(item)">
+                  <span class="lookup-poster">
+                    <PosterImg
+                      v-if="item.posterUrl"
+                      :src="item.posterUrl"
+                      :alt="item.title"
+                    />
+                    <span v-else class="lookup-fallback">{{ item.title.charAt(0) }}</span>
+                  </span>
+                  <span class="lookup-text">
+                    <span class="lookup-title">{{ item.title }}</span>
+                    <span class="lookup-meta">
+                      {{ item.year ? `${item.year} · ` : "" }}{{ item.mediaType === "tv" ? "TV" : "Movie" }}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div v-else-if="!showHistory && showSparseLookups" class="results sparse-with-results">
+          <TitleCard
+            v-for="title in displayedResults"
+            :key="title.id"
+            variant="horizontal"
+            :title="title"
+            :favorited="favoritesStore.isFavorite(title.id)"
+            :watchlisted="watchlistStore.isOnWatchlist(title.id)"
+            @toggle-favorite="toggleFavorite"
+            @toggle-watchlist="toggleWatchlist"
+            @click="goToTitle(title.id)"
+          />
+          <div class="sparse-lookups-stage">
+            <h2>Last looked up</h2>
+            <ul class="lookup-list">
+              <li v-for="item in titleLookups" :key="item.id">
+                <button type="button" class="lookup-item" @click="openLookup(item)">
+                  <span class="lookup-poster">
+                    <PosterImg
+                      v-if="item.posterUrl"
+                      :src="item.posterUrl"
+                      :alt="item.title"
+                    />
+                    <span v-else class="lookup-fallback">{{ item.title.charAt(0) }}</span>
+                  </span>
+                  <span class="lookup-text">
+                    <span class="lookup-title">{{ item.title }}</span>
+                    <span class="lookup-meta">
+                      {{ item.year ? `${item.year} · ` : "" }}{{ item.mediaType === "tv" ? "TV" : "Movie" }}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            </ul>
+          </div>
         </div>
 
         <div v-else-if="!showHistory" ref="resultsEl" class="results">
@@ -32,6 +92,32 @@
     <div ref="searchDockEl" class="search-dock" :style="searchDockStyle">
       <div class="search-dock-inner">
         <div v-if="showHistory" class="history">
+          <div v-if="titleLookups.length" class="lookups">
+            <div class="history-head">
+              <h2>Last looked up</h2>
+            </div>
+            <ul class="lookup-list">
+              <li v-for="item in titleLookups" :key="item.id">
+                <button type="button" class="lookup-item" @click="openLookup(item)">
+                  <span class="lookup-poster">
+                    <PosterImg
+                      v-if="item.posterUrl"
+                      :src="item.posterUrl"
+                      :alt="item.title"
+                    />
+                    <span v-else class="lookup-fallback">{{ item.title.charAt(0) }}</span>
+                  </span>
+                  <span class="lookup-text">
+                    <span class="lookup-title">{{ item.title }}</span>
+                    <span class="lookup-meta">
+                      {{ item.year ? `${item.year} · ` : "" }}{{ item.mediaType === "tv" ? "TV" : "Movie" }}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            </ul>
+          </div>
+
           <div class="history-head">
             <h2>Recent searches</h2>
             <button
@@ -129,6 +215,11 @@ import {
   pushSearchHistory,
   removeSearchHistoryItem,
 } from "@/lib/searchHistory";
+import {
+  loadTitleLookups,
+  pushTitleLookup,
+  type TitleLookup,
+} from "@/lib/searchTitleLookups";
 import { parseSearchQuery, searchRouteQuery } from "@/lib/searchQuery";
 import {
   loadSearchResults,
@@ -147,6 +238,7 @@ import {
   type SearchSortKey,
 } from "@/lib/searchSort";
 import type { TitleSummary } from "@cinima/shared";
+import PosterImg from "@/components/PosterImg.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -160,6 +252,7 @@ const results = ref<TitleSummary[]>(
 );
 const loading = ref(false);
 const history = ref<string[]>(loadSearchHistory());
+const titleLookups = ref<TitleLookup[]>(loadTitleLookups());
 const sortKey = ref<SearchSortKey>(loadSearchSort());
 const searchDockBottom = ref("var(--bottom-tabs-inset)");
 const searchStageStyle = ref<Record<string, string>>({
@@ -178,6 +271,14 @@ const sortOptions: { key: SearchSortKey; label: string }[] = [
 ];
 
 const showHistory = computed(() => !searchQuery.value.trim());
+const showSparseLookups = computed(
+  () =>
+    !!searchQuery.value.trim() &&
+    !loading.value &&
+    results.value.length > 0 &&
+    results.value.length < 3 &&
+    titleLookups.value.length > 0
+);
 const historyOldestFirst = computed(() => [...history.value].reverse());
 const displayedResults = computed(() =>
   sortSearchResults(results.value, sortKey.value)
@@ -261,14 +362,15 @@ async function runSearch(query: string, record: boolean) {
   if (cached) {
     results.value = cached;
     if (record) history.value = pushSearchHistory(q);
-    return;
+  } else {
+    loading.value = true;
   }
 
-  loading.value = true;
   try {
-    results.value = await catalogStore.search(q);
-    saveSearchResults(q, results.value);
-    if (record) {
+    const fresh = await catalogStore.search(q);
+    results.value = fresh;
+    saveSearchResults(q, fresh);
+    if (record && !cached) {
       history.value = pushSearchHistory(q);
     }
   } finally {
@@ -322,8 +424,19 @@ const toggleWatchlist = async (title: TitleSummary) => {
 };
 
 const goToTitle = async (titleId: string) => {
+  const title =
+    results.value.find((item) => item.id === titleId) ??
+    titleLookups.value.find((item) => item.id === titleId);
+  if (title) {
+    titleLookups.value = pushTitleLookup(title);
+  }
   await syncSearchRoute(searchQuery.value);
   await router.push({ name: "title", params: { id: titleId } });
+};
+
+const openLookup = async (item: TitleLookup) => {
+  titleLookups.value = pushTitleLookup(item);
+  await router.push({ name: "title", params: { id: item.id } });
 };
 
 const clearQuery = () => {
@@ -521,9 +634,106 @@ onUnmounted(() => {
 .empty {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1rem;
   color: var(--text-secondary);
+  pointer-events: auto;
+}
+
+.empty p {
+  margin: 0;
+}
+
+.sparse-lookups-stage {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.sparse-lookups-stage h2 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.lookup-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.lookup-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.45rem 0.55rem;
+  border: 0;
+  border-radius: 10px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lookup-poster {
+  width: 2.4rem;
+  height: 3.4rem;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--bg-primary);
+}
+
+.lookup-poster :deep(img) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.lookup-fallback {
+  display: grid;
+  place-content: center;
+  width: 100%;
+  height: 100%;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.lookup-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.lookup-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.lookup-meta {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.lookups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 0.35rem;
 }
 
 .results {

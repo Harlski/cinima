@@ -22,8 +22,9 @@ describe("Welcome gate", () => {
           handle: "ada",
           favoriteCount: 0,
         }),
+        handle: "ada",
       })
-    ).toBe("Welcome Back!");
+    ).toBe("Welcome Back, ada!");
     expect(
       welcomeMessage({
         returning: isReturningUser({

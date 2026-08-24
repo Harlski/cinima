@@ -27,9 +27,9 @@
         <div class="meta">
           <h2>{{ title.title }}</h2>
           <p class="year-kind">{{ title.year }} · {{ title.mediaType }}</p>
-          <div v-if="title.rating" class="rating">
+          <div class="rating" :class="{ muted: !hasTitleRating(title.rating) }">
             <NqIcon name="star" :size="20" />
-            {{ title.rating.toFixed(1) }}
+            {{ formatTitleRating(title.rating) }}
           </div>
           <ExpandableText
             v-if="title.overview"
@@ -229,6 +229,7 @@ import NqSpinner from "@/components/NqSpinner.vue";
 import PosterImg from "@/components/PosterImg.vue";
 import ShareTitleSheet from "@/components/ShareTitleSheet.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";
+import { formatTitleRating, hasTitleRating } from "@/lib/titleRating";
 
 const route = useRoute();
 const router = useRouter();
@@ -506,6 +507,11 @@ onMounted(() => {
   color: var(--warning);
   font-weight: 600;
   font-size: 1.1rem;
+}
+
+.rating.muted {
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .rating :deep(.nq-icon) {

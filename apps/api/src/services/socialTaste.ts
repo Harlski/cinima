@@ -172,17 +172,31 @@ export async function clearRecommend(wallet: string, titleId: string) {
     .where(and(eq(favorites.walletAddress, w), eq(favorites.titleId, titleId)));
 }
 
+function shuffleSuggestions<T>(items: T[], random: () => number = Math.random): T[] {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    const a = copy[i]!;
+    const b = copy[j]!;
+    copy[i] = b;
+    copy[j] = a;
+  }
+  return copy;
+}
+
 async function popularSuggestions(excludeIds: Set<string>): Promise<OverlapSuggestion[]> {
   const popular = await db
     .select()
     .from(titles)
     .where(sql`TRIM(COALESCE(${titles.overview}, '')) != ''`)
     .orderBy(sql`CAST(COALESCE(rating, '0') AS REAL) DESC`)
-    .limit(16);
-  return popular
-    .map(toTitleSummary)
-    .filter((t) => !excludeIds.has(t.id))
-    .map((title) => ({ title, sharedCount: 0, sampleWallets: [] }));
+    .limit(48);
+  return shuffleSuggestions(
+    popular
+      .map(toTitleSummary)
+      .filter((t) => !excludeIds.has(t.id))
+      .map((title) => ({ title, sharedCount: 0, sampleWallets: [] }))
+  ).slice(0, 20);
 }
 
 /** Cached titles with posters — peer Favorite count, then recent + popular. */
@@ -318,10 +332,13 @@ export async function discoverFor(
         });
       }
     }
-    suggestions = [...map.values()]
-      .sort((a, b) => b.score - a.score || b.sharedCount - a.sharedCount)
-      .filter((s) => hasOverview(s.title.overview))
-      .slice(0, 20)
+    suggestions = shuffleSuggestions(
+      [...map.values()]
+        .sort((a, b) => b.score - a.score || b.sharedCount - a.sharedCount)
+        .filter((s) => hasOverview(s.title.overview))
+        .slice(0, 40)
+    )
+      .slice(0, 24)
       .map((s) => ({
         title: s.title,
         sharedCount: s.sharedCount,

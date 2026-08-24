@@ -19,10 +19,10 @@
           <span v-if="title.year">{{ title.year }}</span>
           <span v-if="title.year" class="dot">·</span>
           <span>{{ mediaLabel }}</span>
-          <template v-if="title.rating != null">
-            <span class="dot">·</span>
-            <span class="rating">{{ title.rating.toFixed(1) }}</span>
-          </template>
+          <span class="dot">·</span>
+          <span class="rating" :class="{ muted: title.rating == null }">
+            {{ formatTitleRating(title.rating) }}
+          </span>
         </div>
       </div>
 
@@ -54,6 +54,7 @@ import { computed } from "vue";
 import type { TitleSummary } from "@cinima/shared";
 import NqIcon from "@/components/NqIcon.vue";
 import PosterImg from "@/components/PosterImg.vue";
+import { formatTitleRating } from "@/lib/titleRating";
 
 const props = withDefaults(
   defineProps<{
@@ -230,6 +231,11 @@ const mediaLabel = computed(() => {
 .title-card--horizontal .rating {
   color: var(--warning);
   font-weight: 600;
+}
+
+.title-card--horizontal .rating.muted {
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .favorite-button {

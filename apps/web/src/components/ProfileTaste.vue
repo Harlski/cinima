@@ -34,6 +34,7 @@ import { ref, computed, watch } from "vue";
 import type { MediaType, TitleSummary } from "@cinima/shared";
 import KindTabs from "@/components/KindTabs.vue";
 import PosterSlider from "@/components/PosterSlider.vue";
+import { pickDefaultMediaKind } from "@/lib/mediaKindDefault";
 
 const props = defineProps<{
   favorites: TitleSummary[];
@@ -63,14 +64,21 @@ const visibleRecommends = computed<TitleSummary[]>(() =>
   recommendKind.value === "tv" ? tvRecommends.value : movieRecommends.value
 );
 
-watch([tvRecommends, movieRecommends], ([tv, movie]) => {
-  recommendKind.value = tv.length > movie.length ? "tv" : "movie";
-});
+watch(
+  [tvRecommends, movieRecommends],
+  ([tv, movie]) => {
+    recommendKind.value = pickDefaultMediaKind(movie.length, tv.length);
+  },
+  { immediate: true }
+);
 
-watch([tvFavorites, movieFavorites], ([tv, movie]) => {
-  favoriteKind.value = tv.length > movie.length ? "tv" : "movie";
-});
-</script>
+watch(
+  [tvFavorites, movieFavorites],
+  ([tv, movie]) => {
+    favoriteKind.value = pickDefaultMediaKind(movie.length, tv.length);
+  },
+  { immediate: true }
+);</script>
 
 <style scoped>
 .media-section h2 {

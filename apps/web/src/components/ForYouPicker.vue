@@ -23,7 +23,7 @@
 import { computed, ref, watch } from "vue";
 import type { OverlapSuggestion } from "@cinima/shared";
 import TitleDeckPicker, { type DeckItem } from "@/components/TitleDeckPicker.vue";
-import { loadDeckSelection, restoreDeckWindow, saveDeckSelection } from "@/lib/deckSelection";
+import { loadDeckSelection, saveDeckSelection } from "@/lib/deckSelection";
 import { centerIndex, initialSuggestionWindow, nextSuggestionWindow } from "@/lib/suggestionDeck";
 
 const props = defineProps<{
@@ -56,12 +56,13 @@ function toWindowSuggestions(pool: OverlapSuggestion[], window: DeckItem[]): Ove
 function buildWindow(pool: OverlapSuggestion[]): { items: DeckItem[]; selectedIndex: number } {
   const deckPool = toDeckItems(pool);
   const remembered = loadDeckSelection("for-you");
-  if (remembered) {
-    const restored = restoreDeckWindow(deckPool, remembered);
-    if (restored.items.length > 0) return restored;
-  }
   const window = initialSuggestionWindow(deckPool);
-  return { items: window, selectedIndex: centerIndex(window.length) };
+  let selectedIndex = centerIndex(window.length);
+  if (remembered) {
+    const idx = window.findIndex((item) => item.title.id === remembered.selectedTitleId);
+    if (idx >= 0) selectedIndex = idx;
+  }
+  return { items: window, selectedIndex };
 }
 
 const initial = buildWindow(props.suggestions);

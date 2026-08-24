@@ -21,10 +21,10 @@
           <span v-if="selected.title.year">{{ selected.title.year }}</span>
           <span v-if="selected.title.year" class="dot">·</span>
           <span>{{ mediaLabel(selected.title) }}</span>
-          <template v-if="selected.title.rating != null">
-            <span class="dot">·</span>
-            <span class="rating">{{ selected.title.rating.toFixed(1) }}</span>
-          </template>
+          <span class="dot">·</span>
+          <span class="rating" :class="{ muted: selected.title.rating == null }">
+            {{ formatTitleRating(selected.title.rating) }}
+          </span>
         </p>
         <p v-if="selected.title.overview" class="overview">
           {{ selected.title.overview }}
@@ -132,6 +132,7 @@ import type { TitleSummary } from "@cinima/shared";
 import Identicon from "@/components/Identicon.vue";
 import NqIcon from "@/components/NqIcon.vue";
 import PosterImg from "@/components/PosterImg.vue";
+import { formatTitleRating } from "@/lib/titleRating";
 import {
   captureDeckSelection,
   deckScrollLeftToCenter,
@@ -453,6 +454,11 @@ function onResize() {
 .rating {
   color: var(--warning);
   font-weight: 600;
+}
+
+.rating.muted {
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .overview {
