@@ -7,6 +7,8 @@
       'discover--overlap': !loading && mode === 'overlap' && !showHandleStep,
       'discover--for-you':
         !loading && mode === 'overlap' && !showHandleStep && activeTab === 'for-you',
+      'discover--recommends':
+        !loading && mode === 'overlap' && !showHandleStep && activeTab === 'recommends',
     }"
   >
     <div v-if="loading && !showHandleStep" class="loading">
@@ -54,6 +56,26 @@
           @toggle-favorite="toggleFavorite"
           @toggle-watchlist="toggleWatchlist"
           @open="goToTitle"
+        />
+      </section>
+
+      <section v-else-if="activeTab === 'recommends'" class="recommends-section">
+        <div v-if="communityLoading && !communityLoaded" class="feed-empty">
+          Loading Recommends…
+        </div>
+        <div
+          v-else-if="!communityMovies.length && !communityTv.length"
+          class="feed-empty"
+        >
+          No community Recommends yet.
+        </div>
+        <CommunityRecommends
+          v-else
+          :movies="communityMovies"
+          :tv="communityTv"
+          heading="What others on Cinima recommend"
+          :max-rows="4"
+          @select="goToTitleSummary"
         />
       </section>
 
@@ -142,6 +164,16 @@
               type="button"
               role="tab"
               class="discover-tab"
+              :class="{ active: activeTab === 'recommends' }"
+              :aria-selected="activeTab === 'recommends'"
+              @click="activeTab = 'recommends'"
+            >
+              Recommends
+            </button>
+            <button
+              type="button"
+              role="tab"
+              class="discover-tab"
               :class="{ active: activeTab === 'following' }"
               :aria-selected="activeTab === 'following'"
               @click="activeTab = 'following'"
@@ -208,6 +240,7 @@ import {
 import { preloadImages } from "@/lib/preloadImages";
 import { useAuthStore } from "@/stores/auth";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
+import CommunityRecommends from "@/components/CommunityRecommends.vue";
 import FindPeopleSheet from "@/components/FindPeopleSheet.vue";
 import FollowingStrip from "@/components/FollowingStrip.vue";
 import Identicon from "@/components/Identicon.vue";
@@ -219,6 +252,7 @@ import {
   markFollowingStripSeen,
   sortFollowingStripPeople,
 } from "@/lib/followingStrip";
+import { useCommunityRecommends } from "@/composables/useCommunityRecommends";
 import { useTitleActionConfirm } from "@/composables/useTitleActionConfirm";
 
 defineOptions({ name: "Discover" });
@@ -250,7 +284,14 @@ const {
 
 const loading = ref(true);
 const mode = ref<"onboarding" | "overlap">("onboarding");
-const activeTab = ref<"for-you" | "following">("for-you");
+const activeTab = ref<"for-you" | "recommends" | "following">("for-you");
+const {
+  movies: communityMovies,
+  tv: communityTv,
+  loaded: communityLoaded,
+  loading: communityLoading,
+  load: loadCommunityRecommends,
+} = useCommunityRecommends();
 const favoriteCount = ref(0);
 const minFavorites = ref(3);
 const onboardingCandidates = ref<TitleSummary[]>([]);
@@ -549,6 +590,9 @@ watch(activeTab, async (tab) => {
   if (tab === "following" && mode.value === "overlap") {
     resetAppContentScroll();
     await ensureFollowingTabData();
+  } else if (tab === "recommends" && mode.value === "overlap") {
+    resetAppContentScroll();
+    await loadCommunityRecommends();
   }
 });
 
@@ -586,6 +630,10 @@ const onConfirmAction = async () => {
 
 const goToTitle = (titleId: string) => {
   router.push({ name: "title", params: { id: titleId } });
+};
+
+const goToTitleSummary = (title: TitleSummary) => {
+  goToTitle(title.id);
 };
 
 const goToUser = (wallet: string) => {
@@ -667,6 +715,17 @@ onMounted(() => {
 .discover--for-you .discover-body {
   padding: 0;
   gap: 0;
+}
+
+.discover--recommends .discover-body {
+  padding-top: 0.75rem;
+}
+
+.recommends-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-bottom: 0.5rem;
 }
 
 .discover-feed-tabs {

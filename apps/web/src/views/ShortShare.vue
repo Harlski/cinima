@@ -20,19 +20,21 @@
           <p class="invite">wants you to check out</p>
         </div>
 
-        <button
-          type="button"
-          class="hero poster-press"
-          :aria-label="payload.title.title"
-          @click="onSelectTitle"
-        >
-          <PosterImg
-            v-if="payload.title.posterUrl"
-            :src="payload.title.posterUrl"
-            :alt="payload.title.title"
-          />
-          <div v-else class="hero-fallback">{{ payload.title.title }}</div>
-        </button>
+        <GoldGlowShell radius="12px">
+          <button
+            type="button"
+            class="hero poster-press"
+            :aria-label="payload.title.title"
+            @click="onSelectTitle"
+          >
+            <PosterImg
+              v-if="payload.title.posterUrl"
+              :src="payload.title.posterUrl"
+              :alt="payload.title.title"
+            />
+            <div v-else class="hero-fallback">{{ payload.title.title }}</div>
+          </button>
+        </GoldGlowShell>
 
         <div class="meta">
           <h2>{{ payload.title.title }}</h2>
@@ -48,6 +50,14 @@
           <p v-if="payload.title.overview" class="overview">
             {{ payload.title.overview }}
           </p>
+          <button
+            v-if="payload.title.overview"
+            type="button"
+            class="read-more"
+            @click="onSelectTitle"
+          >
+            Read more
+          </button>
         </div>
 
         <RouterLink class="nq-pill-blue nq-pill-lg nq-pill-stretch profile-cta" :to="profilePath">
@@ -78,20 +88,20 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import {
   titleShareCopy,
-  titleShareUrl,
   type ResolvedShareLink,
   type ResolvedTitleShareLink,
   type TitleSummary,
 } from "@cinima/shared";
 import AppBrandHeader from "@/components/AppBrandHeader.vue";
 import ExploreCinimaPayBar from "@/components/ExploreCinimaPayBar.vue";
+import GoldGlowShell from "@/components/GoldGlowShell.vue";
 import Identicon from "@/components/Identicon.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
 import PayTitleModal from "@/components/PayTitleModal.vue";
 import PosterImg from "@/components/PosterImg.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";
 import { isNimiqPay } from "@/lib/nimiqPay";
-import { payAppOrigin, payOpenSchemeUrl } from "@/lib/payLinks";
+import { payOpenSchemeUrl, payOpenTitleUrl } from "@/lib/payLinks";
 import { formatTitleRating } from "@/lib/titleRating";
 
 const route = useRoute();
@@ -115,14 +125,7 @@ const mediaLabel = computed(() =>
 
 const payUrl = computed(() => {
   if (!payload.value) return payOpenSchemeUrl();
-  return payOpenSchemeUrl(
-    titleShareUrl(
-      payAppOrigin(),
-      payload.value.handle,
-      payload.value.title.mediaType,
-      payload.value.title.tmdbId
-    )
-  );
+  return payOpenTitleUrl(payload.value.title.id);
 });
 
 const onSelectTitle = () => {
@@ -321,6 +324,23 @@ watch(code, loadShare, { immediate: true });
   -webkit-line-clamp: 3;
   line-clamp: 3;
   overflow: hidden;
+}
+
+.read-more {
+  margin: 0.15rem 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--gold);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.read-more:active {
+  opacity: 0.75;
 }
 
 .profile-cta {

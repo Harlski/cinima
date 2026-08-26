@@ -10,15 +10,17 @@
         <NqIcon name="cross" :size="20" />
       </button>
 
-      <div class="gate-hero">
-        <PosterImg
-          v-if="title.posterUrl"
-          :src="title.posterUrl"
-          :alt="title.title"
-          :spinner-size="36"
-        />
-        <div v-else class="gate-hero-fallback">{{ title.title }}</div>
-      </div>
+      <GoldGlowShell radius="12px">
+        <div class="gate-hero">
+          <PosterImg
+            v-if="title.posterUrl"
+            :src="title.posterUrl"
+            :alt="title.title"
+            :spinner-size="36"
+          />
+          <div v-else class="gate-hero-fallback">{{ title.title }}</div>
+        </div>
+      </GoldGlowShell>
 
       <div class="gate-meta">
         <h2 :id="titleId">{{ title.title }}</h2>
@@ -31,8 +33,8 @@
             {{ formatTitleRating(title.rating) }}
           </span>
         </p>
-        <p v-if="title.overview" class="gate-overview">
-          {{ title.overview }}
+        <p class="gate-message">
+          View more details about {{ title.title }} via the Nimiq Pay application.
         </p>
       </div>
 
@@ -60,6 +62,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { imdbTitleUrl, type TitleSummary } from "@cinima/shared";
+import GoldGlowShell from "@/components/GoldGlowShell.vue";
 import NqIcon from "@/components/NqIcon.vue";
 import PayOnlyActions from "@/components/PayOnlyActions.vue";
 import PosterImg from "@/components/PosterImg.vue";
@@ -187,17 +190,12 @@ const mediaLabel = computed(() => (props.title.mediaType === "tv" ? "TV" : "Movi
   font-weight: 500;
 }
 
-.gate-overview {
+.gate-message {
   margin: 0;
   max-width: 100%;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   font-size: 0.9rem;
   line-height: 1.45;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  overflow: hidden;
 }
 
 .gate-or {

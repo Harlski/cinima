@@ -20,33 +20,12 @@
         Search titles
       </RouterLink>
 
-      <section v-if="communityMovies.length || communityTv.length" class="community">
-        <h3>What others on Cinima recommend</h3>
-
-        <div v-if="communityMovies.length" class="community-section">
-          <h4>Movies</h4>
-          <PosterSlider
-            :titles="communityMovies"
-            gold="always"
-            fit
-            :max-rows="2"
-            empty="No movie Recommends yet"
-            @select="goToTitleSummary"
-          />
-        </div>
-
-        <div v-if="communityTv.length" class="community-section">
-          <h4>TV Shows</h4>
-          <PosterSlider
-            :titles="communityTv"
-            gold="always"
-            fit
-            :max-rows="2"
-            empty="No TV Recommends yet"
-            @select="goToTitleSummary"
-          />
-        </div>
-      </section>
+      <CommunityRecommends
+        :movies="communityMovies"
+        :tv="communityTv"
+        inset
+        @select="goToTitleSummary"
+      />
     </div>
 
     <template v-else>
@@ -54,6 +33,13 @@
         <p>
           No {{ activeTab === "movie" ? "movies" : "TV shows" }} in your watchlist yet.
         </p>
+        <CommunityRecommends
+          :movies="communityMovies"
+          :tv="communityTv"
+          :kind="activeTab"
+          inset
+          @select="goToTitleSummary"
+        />
       </div>
 
       <TitleDeckPicker
@@ -114,21 +100,20 @@
 import { computed, onActivated, onMounted, ref, watch } from "vue";
 import { RouterLink, useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
-import type { CommunityRecommendsResponse, MediaType, TitleSummary } from "@cinima/shared";
+import type { MediaType, TitleSummary } from "@cinima/shared";
 import { useFavoritesStore } from "@/stores/favorites";
 import { useWatchlistStore } from "@/stores/watchlist";
-import { useApi } from "@/composables/useApi";
+import { useCommunityRecommends } from "@/composables/useCommunityRecommends";
 import TitleDeckPicker, { type DeckItem } from "@/components/TitleDeckPicker.vue";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
+import CommunityRecommends from "@/components/CommunityRecommends.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
-import PosterSlider from "@/components/PosterSlider.vue";
 import { useTitleActionConfirm } from "@/composables/useTitleActionConfirm";
 import { watchlistButtonLabel } from "@/lib/titleActionLabels";
 
 defineOptions({ name: "MyList" });
 
 const router = useRouter();
-const { request } = useApi();
 const favoritesStore = useFavoritesStore();
 const watchlistStore = useWatchlistStore();
 const {
@@ -140,13 +125,15 @@ const {
   requestToggleWatchlist,
 } = useTitleActionConfirm();
 const { titles } = storeToRefs(watchlistStore);
+const {
+  movies: communityMovies,
+  tv: communityTv,
+  load: loadCommunityRecommends,
+} = useCommunityRecommends();
 
 const loading = ref(false);
 const selectedTitleId = ref("");
 const activeTab = ref<MediaType>("movie");
-const communityMovies = ref<TitleSummary[]>([]);
-const communityTv = ref<TitleSummary[]>([]);
-const communityLoaded = ref(false);
 
 const hasAnyItems = computed(() => titles.value.length > 0);
 const showDeck = computed(() => filteredItems.value.length > 0);
@@ -154,6 +141,12 @@ const showDeck = computed(() => filteredItems.value.length > 0);
 const filteredItems = computed(() =>
   titles.value.filter((title) => (title.mediaType || title.kind) === activeTab.value)
 );
+
+const needsCommunity = computed(() => {
+  const hasMovies = titles.value.some((title) => mediaKind(title) === "movie");
+  const hasTv = titles.value.some((title) => mediaKind(title) === "tv");
+  return !hasMovies || !hasTv;
+});
 
 const deckItems = computed((): DeckItem[] =>
   filteredItems.value.map((title) => ({ title }))
@@ -186,32 +179,19 @@ function pickDefaultTab() {
   if (activeTab.value === "tv" && !hasTv && hasMovies) activeTab.value = "movie";
 }
 
+async function maybeLoadCommunity() {
+  if (needsCommunity.value) await loadCommunityRecommends();
+}
+
 async function ensureLoaded() {
-  if (titles.value.length > 0) {
-    syncSelection();
-    return;
-  }
   loading.value = true;
   try {
     await watchlistStore.refresh();
     pickDefaultTab();
     syncSelection();
-    if (titles.value.length === 0) await loadCommunityRecommends();
+    await maybeLoadCommunity();
   } finally {
     loading.value = false;
-  }
-}
-
-async function loadCommunityRecommends() {
-  if (communityLoaded.value) return;
-  try {
-    const data = await request<CommunityRecommendsResponse>("/recommends/community");
-    communityMovies.value = data.movies ?? [];
-    communityTv.value = data.tv ?? [];
-    communityLoaded.value = true;
-  } catch {
-    communityMovies.value = [];
-    communityTv.value = [];
   }
 }
 
@@ -221,7 +201,6 @@ const toggleWatchlist = async (titleId: string) => {
     title: item,
     isWatchlisted: watchlistStore.isOnWatchlist(titleId),
     onAdded: () => {
-      pickDefaultTab();
       syncSelection();
     },
   });
@@ -238,7 +217,6 @@ const toggleFavorite = async (titleId: string) => {
 const onConfirmAction = async () => {
   await confirmPending({
     onRemoveFromWatchlist: () => {
-      pickDefaultTab();
       syncSelection();
     },
   });
@@ -253,13 +231,13 @@ const goToTitleSummary = (title: TitleSummary) => {
 };
 
 watch(titles, () => {
-  pickDefaultTab();
   syncSelection();
-  if (titles.value.length === 0) void loadCommunityRecommends();
+  void maybeLoadCommunity();
 });
 
 watch(activeTab, () => {
   syncSelection();
+  void maybeLoadCommunity();
 });
 
 onMounted(() => {
@@ -267,9 +245,8 @@ onMounted(() => {
 });
 
 onActivated(() => {
-  pickDefaultTab();
   syncSelection();
-  if (titles.value.length === 0) void loadCommunityRecommends();
+  void maybeLoadCommunity();
 });
 </script>
 
@@ -310,7 +287,7 @@ onActivated(() => {
 }
 
 .empty > p,
-.tab-empty p {
+.tab-empty > p {
   margin: 0;
   max-width: 22rem;
   padding-inline: 1rem;
@@ -324,38 +301,6 @@ onActivated(() => {
   text-decoration: none;
   display: inline-flex;
   justify-content: center;
-}
-
-.community {
-  width: 100%;
-  margin-top: 1.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.35rem;
-  text-align: left;
-}
-
-.community h3 {
-  margin: 0;
-  padding-inline: 1rem;
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  text-align: center;
-}
-
-.community-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-}
-
-.community-section h4 {
-  margin: 0;
-  padding-inline: 1rem;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--text-secondary);
 }
 
 .my-list-tabs {

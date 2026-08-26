@@ -80,6 +80,7 @@ import {
   sleep,
   welcomeMessage,
 } from "@/lib/welcome";
+import { takePostAuthPath } from "@/lib/postAuthPath";
 import { useAuthStore } from "@/stores/auth";
 
 const auth = useAuthStore();
@@ -112,7 +113,7 @@ onUnmounted(() => {
 
 /**
  * Connect on Landing first. After auth, show Welcome / Welcome Back,
- * then enter Discover (onboarding or For You).
+ * then enter the stashed deep link (e.g. title) or Discover.
  */
 const enterCinima = async () => {
   if (entering.value) return;
@@ -141,7 +142,12 @@ const enterCinima = async () => {
     await sleep(WELCOME_FADE_MS);
     if (cancelled || gen !== enterGeneration) return;
 
-    await router.replace({ name: "discover" });
+    const pendingPath = takePostAuthPath();
+    if (pendingPath) {
+      await router.replace(pendingPath);
+    } else {
+      await router.replace({ name: "discover" });
+    }
   } finally {
     if (!cancelled && gen === enterGeneration) entering.value = false;
   }

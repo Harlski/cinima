@@ -4,6 +4,7 @@ import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "./stores/auth";
 import { useTouchScrollGuard } from "./composables/useTouchScrollGuard";
 import { isLandingFrontDoor } from "./lib/landingGate";
+import { stashPostAuthPath } from "./lib/postAuthPath";
 import NqSpinner from "./components/NqSpinner.vue";
 
 useTouchScrollGuard();
@@ -18,12 +19,14 @@ const isShareRoute = () =>
   route.name === "title-share" ||
   route.name === "short-share";
 
+const isPublicLabRoute = () => route.name === "pay-deep-link-lab";
+
 onMounted(async () => {
   // Wait until the initial URL is resolved. Otherwise route.name is still
   // undefined (START_LOCATION) and we would wrongly auth.boot() on `/`.
   await router.isReady();
 
-  if (isShareRoute()) {
+  if (isShareRoute() || isPublicLabRoute()) {
     auth.ready = true;
     reveal.value = true;
     return;
@@ -39,6 +42,7 @@ onMounted(async () => {
 
   await auth.boot();
   if (auth.error && !auth.user) {
+    stashPostAuthPath(route.fullPath);
     await router.replace({ name: "landing" });
   }
   reveal.value = true;

@@ -29,6 +29,15 @@ export const router = createRouter({
   history: createWebHistory(),
   routes: [
     ...devRoutes,
+    {
+      path: "/testpage",
+      name: "pay-deep-link-lab",
+      component: () => import("../views/dev/PayDeepLinkLab.vue"),
+    },
+    {
+      path: "/dev/pay-deep-links",
+      redirect: { name: "pay-deep-link-lab" },
+    },
     { path: "/", name: "landing", component: Landing },
     /** Always shows Landing, including inside Nimiq Pay (local preview / QA). */
     { path: "/gate", name: "gate", component: Landing },
@@ -46,6 +55,11 @@ export const router = createRouter({
           beforeEnter: () => (ACTIVITY_UI_VISIBLE ? true : { name: "discover" }),
         },
         { path: "me", name: "me", component: Me },
+        {
+          path: "title/:mediaType(movie|tv)/:tmdbId(\\d+)",
+          name: "title-tmdb",
+          component: TitleDetail,
+        },
         { path: "title/:id", name: "title", component: TitleDetail, props: true },
         { path: "user/:wallet", name: "user", component: User, props: true },
       ],

@@ -13,6 +13,8 @@ export const RESERVED_PUBLIC_HANDLES = new Set([
   "api",
   "health",
   "s",
+  "testpage",
+  "dev",
 ]);
 
 export function shortSharePath(code: string): string {

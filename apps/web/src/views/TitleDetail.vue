@@ -297,7 +297,7 @@ import { useApi } from "@/composables/useApi";
 import { useAuthStore } from "@/stores/auth";
 import { useFavoritesStore } from "@/stores/favorites";
 import { useCatalogStore } from "@/stores/catalog";
-import { displayName, imdbTitleUrl } from "@cinima/shared";
+import { displayName, imdbTitleUrl, makeTitleId, type MediaType } from "@cinima/shared";
 import type { TitleDetail, CommentDto, TitleSuggester } from "@cinima/shared";
 import ExpandableText from "@/components/ExpandableText.vue";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
@@ -328,7 +328,18 @@ const {
   requestToggleWatchlist,
 } = useTitleActionConfirm();
 
-const titleId = computed(() => route.params.id as string);
+const titleId = computed(() => {
+  const mediaType = route.params.mediaType;
+  const tmdbId = route.params.tmdbId;
+  if (typeof mediaType === "string" && typeof tmdbId === "string") {
+    const n = Number(tmdbId);
+    if ((mediaType === "movie" || mediaType === "tv") && Number.isFinite(n)) {
+      return makeTitleId(mediaType as MediaType, n);
+    }
+  }
+  const id = route.params.id;
+  return typeof id === "string" ? decodeURIComponent(id) : "";
+});
 const loading = ref(true);
 const title = ref<TitleDetail | null>(null);
 const comments = ref<CommentDto[]>([]);
