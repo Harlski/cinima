@@ -17,6 +17,8 @@ import {
   type TitleSuggester,
   type TitleDetail,
   type FollowingFeedResponse,
+  type FollowingPeopleResponse,
+  type FindPeopleResponse,
   type WatchlistResponse,
   type ShareLinkCreated,
   shortShareUrl,
@@ -43,6 +45,8 @@ import {
   followUser,
   followingFeed,
   isFollowing,
+  listFollowingPeople,
+  listFindPeople,
   unfollowUser,
 } from "./services/follow.js";
 import {
@@ -625,10 +629,33 @@ app.delete("/api/users/:wallet/follow", requirePay, requireAuth, async (c) => {
   return c.json({ ok: true, following: false });
 });
 
-app.get("/api/feed", requirePay, requireAuth, async (c) => {
-  const items = await followingFeed(c.get("user").walletAddress);
-  const body: FollowingFeedResponse = { items };
+app.get("/api/following", requirePay, requireAuth, async (c) => {
+  const people = await listFollowingPeople(c.get("user").walletAddress);
+  const body: FollowingPeopleResponse = { people };
   return c.json(body);
+});
+
+app.get("/api/find-people", requirePay, requireAuth, async (c) => {
+  const people = await listFindPeople(c.get("user").walletAddress);
+  const body: FindPeopleResponse = { people };
+  return c.json(body);
+});
+
+app.get("/api/feed", requirePay, requireAuth, async (c) => {
+  const followee = c.req.query("followee");
+  try {
+    const items = await followingFeed(
+      c.get("user").walletAddress,
+      40,
+      followee || undefined
+    );
+    const body: FollowingFeedResponse = { items };
+    return c.json(body);
+  } catch (e) {
+    const code = e instanceof Error ? e.message : "feed_failed";
+    if (code === "not_following") return c.json({ error: code }, 403);
+    return c.json({ error: code }, 400);
+  }
 });
 
 app.get("/api/users/:wallet/heatmap", requirePay, requireAuth, async (c) => {

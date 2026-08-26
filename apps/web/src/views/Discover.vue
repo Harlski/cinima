@@ -39,8 +39,11 @@
       </section>
 
       <section v-else class="feed-section">
-        <div v-if="feed.length === 0" class="feed-empty">
-          Follow curators from a title’s suggesters or profiles to see their new favorites and unlocks here.
+        <div v-if="followingPeople.length === 0" class="feed-empty">
+          Tap Find people on the strip below to follow Handles and see their recent Favorites here.
+        </div>
+        <div v-else-if="feed.length === 0" class="feed-empty">
+          No recent Favorites or unlocks from this Handle yet.
         </div>
 
         <div v-else class="feed-list">
@@ -98,6 +101,14 @@
       </section>
     </div>
 
+    <FollowingStrip
+      v-if="!loading && mode === 'overlap' && activeTab === 'following'"
+      :people="followingPeople"
+      :selected-wallet="selectedFollowee"
+      @select="onSelectFollowee"
+      @find-people="openFindPeople"
+    />
+
     <Transition name="feed-tabs-slide">
       <nav
         v-if="!loading && mode === 'overlap'"
@@ -130,11 +141,21 @@
         </div>
       </nav>
     </Transition>
+
+    <FindPeopleSheet
+      v-if="findPeopleOpen"
+      :people="findPeople"
+      :loading="peopleLoading"
+      :busy-wallet="followBusyWallet"
+      @close="findPeopleOpen = false"
+      @open-profile="onOpenPersonProfile"
+      @toggle-follow="onToggleFollowPerson"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
 import { FORCE_FAVORITES_PICK_QUERY, canForceFavoritesPick } from "@/lib/welcome";
@@ -145,10 +166,16 @@ import type {
   DiscoverResponse,
   FollowingFeedItem,
   FollowingFeedResponse,
+  FollowingPeopleResponse,
+  FollowingPerson,
   OverlapSuggestion,
+  FindPeopleEntry,
+  FindPeopleResponse,
   TitleSummary,
 } from "@cinima/shared";
 import FavoritesOnboarding from "@/components/FavoritesOnboarding.vue";
+import FindPeopleSheet from "@/components/FindPeopleSheet.vue";
+import FollowingStrip from "@/components/FollowingStrip.vue";
 import Identicon from "@/components/Identicon.vue";
 import ForYouPicker from "@/components/ForYouPicker.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
@@ -181,6 +208,13 @@ const onboardingCandidates = ref<TitleSummary[]>([]);
 const onboardingBusy = ref(false);
 const suggestions = ref<OverlapSuggestion[]>([]);
 const feed = ref<FollowingFeedItem[]>([]);
+const followingPeople = ref<FollowingPerson[]>([]);
+const selectedFollowee = ref<string | null>(null);
+const findPeopleOpen = ref(false);
+const findPeople = ref<FindPeopleEntry[]>([]);
+const peopleLoading = ref(false);
+const followBusyWallet = ref<string | null>(null);
+const followingStripReady = ref(false);
 
 /** Merge a user's favorites into one card; unlocks stay one-per-title. */
 const feedCards = computed((): FeedCard[] => {
@@ -249,6 +283,40 @@ function relativeTime(iso: string) {
   return `${d}d ago`;
 }
 
+const loadFollowingPeople = async () => {
+  const res = await request<FollowingPeopleResponse>("/following").catch(
+    () => ({ people: [] as FollowingPerson[] })
+  );
+  followingPeople.value = res.people;
+  if (
+    selectedFollowee.value &&
+    !res.people.some((p) => p.walletAddress === selectedFollowee.value)
+  ) {
+    selectedFollowee.value = res.people[0]?.walletAddress ?? null;
+  } else if (!selectedFollowee.value && res.people.length) {
+    selectedFollowee.value = res.people[0]!.walletAddress;
+  }
+  followingStripReady.value = true;
+};
+
+const loadFolloweeFeed = async (wallet: string | null) => {
+  if (!wallet) {
+    feed.value = [];
+    return;
+  }
+  const feedRes = await request<FollowingFeedResponse>(
+    `/feed?followee=${encodeURIComponent(wallet)}`
+  ).catch(() => ({ items: [] as FollowingFeedItem[] }));
+  feed.value = feedRes.items;
+};
+
+const ensureFollowingTabData = async () => {
+  if (!followingStripReady.value) {
+    await loadFollowingPeople();
+  }
+  await loadFolloweeFeed(selectedFollowee.value);
+};
+
 const loadDiscover = async () => {
   loading.value = true;
   try {
@@ -257,19 +325,19 @@ const loadDiscover = async () => {
       String(route.query[FORCE_FAVORITES_PICK_QUERY] ?? "") === "1";
     const discoverPath = forcePick ? "/discover?forceOnboarding=1" : "/discover";
 
-    const [data, feedRes] = await Promise.all([
-      request<DiscoverResponse>(discoverPath),
-      request<FollowingFeedResponse>("/feed").catch(() => ({ items: [] as FollowingFeedItem[] })),
-    ]);
+    const data = await request<DiscoverResponse>(discoverPath);
     mode.value = data.mode;
     favoriteCount.value = data.favoriteCount;
     minFavorites.value = data.minFavorites;
-    feed.value = feedRes.items;
 
     if (data.mode === "onboarding" && data.onboardingCandidates) {
       onboardingCandidates.value = data.onboardingCandidates;
     } else if (data.mode === "overlap" && data.suggestions) {
       suggestions.value = data.suggestions;
+      followingStripReady.value = false;
+      if (activeTab.value === "following") {
+        await ensureFollowingTabData();
+      }
     }
 
     if (forcePick && route.query[FORCE_FAVORITES_PICK_QUERY]) {
@@ -281,6 +349,60 @@ const loadDiscover = async () => {
     loading.value = false;
   }
 };
+
+const onSelectFollowee = async (wallet: string) => {
+  if (selectedFollowee.value === wallet) return;
+  selectedFollowee.value = wallet;
+  await loadFolloweeFeed(wallet);
+};
+
+const openFindPeople = async () => {
+  findPeopleOpen.value = true;
+  peopleLoading.value = true;
+  try {
+    const res = await request<FindPeopleResponse>("/find-people").catch(
+      () => ({ people: [] as FindPeopleEntry[] })
+    );
+    findPeople.value = res.people;
+  } finally {
+    peopleLoading.value = false;
+  }
+};
+
+const onOpenPersonProfile = (wallet: string) => {
+  findPeopleOpen.value = false;
+  goToUser(wallet);
+};
+
+const onToggleFollowPerson = async (person: FindPeopleEntry) => {
+  if (followBusyWallet.value) return;
+  followBusyWallet.value = person.walletAddress;
+  try {
+    const w = encodeURIComponent(person.walletAddress);
+    if (person.isFollowing) {
+      await request(`/users/${w}/follow`, { method: "DELETE" });
+      person.isFollowing = false;
+    } else {
+      await request(`/users/${w}/follow`, { method: "POST" });
+      person.isFollowing = true;
+    }
+    await loadFollowingPeople();
+    if (!selectedFollowee.value && followingPeople.value.length) {
+      selectedFollowee.value = followingPeople.value[0]!.walletAddress;
+    }
+    if (selectedFollowee.value) {
+      await loadFolloweeFeed(selectedFollowee.value);
+    }
+  } finally {
+    followBusyWallet.value = null;
+  }
+};
+
+watch(activeTab, async (tab) => {
+  if (tab === "following" && mode.value === "overlap") {
+    await ensureFollowingTabData();
+  }
+});
 
 
 const toggleFavorite = async (titleId: string) => {
@@ -330,11 +452,11 @@ const onOnboardingSkip = async () => {
     minFavorites.value = data.minFavorites;
     if (data.mode === "overlap" && data.suggestions) {
       suggestions.value = data.suggestions;
+      followingStripReady.value = false;
+      if (activeTab.value === "following") {
+        await ensureFollowingTabData();
+      }
     }
-    const feedRes = await request<FollowingFeedResponse>("/feed").catch(
-      () => ({ items: [] as FollowingFeedItem[] })
-    );
-    feed.value = feedRes.items;
   } finally {
     onboardingBusy.value = false;
   }
@@ -356,11 +478,18 @@ onMounted(() => {
 
 .discover--overlap {
   --discover-feed-tabs-height: 2.85rem;
+  --discover-following-strip-height: 5.1rem;
   padding-bottom: calc(var(--discover-feed-tabs-height) + 0.75rem);
 }
 
 .discover--for-you {
   padding-bottom: 0;
+}
+
+.discover--overlap:not(.discover--for-you) {
+  padding-bottom: calc(
+    var(--discover-feed-tabs-height) + var(--discover-following-strip-height) + 0.75rem
+  );
 }
 
 .discover--for-you .discover-body {

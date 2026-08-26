@@ -20,6 +20,10 @@ _Avoid_: Public Profile, invite, checkout page, OG page
 The public URL that names a Handle and a Title together so a recipient lands on that Title Share.
 _Avoid_: query-string share, profile-only URL, encoded Title ID in the path
 
+**Share preview**:
+The poster-and-copy card that messaging and social apps show for a Title Share link, Short Share link, or Public Profile link before the recipient opens Cinima.
+_Avoid_: OG card, unfurl, link preview, metadata card, physical card
+
 **X Handle**:
 An optional public link to the user’s X profile. Not their Cinima Handle.
 _Avoid_: twitter username as Cinima identity
@@ -67,6 +71,18 @@ _Avoid_: mass tip, blast, thank everyone as a separate mark
 **Favorites onboarding**:
 The Discover gate for accounts under the Favorite minimum. Shows three scrolling poster rows drawn from the local Catalog cache: recognizable recent movies and TV (with posters), ranked by peer Favorite overlap then popularity. Selection is local until Continue commits Favorites; Skip remembers the choice on the account and enters For You with popular cached suggestions. No title detail or search on this screen.
 _Avoid_: swipe deck, search-to-unlock, auto-favorite on tap, live catalog fetch on this screen
+
+**Following strip**:
+On Discover Following, the horizontal selectable row of followee Identicons (plus Find people) docked just above the For You / Following tabs. Selecting a followee shows their Handle above the Identicon and filters the feed to that person's recent Favorites and unlocks.
+_Avoid_: stories rail, avatar carousel, Following tabs chrome
+
+**Find people**:
+The Following strip entry (black-and-white hexagon with +) that opens a browsable list of other Handles on the platform, with Favorite counts by media type and Thanks received, so the viewer can follow or open a Public Profile.
+_Avoid_: user search, directory as a top-level tab, invite sheet
+
+**Thanks received**:
+How many Thanks other users have sent to this Handle. The social reputation signal shown in Find people.
+_Avoid_: thank rating, thanks score, tip count
 
 **Landing**:
 The public root page (`/` and `/gate`) that explains what Cinima is. Shows a scrolling strip of title-card posters loaded from the TMDB image CDN (curated `poster_path` list; not vendored in the repo), with TMDB attribution on the page. Outside Nimiq Pay the CTA is Explore (same Enter styling; opens a centered pay-only gate modal with Already Installed? (open) via `nimiqpay://`, Get Nimiq Pay, and Inquiries); inside Pay the CTA is Enter, which connects the wallet while staying on Landing, shows a Welcome / Welcome Back identicon overlay, then enters Discover (Favorites onboarding or For You). Landing never auto-boots auth. Contact is X (https://x.com/cinima_app) and Email (cinima.app@gmail.com). Public Profile / Title Share / Short Share show a floating Explore CINIMA button (no bar chrome; `2.75rem + safe-area-inset-bottom` lift). Outside Pay, title taps open a gate modal that matches Title Share layout (poster, year / media / rating, overview) plus Already Installed / Get Nimiq Pay, X + Telegram, and View on IMDb.

@@ -160,6 +160,30 @@ export type FollowingFeedResponse = {
   items: FollowingFeedItem[];
 };
 
+/** Followee row for the Discover Following strip. */
+export type FollowingPerson = {
+  walletAddress: string;
+  handle: string | null;
+};
+
+export type FollowingPeopleResponse = {
+  people: FollowingPerson[];
+};
+
+/** Find people row. */
+export type FindPeopleEntry = {
+  walletAddress: string;
+  handle: string | null;
+  movieFavoriteCount: number;
+  tvFavoriteCount: number;
+  thanksReceived: number;
+  isFollowing: boolean;
+};
+
+export type FindPeopleResponse = {
+  people: FindPeopleEntry[];
+};
+
 export type ActivityItem =
   | {
       type: "comment";
