@@ -40,6 +40,10 @@ _Avoid_: watchlist as UI label (use “My List”), save, bookmark
 A gold-star upgrade on a Favorite, meaning this title stands out among the user’s favorites — not a separate mark from Favorite. A user may hold at most six movie Recommends and six TV Recommends at a time; a seventh of that media type is blocked until one of that type is removed. Unfavoriting clears Recommend. Shared Recommends are a stronger taste-overlap signal than shared Favorites alone.
 _Avoid_: rating, review, super-like (unless used only as UI synonym), highlight, top pick as a separate mark
 
+**Title taste counts**:
+On title detail, peer social tallies under the rating / year / media line: Recommend count (peers with Recommend) and Favorite count (peers Favorited without Recommend). A peer who Recommended is not counted in Favorites. Tapping either opens a tabbed Handle list (Recommends | Favorites). Viewer’s own mark is excluded from both counts.
+_Avoid_: popularity, TMDB vote count, including Recommenders in Favorite count
+
 **Rating**:
 A TMDB community vote average for a title or episode. Catalog data, always visible to signed-in users.
 _Avoid_: IMDb rating, unlockable score, locked rating
@@ -65,12 +69,16 @@ A user’s directed signal that another user’s Favorite of a title was useful.
 _Avoid_: tip, like, kudos, shout-out
 
 **Thank all**:
-One action that sends Thanks to every remaining peer who Favorited a title. On title detail, peers are shown as Identicons with a Favorited count; tapping the stack opens a centered Handle list (like Find people) to open Public Profiles. Individual per-peer Thanks are not offered on that screen.
+One action that sends Thanks to every remaining peer who Favorited a title (including those who Recommended it). On title detail, peers are shown as Identicons with a Favorited count; tapping the stack opens the same tabbed Handle list used by Title taste counts. Individual per-peer Thanks are not offered on that screen.
 _Avoid_: mass tip, blast, thank everyone as a separate mark
 
 **Favorites onboarding**:
 The Discover gate for accounts under the Favorite minimum. Shows three scrolling poster rows drawn from the local Catalog cache: recognizable recent movies and TV (with posters), ranked by peer Favorite overlap then popularity. Selection is local until Continue commits Favorites; Skip remembers the choice on the account and enters For You with popular cached suggestions. No title detail or search on this screen.
 _Avoid_: swipe deck, search-to-unlock, auto-favorite on tap, live catalog fetch on this screen
+
+**Guided tour**:
+An optional walkthrough of Watchlist, Search, community Recommends, Watchlist actions, For You, and Find people (Creator profile). Offered once after Favorites onboarding clears; skippable anytime; replayable from Me. Distinct from Favorites onboarding and Handle onboarding.
+_Avoid_: product tour as a separate product term, tutorial modal stack, forced Favorite during the walkthrough
 
 **Following strip**:
 On Discover Following, the horizontal selectable row of followee Identicons (plus Find people) sticky under the brand header. Selecting a followee shows their Handle above the Identicon and filters the feed to that person's recent Favorites and unlocks. Unseen activity sorts ahead of already-viewed activity when the viewer returns to Following.

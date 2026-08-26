@@ -9,6 +9,7 @@
         gold="always"
         fit
         :max-rows="maxRows"
+        :tour-first-poster="tourFirstPoster"
         empty="No movie Recommends yet"
         @select="$emit('select', $event)"
       />
@@ -21,6 +22,7 @@
         gold="always"
         fit
         :max-rows="maxRows"
+        :tour-first-poster="tourFirstPoster && !showMovies"
         empty="No TV Recommends yet"
         @select="$emit('select', $event)"
       />
@@ -43,12 +45,15 @@ const props = withDefaults(
     maxRows?: number;
     /** Extra top spacing for nested empty states */
     inset?: boolean;
+    /** Guided tour: glow the first community poster. */
+    tourFirstPoster?: boolean;
   }>(),
   {
     kind: "both",
     heading: "What others on Cinima recommend",
     maxRows: 2,
     inset: false,
+    tourFirstPoster: false,
   }
 );
 

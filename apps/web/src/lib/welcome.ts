@@ -1,4 +1,5 @@
 import { demoEnabledOutsidePay } from "./nimiqPay";
+import { armForceGuidedTour } from "./guidedTour";
 
 /** Hold the welcome card long enough to read, then fade. */
 export const WELCOME_HOLD_MS = 1_600;
@@ -8,7 +9,7 @@ export const WELCOME_FADE_MS = 450;
 export const FORCE_FAVORITES_PICK_QUERY = "pickFavorites";
 
 /**
- * Survives Discover remounts when AppShell keys on route.fullPath and the
+ * Survives Discover remounts when AppShell keys on route.path and the
  * pickFavorites query is stripped mid-load.
  *
  * Phases: "handle" → username step first; "favorites" → force Discover
@@ -40,6 +41,7 @@ function writeForcePhase(phase: ForceOnboardingPhase | null): void {
 /** Start (or restart) the full dev onboarding flow at the username step. */
 export function armForceOnboardingFlow(): void {
   writeForcePhase("handle");
+  armForceGuidedTour();
 }
 
 /** After handle Continue/Skip: force Favorites onboarding next. */

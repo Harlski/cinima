@@ -9,13 +9,18 @@ import { containsProfanity } from "../lib/profanity.js";
 const NONCE_TTL_MS = 5 * 60 * 1000;
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
+/** Human-readable Pay sign prompt; nonce binds the signature to one challenge. */
+export function authChallengeMessage(nonce: string): string {
+  return `Sign to confirm your login to Cinima.app\n${nonce}`;
+}
+
 export async function createChallenge() {
   const nonce = nanoid(24);
   const expiresAt = new Date(Date.now() + NONCE_TTL_MS);
   await db.insert(authNonces).values({ nonce, expiresAt, used: false });
   return {
     nonce,
-    message: `Cinima:v1:${nonce}`,
+    message: authChallengeMessage(nonce),
     expiresAt: expiresAt.getTime(),
   };
 }
@@ -79,7 +84,7 @@ export async function verifyAndCreateSession(input: {
   if (!nonceRow || nonceRow.expiresAt.getTime() < Date.now()) {
     throw new Error("invalid_or_expired_nonce");
   }
-  if (input.message !== `Cinima:v1:${input.nonce}`) {
+  if (input.message !== authChallengeMessage(input.nonce)) {
     throw new Error("message_mismatch");
   }
 

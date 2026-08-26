@@ -14,6 +14,7 @@ import { and, count, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { favorites, titles, users, watchlist } from "../db/schema.js";
 import { hasOverview, toTitleSummary } from "../lib/titles.js";
+import { countTitleTastePeersForTitles } from "./social.js";
 
 export class SocialTasteError extends Error {
   constructor(
@@ -184,19 +185,37 @@ function shuffleSuggestions<T>(items: T[], random: () => number = Math.random): 
   return copy;
 }
 
-async function popularSuggestions(excludeIds: Set<string>): Promise<OverlapSuggestion[]> {
+async function withTasteCounts(
+  suggestions: Omit<OverlapSuggestion, "recommendCount" | "favoriteCount">[],
+  wallet: string
+): Promise<OverlapSuggestion[]> {
+  const counts = await countTitleTastePeersForTitles(
+    suggestions.map((s) => s.title.id),
+    wallet
+  );
+  return suggestions.map((s) => {
+    const c = counts.get(s.title.id) ?? { recommendCount: 0, favoriteCount: 0 };
+    return { ...s, recommendCount: c.recommendCount, favoriteCount: c.favoriteCount };
+  });
+}
+
+async function popularSuggestions(
+  excludeIds: Set<string>,
+  wallet: string
+): Promise<OverlapSuggestion[]> {
   const popular = await db
     .select()
     .from(titles)
     .where(sql`TRIM(COALESCE(${titles.overview}, '')) != ''`)
     .orderBy(sql`CAST(COALESCE(rating, '0') AS REAL) DESC`)
     .limit(48);
-  return shuffleSuggestions(
+  const base = shuffleSuggestions(
     popular
       .map(toTitleSummary)
       .filter((t) => !excludeIds.has(t.id))
       .map((title) => ({ title, sharedCount: 0, sampleWallets: [] }))
   ).slice(0, 20);
+  return withTasteCounts(base, wallet);
 }
 
 /** Cached titles with posters — top by TMDB popularity (popular catalog stand-in). */
@@ -229,36 +248,9 @@ export async function skipDiscoverOnboarding(wallet: string) {
     .where(eq(users.walletAddress, w));
 }
 
-async function popularByMediaType(
-  mediaType: MediaType,
-  excludeIds: Set<string>,
-  limit: number
-): Promise<TitleSummary[]> {
-  const rows = await db
-    .select()
-    .from(titles)
-    .where(
-      and(
-        eq(titles.mediaType, mediaType),
-        sql`${titles.posterPath} IS NOT NULL AND TRIM(${titles.posterPath}) != ''`,
-        sql`TRIM(COALESCE(${titles.overview}, '')) != ''`
-      )
-    )
-    .orderBy(
-      desc(titles.popularity),
-      sql`CAST(COALESCE(${titles.rating}, '0') AS REAL) DESC`
-    )
-    .limit(limit + excludeIds.size + 8);
-
-  return rows
-    .map(toTitleSummary)
-    .filter((t) => !excludeIds.has(t.id))
-    .slice(0, limit);
-}
-
 /**
  * Titles others have gold-star Recommended, split by media type.
- * Excludes the caller's watchlist. Falls back to popular catalog per kind when sparse.
+ * Excludes the caller's watchlist. No popular-catalog padding — only real Recommends.
  */
 export async function listCommunityRecommends(
   wallet: string,
@@ -305,15 +297,6 @@ export async function listCommunityRecommends(
     if (movies.length >= limit && tv.length >= limit) break;
   }
 
-  const used = new Set([...exclude, ...movies.map((t) => t.id), ...tv.map((t) => t.id)]);
-  if (movies.length < limit) {
-    movies.push(...(await popularByMediaType("movie", used, limit - movies.length)));
-  }
-  for (const t of movies) used.add(t.id);
-  if (tv.length < limit) {
-    tv.push(...(await popularByMediaType("tv", used, limit - tv.length)));
-  }
-
   return { movies, tv };
 }
 
@@ -344,7 +327,7 @@ export async function discoverFor(
         mode: "overlap",
         favoriteCount: favs.length,
         minFavorites: MIN_FAVORITES_FOR_DISCOVER,
-        suggestions: await popularSuggestions(myIds),
+        suggestions: await popularSuggestions(myIds, w),
       };
     }
 
@@ -408,22 +391,25 @@ export async function discoverFor(
         });
       }
     }
-    suggestions = shuffleSuggestions(
-      [...map.values()]
-        .sort((a, b) => b.score - a.score || b.sharedCount - a.sharedCount)
-        .filter((s) => hasOverview(s.title.overview))
-        .slice(0, 40)
-    )
-      .slice(0, 24)
-      .map((s) => ({
-        title: s.title,
-        sharedCount: s.sharedCount,
-        sampleWallets: [...s.wallets].slice(0, 3),
-      }));
+    suggestions = await withTasteCounts(
+      shuffleSuggestions(
+        [...map.values()]
+          .sort((a, b) => b.score - a.score || b.sharedCount - a.sharedCount)
+          .filter((s) => hasOverview(s.title.overview))
+          .slice(0, 40)
+      )
+        .slice(0, 24)
+        .map((s) => ({
+          title: s.title,
+          sharedCount: s.sharedCount,
+          sampleWallets: [...s.wallets].slice(0, 3),
+        })),
+      w
+    );
   }
 
   if (!suggestions.length) {
-    suggestions = await popularSuggestions(myIds);
+    suggestions = await popularSuggestions(myIds, w);
   }
 
   return {

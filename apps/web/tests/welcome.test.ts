@@ -9,6 +9,7 @@ import {
   isReturningUser,
   welcomeMessage,
 } from "../src/lib/welcome";
+import { isForceGuidedTourArmed } from "../src/lib/guidedTour";
 
 describe("Welcome gate", () => {
   it("says Welcome Back for restored sessions or users with history", () => {
@@ -84,6 +85,7 @@ describe("Dev force onboarding session arm", () => {
     expect(isForceHandleArmed()).toBe(true);
     expect(isForceFavoritesArmed()).toBe(false);
     expect(isForceOnboardingArmed()).toBe(true);
+    expect(isForceGuidedTourArmed()).toBe(true);
 
     // Simulates remount after ?pickFavorites=1 is stripped from the URL
     expect(isForceHandleArmed()).toBe(true);

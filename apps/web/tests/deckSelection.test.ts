@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   deckScrollLeftToCenter,
+  rememberedSelectionForPreferred,
   resolveDeckScrollIndex,
   restoreDeckWindow,
   syncDeckItems,
@@ -87,5 +88,38 @@ describe("syncDeckItems", () => {
     const synced = syncDeckItems(titles("h", "i", "j"), remembered);
     expect(synced.items.map((item) => item.title.id)).toEqual(["h", "i", "j"]);
     expect(synced.selectedIndex).toBe(1);
+  });
+});
+
+describe("rememberedSelectionForPreferred", () => {
+  it("forces the preferred tour title over session memory", () => {
+    const fallback: DeckSelection = {
+      itemIds: ["a", "b", "c"],
+      selectedTitleId: "a",
+    };
+    const preferred = rememberedSelectionForPreferred(
+      titles("a", "b", "c"),
+      "c",
+      fallback
+    );
+    expect(preferred).toEqual({
+      itemIds: ["a", "b", "c"],
+      selectedTitleId: "c",
+    });
+    const synced = syncDeckItems(titles("a", "b", "c"), preferred);
+    expect(synced.selectedIndex).toBe(2);
+  });
+
+  it("falls back when preferred title is not on the list", () => {
+    const fallback: DeckSelection = {
+      itemIds: ["a", "b"],
+      selectedTitleId: "b",
+    };
+    expect(
+      rememberedSelectionForPreferred(titles("a", "b"), "missing", fallback)
+    ).toBe(fallback);
+    expect(rememberedSelectionForPreferred(titles("a", "b"), null, fallback)).toBe(
+      fallback
+    );
   });
 });

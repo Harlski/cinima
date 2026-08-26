@@ -71,6 +71,20 @@ export function syncDeckItems<T extends { title: { id: string } }>(
   };
 }
 
+/** Prefer a specific title (e.g. guided tour) over the session deck memory. */
+export function rememberedSelectionForPreferred(
+  items: readonly { title: { id: string } }[],
+  preferredTitleId: string | null | undefined,
+  fallback: DeckSelection | null
+): DeckSelection | null {
+  if (!preferredTitleId) return fallback;
+  if (!items.some((entry) => entry.title.id === preferredTitleId)) return fallback;
+  return {
+    itemIds: items.map((entry) => entry.title.id),
+    selectedTitleId: preferredTitleId,
+  };
+}
+
 function centerIndex(length: number): number {
   if (length <= 0) return 0;
   return Math.floor((length - 1) / 2);

@@ -6,12 +6,12 @@
     :dock-bottom-offset="dockBottomOffset"
     show-social
     show-refresh
-    :actions-prefix="watchlistActionsPrefix"
     :primary-action-label="watchlistLabel"
     :primary-action-active="watchlisted"
     :secondary-action-label="favoriteLabel"
     :secondary-action-active="favorited"
     @open="$emit('open', $event)"
+    @open-overview="$emit('open-overview', $event)"
     @primary-action="$emit('toggle-watchlist', $event)"
     @secondary-action="$emit('toggle-favorite', $event)"
     @select="selectedTitleId = $event"
@@ -25,6 +25,7 @@ import type { OverlapSuggestion } from "@cinima/shared";
 import TitleDeckPicker, { type DeckItem } from "@/components/TitleDeckPicker.vue";
 import { loadDeckSelection, saveDeckSelection } from "@/lib/deckSelection";
 import { centerIndex, initialSuggestionWindow, nextSuggestionWindow } from "@/lib/suggestionDeck";
+import { watchlistButtonLabel } from "@/lib/titleActionLabels";
 
 const props = defineProps<{
   suggestions: OverlapSuggestion[];
@@ -35,6 +36,7 @@ const props = defineProps<{
 
 defineEmits<{
   open: [titleId: string];
+  "open-overview": [titleId: string];
   "toggle-favorite": [titleId: string];
   "toggle-watchlist": [titleId: string];
 }>();
@@ -43,6 +45,8 @@ function toDeckItems(suggestions: OverlapSuggestion[]): DeckItem[] {
   return suggestions.map((s) => ({
     title: s.title,
     sampleWallets: s.sampleWallets,
+    recommendCount: s.recommendCount,
+    favoriteCount: s.favoriteCount,
   }));
 }
 
@@ -79,6 +83,8 @@ const deckItems = computed((): DeckItem[] =>
   windowSuggestions.value.map((s) => ({
     title: s.title,
     sampleWallets: s.sampleWallets,
+    recommendCount: s.recommendCount,
+    favoriteCount: s.favoriteCount,
   }))
 );
 
@@ -88,13 +94,10 @@ const favorited = computed(() =>
 const watchlisted = computed(() =>
   selectedTitleId.value ? props.isOnWatchlist(selectedTitleId.value) : false
 );
-const favoriteLabel = "Favorites";
-const watchlistLabel = computed(() =>
-  watchlisted.value ? "In Watchlist" : "Watchlist"
+const favoriteLabel = computed(() =>
+  favorited.value ? "Favorited" : "Add to Favorites"
 );
-const watchlistActionsPrefix = computed(() =>
-  watchlisted.value ? undefined : "Add to"
-);
+const watchlistLabel = computed(() => watchlistButtonLabel(watchlisted.value));
 
 function resetFromPool() {
   const next = buildWindow(props.suggestions);

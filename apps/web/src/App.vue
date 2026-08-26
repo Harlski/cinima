@@ -54,8 +54,10 @@ onMounted(async () => {
     v-if="!reveal && !isShareRoute()"
     class="boot"
   >
-    <NqSpinner label="Starting Cinima" />
-    <div aria-hidden="true">Starting Cinima…</div>
+    <div class="boot-stack">
+      <NqSpinner label="Starting Cinima" />
+      <div aria-hidden="true">Starting Cinima…</div>
+    </div>
   </div>
   <RouterView v-else />
 </template>
@@ -65,12 +67,19 @@ onMounted(async () => {
   position: relative;
   z-index: 1;
   min-height: 100dvh;
-  display: grid;
-  place-content: center;
-  gap: 0.75rem;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 2rem;
   color: var(--text-primary);
   font-family: var(--font);
+}
+
+.boot-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: center;
 }
 </style>

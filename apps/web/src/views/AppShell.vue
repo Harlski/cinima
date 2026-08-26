@@ -7,25 +7,43 @@
         <RouterView v-slot="{ Component, route }">
           <Transition name="page" mode="out-in">
             <KeepAlive include="Discover,MyList">
-              <component :is="Component" :key="route.fullPath" />
+              <component :is="Component" :key="route.path" />
             </KeepAlive>
           </Transition>
         </RouterView>
       </div>
     </div>
     <nav class="bottom-tabs">
-      <RouterLink to="/discover" class="tab">
-        <NqIcon name="cinema-tickets" :size="24" />
-        <span>Discover</span>
-      </RouterLink>
-      <RouterLink to="/my-list" class="tab">
-        <NqIcon name="tickets" :size="24" />
-        <span>Watchlist</span>
-      </RouterLink>
-      <RouterLink to="/search" class="tab">
-        <NqIcon name="magnifying-glass" :size="24" />
-        <span>Search</span>
-      </RouterLink>
+      <TourSpotlight :id="TOUR_SPOTLIGHT.tabDiscover" radius="10px" fit>
+        <RouterLink
+          to="/discover"
+          class="tab"
+          :data-tour="TOUR_SPOTLIGHT.tabDiscover"
+        >
+          <NqIcon name="cinema-tickets" :size="24" />
+          <span>Discover</span>
+        </RouterLink>
+      </TourSpotlight>
+      <TourSpotlight :id="TOUR_SPOTLIGHT.tabWatchlist" radius="10px" fit>
+        <RouterLink
+          to="/my-list"
+          class="tab"
+          :data-tour="TOUR_SPOTLIGHT.tabWatchlist"
+        >
+          <NqIcon name="tickets" :size="24" />
+          <span>Watchlist</span>
+        </RouterLink>
+      </TourSpotlight>
+      <TourSpotlight :id="TOUR_SPOTLIGHT.tabSearch" radius="10px" fit>
+        <RouterLink
+          to="/search"
+          class="tab"
+          :data-tour="TOUR_SPOTLIGHT.tabSearch"
+        >
+          <NqIcon name="magnifying-glass" :size="24" />
+          <span>Search</span>
+        </RouterLink>
+      </TourSpotlight>
       <RouterLink v-if="ACTIVITY_UI_VISIBLE" to="/activity" class="tab">
         <NqIcon name="bell" :size="24" />
         <span>Activity</span>
@@ -40,6 +58,8 @@
         <span>Me</span>
       </RouterLink>
     </nav>
+
+    <GuidedTourHost />
   </div>
 </template>
 
@@ -52,8 +72,11 @@ import { useFavoritesStore } from "@/stores/favorites";
 import { useWatchlistStore } from "@/stores/watchlist";
 import { useAuthStore } from "@/stores/auth";
 import AppBrandHeader from "@/components/AppBrandHeader.vue";
+import GuidedTourHost from "@/components/GuidedTourHost.vue";
 import Identicon from "@/components/Identicon.vue";
 import NqIcon from "@/components/NqIcon.vue";
+import TourSpotlight from "@/components/TourSpotlight.vue";
+import { TOUR_SPOTLIGHT } from "@/lib/guidedTour";
 
 useViewportChromeLock();
 

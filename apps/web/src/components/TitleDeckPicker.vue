@@ -1,79 +1,105 @@
 <template>
   <div class="picker" :style="pickerStyle">
     <div v-if="selected" class="detail">
-      <button
-        type="button"
-        class="hero poster-press"
-        :aria-label="`Open ${selected.title.title}`"
-        @click="openSelected"
-      >
-        <PosterImg
-          v-if="selected.title.posterUrl"
-          :src="selected.title.posterUrl"
-          :alt="selected.title.title"
-        />
-        <div v-else class="hero-fallback">{{ selected.title.title }}</div>
-      </button>
+      <div class="poster-section">
+        <button
+          type="button"
+          class="poster poster-press"
+          :aria-label="`Open ${selected.title.title}`"
+          @click="openSelected"
+        >
+          <PosterImg
+            v-if="selected.title.posterUrl"
+            :src="selected.title.posterUrl"
+            :alt="selected.title.title"
+          />
+          <div v-else class="poster-fallback">{{ selected.title.title }}</div>
+        </button>
 
-      <div class="meta">
-        <h2>{{ selected.title.title }}</h2>
-        <p class="meta-line">
-          <span v-if="selected.title.year">{{ selected.title.year }}</span>
-          <span v-if="selected.title.year" class="dot">·</span>
-          <span>{{ mediaLabel(selected.title) }}</span>
-          <span class="dot">·</span>
-          <span class="rating" :class="{ muted: selected.title.rating == null }">
-            {{ formatTitleRating(selected.title.rating) }}
-          </span>
-        </p>
-        <p v-if="selected.title.overview" class="overview">
-          {{ selected.title.overview }}
-        </p>
-        <div v-if="showSocial && selected.sampleWallets?.length" class="favorites">
-          <NqIcon name="heart" :size="16" class="favorites-ico" />
-          <div class="favorite-faces">
-            <Identicon
-              v-for="wallet in selected.sampleWallets.slice(0, 3)"
-              :key="wallet"
-              class="favorite-face"
-              :address="wallet"
-              :size="22"
-              alt=""
-            />
+        <div class="meta">
+          <h2>{{ selected.title.title }}</h2>
+          <p class="meta-line">
+            <span
+              class="rating"
+              :class="{ muted: !hasTitleRating(selected.title.rating) }"
+            >
+              <NqIcon name="star" :size="14" />
+              {{ formatTitleRating(selected.title.rating) }}
+            </span>
+            <span
+              >{{ selected.title.year ? `${selected.title.year} - ` : ""
+              }}{{ mediaLabel(selected.title) }}</span
+            >
+          </p>
+
+          <p
+            v-if="showTasteCounts"
+            class="taste-counts"
+            aria-label="Peer Recommends and Favorites"
+          >
+            <span class="taste-count taste-count--recommend">
+              {{ recommendCountLabel }}
+            </span>
+            <span class="taste-sep" aria-hidden="true">,</span>
+            <span class="taste-count">{{ favoriteCountLabel }}</span>
+          </p>
+
+          <div v-if="showActions" class="meta-actions">
+            <div v-if="actionsPrefix || showRefresh" class="actions-row">
+              <span v-if="actionsPrefix" class="actions-prefix">{{ actionsPrefix }}</span>
+              <button
+                v-if="showRefresh"
+                type="button"
+                class="refresh-btn"
+                :disabled="deckItems.length === 0"
+                aria-label="Show another set of titles"
+                @click="$emit('refresh')"
+              >
+                <NqIcon name="cycle" :size="18" />
+              </button>
+            </div>
+            <TourSpotlight
+              v-if="primaryActionLabel"
+              :id="TOUR_SPOTLIGHT.deckWatchlist"
+              radius="999px"
+            >
+              <button
+                type="button"
+                class="nq-pill-stretch"
+                :class="primaryActionActive ? 'nq-pill-gold' : 'nq-pill-secondary'"
+                :data-tour="TOUR_SPOTLIGHT.deckWatchlist"
+                @click="onPrimaryAction"
+              >
+                {{ primaryActionLabel }}
+              </button>
+            </TourSpotlight>
+            <TourSpotlight
+              v-if="secondaryActionLabel"
+              :id="TOUR_SPOTLIGHT.deckFavorite"
+              radius="999px"
+            >
+              <button
+                type="button"
+                class="nq-pill-stretch"
+                :class="secondaryActionActive ? 'nq-pill-blue' : 'nq-pill-secondary'"
+                :data-tour="TOUR_SPOTLIGHT.deckFavorite"
+                @click="onSecondaryAction"
+              >
+                {{ secondaryActionLabel }}
+              </button>
+            </TourSpotlight>
           </div>
         </div>
-        <div class="actions">
-          <span v-if="actionsPrefix" class="actions-prefix">{{ actionsPrefix }}</span>
-          <button
-            v-if="primaryActionLabel"
-            type="button"
-            class="nq-pill-stretch"
-            :class="primaryActionActive ? 'nq-pill-blue' : 'nq-pill-secondary'"
-            @click="onPrimaryAction"
-          >
-            {{ primaryActionLabel }}
-          </button>
-          <button
-            v-if="secondaryActionLabel"
-            type="button"
-            class="nq-pill-stretch"
-            :class="secondaryActionActive ? 'nq-pill-blue' : 'nq-pill-secondary'"
-            @click="onSecondaryAction"
-          >
-            {{ secondaryActionLabel }}
-          </button>
-          <button
-            v-if="showRefresh"
-            type="button"
-            class="refresh-btn"
-            :disabled="deckItems.length === 0"
-            aria-label="Show another set of titles"
-            @click="$emit('refresh')"
-          >
-            <NqIcon name="cycle" :size="20" />
-          </button>
-        </div>
       </div>
+
+      <ExpandableText
+        v-if="selected.title.overview"
+        class="overview"
+        :text="selected.title.overview"
+        :lines="4"
+        emit-read-more
+        @read-more="openSelectedOverview"
+      />
     </div>
 
     <div class="dock">
@@ -96,7 +122,7 @@
         >
           <button
             type="button"
-            class="poster"
+            class="strip-poster"
             :class="{ 'is-selected': index === selectedIndex }"
             :aria-label="item.title.title"
             @click="onPosterClick(index)"
@@ -129,14 +155,17 @@
 <script setup lang="ts">
 import { computed, nextTick, onActivated, onMounted, onUnmounted, ref, watch } from "vue";
 import type { TitleSummary } from "@cinima/shared";
-import Identicon from "@/components/Identicon.vue";
+import ExpandableText from "@/components/ExpandableText.vue";
 import NqIcon from "@/components/NqIcon.vue";
 import PosterImg from "@/components/PosterImg.vue";
-import { formatTitleRating } from "@/lib/titleRating";
+import TourSpotlight from "@/components/TourSpotlight.vue";
+import { TOUR_SPOTLIGHT } from "@/lib/guidedTour";
+import { formatTitleRating, hasTitleRating } from "@/lib/titleRating";
 import {
   captureDeckSelection,
   deckScrollLeftToCenter,
   loadDeckSelection,
+  rememberedSelectionForPreferred,
   resolveDeckScrollIndex,
   saveDeckSelection,
   syncDeckItems,
@@ -145,6 +174,8 @@ import {
 export type DeckItem = {
   title: TitleSummary;
   sampleWallets?: string[];
+  recommendCount?: number;
+  favoriteCount?: number;
 };
 
 const props = withDefaults(
@@ -160,6 +191,8 @@ const props = withDefaults(
     primaryActionActive?: boolean;
     secondaryActionLabel?: string;
     secondaryActionActive?: boolean;
+    /** Force this title selected when present (guided tour). */
+    preferredTitleId?: string | null;
   }>(),
   {
     selectionKey: "deck",
@@ -171,11 +204,13 @@ const props = withDefaults(
     primaryActionActive: false,
     secondaryActionLabel: "",
     secondaryActionActive: false,
+    preferredTitleId: null,
   }
 );
 
 const emit = defineEmits<{
   open: [titleId: string];
+  "open-overview": [titleId: string];
   "primary-action": [titleId: string];
   "secondary-action": [titleId: string];
   refresh: [];
@@ -183,13 +218,41 @@ const emit = defineEmits<{
 }>();
 
 const stripEl = ref<HTMLElement | null>(null);
-const restored = syncDeckItems(props.items, loadDeckSelection(props.selectionKey));
+const restored = syncDeckItems(
+  props.items,
+  rememberedSelectionForPreferred(
+    props.items,
+    props.preferredTitleId,
+    loadDeckSelection(props.selectionKey)
+  )
+);
 const deckItems = ref<DeckItem[]>(restored.items);
 const selectedIndex = ref(restored.selectedIndex);
 const suppressSelect = ref(false);
 const pinnedIndex = ref<number | null>(null);
 
 const selected = computed(() => deckItems.value[selectedIndex.value] ?? null);
+const showActions = computed(
+  () =>
+    Boolean(props.primaryActionLabel) ||
+    Boolean(props.secondaryActionLabel) ||
+    props.showRefresh
+);
+const showTasteCounts = computed(() => {
+  if (!props.showSocial || !selected.value) return false;
+  return (
+    typeof selected.value.recommendCount === "number" &&
+    typeof selected.value.favoriteCount === "number"
+  );
+});
+const recommendCountLabel = computed(() => {
+  const n = selected.value?.recommendCount ?? 0;
+  return `${n} ${n === 1 ? "recommend" : "recommends"}`;
+});
+const favoriteCountLabel = computed(() => {
+  const n = selected.value?.favoriteCount ?? 0;
+  return `${n} ${n === 1 ? "favorite" : "favorites"}`;
+});
 
 const pickerStyle = computed(() => ({
   "--picker-dock-bottom-offset": props.dockBottomOffset,
@@ -221,7 +284,14 @@ function persistVisibleCard() {
 }
 
 function resetFromPool() {
-  const next = syncDeckItems(props.items, loadDeckSelection(props.selectionKey));
+  const next = syncDeckItems(
+    props.items,
+    rememberedSelectionForPreferred(
+      props.items,
+      props.preferredTitleId,
+      loadDeckSelection(props.selectionKey)
+    )
+  );
   deckItems.value = next.items;
   selectedIndex.value = next.selectedIndex;
   persistSelection();
@@ -234,6 +304,12 @@ function openSelected() {
   persistVisibleCard();
   const titleId = selected.value?.title.id;
   if (titleId) emit("open", titleId);
+}
+
+function openSelectedOverview() {
+  persistVisibleCard();
+  const titleId = selected.value?.title.id;
+  if (titleId) emit("open-overview", titleId);
 }
 
 function onPrimaryAction() {
@@ -347,6 +423,26 @@ watch(
   }
 );
 
+watch(
+  () => props.preferredTitleId,
+  (id, prev) => {
+    if (!id || id === prev) return;
+    const idx = deckItems.value.findIndex((item) => item.title.id === id);
+    if (idx < 0) {
+      resetFromPool();
+      return;
+    }
+    if (idx === selectedIndex.value) {
+      emit("select", id);
+      return;
+    }
+    selectedIndex.value = idx;
+    persistSelection();
+    emit("select", id);
+    void snapToIndex(idx, "auto");
+  }
+);
+
 onMounted(() => {
   persistSelection();
   void snapToIndex(selectedIndex.value, "auto");
@@ -381,77 +477,87 @@ function onResize() {
 .detail {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.7rem;
+  gap: 0.85rem;
   padding: 0.5rem 0 calc(var(--picker-dock-height) + 0.5rem);
 }
 
-.hero {
-  display: block;
-  width: min(36vw, 8.75rem);
+.poster-section {
+  display: flex;
+  align-items: stretch;
+  gap: 1rem;
+}
+
+.poster {
+  flex: none;
+  width: 10rem;
+  height: 15rem;
   aspect-ratio: 2 / 3;
   padding: 0;
   border: 0;
   border-radius: 12px;
   overflow: hidden;
   background: var(--bg-surface);
-  flex-shrink: 0;
   cursor: pointer;
   color: inherit;
-  box-shadow: 0 12px 28px color-mix(in oklch, var(--colors-neutral) 28%, transparent);
   -webkit-tap-highlight-color: transparent;
 }
 
-.hero img,
-.hero :deep(.poster-img) {
+.poster :deep(.poster-img),
+.poster :deep(img) {
   width: 100%;
   height: 100%;
+  object-fit: cover;
   display: block;
 }
 
-.hero-fallback,
 .poster-fallback {
   display: grid;
   place-items: center;
   height: 100%;
   padding: 0.5rem;
   text-align: center;
+  font-size: 0.9rem;
   color: var(--text-secondary);
   font-weight: 700;
 }
 
 .meta {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
+  max-height: 15rem;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.45rem;
-  text-align: center;
-  min-width: 0;
+  gap: 0.35rem;
+  overflow: hidden;
 }
 
 .meta h2 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.05rem;
+  line-height: 1.2;
   color: var(--text-primary);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
 }
 
 .meta-line {
   margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
   color: var(--text-secondary);
-  font-size: 0.88rem;
-}
-
-.dot {
-  opacity: 0.55;
-  padding: 0 0.15rem;
+  font-size: 0.82rem;
+  line-height: 1.3;
 }
 
 .rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
   color: var(--warning);
   font-weight: 600;
 }
@@ -461,74 +567,74 @@ function onResize() {
   font-weight: 500;
 }
 
-.overview {
-  margin: 0;
-  max-width: 36rem;
-  color: var(--text-primary);
-  font-size: 0.9rem;
-  line-height: 1.45;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  overflow: hidden;
+.rating :deep(.nq-icon) {
+  width: 14px;
+  height: 14px;
 }
 
-.favorites {
+.taste-counts {
   display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.favorites-ico {
-  color: var(--primary);
-}
-
-.favorite-faces {
-  display: flex;
-  align-items: center;
-}
-
-.favorite-face {
-  margin-left: -6px;
-  box-shadow: 0 0 0 1.5px var(--bg-primary);
-  border-radius: 50%;
-}
-
-.favorite-face:first-child {
-  margin-left: 0;
-}
-
-.actions {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  width: 100%;
-  max-width: 22rem;
-  margin-top: 0.15rem;
   flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem;
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.3;
+  color: var(--text-secondary);
+}
+
+.taste-count {
+  color: inherit;
+  font: inherit;
+}
+
+.taste-count--recommend {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.taste-sep {
+  margin-right: 0.15rem;
+}
+
+.meta-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: auto;
+  min-height: 0;
+}
+
+.actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 1.5rem;
 }
 
 .actions-prefix {
-  flex: 0 0 auto;
   color: var(--text-secondary);
-  font-size: 0.92rem;
+  font-size: 0.82rem;
   font-weight: 500;
-  white-space: nowrap;
 }
 
-.actions .nq-pill-stretch {
-  flex: 1 1 auto;
-  width: auto;
-  min-height: 2.4rem;
-  min-width: 6.5rem;
+.meta .nq-pill-stretch {
+  font-size: 0.78rem;
+  padding: 0.22rem 0.65rem;
+  line-height: 1.25;
+}
+
+.overview {
+  display: block;
+  min-width: 0;
 }
 
 .refresh-btn {
-  flex: 0 0 2.4rem;
-  width: 2.4rem;
-  height: 2.4rem;
+  flex: 0 0 1.85rem;
+  width: 1.85rem;
+  height: 1.85rem;
+  margin-left: auto;
   display: grid;
   place-items: center;
   border: 0;
@@ -590,7 +696,7 @@ function onResize() {
   scroll-snap-stop: always;
 }
 
-.poster {
+.strip-poster {
   width: var(--picker-poster);
   aspect-ratio: 2 / 3;
   padding: 0;
@@ -609,14 +715,14 @@ function onResize() {
   -webkit-tap-highlight-color: transparent;
 }
 
-.poster.is-selected {
+.strip-poster.is-selected {
   transform: scale(1);
   opacity: 1;
   box-shadow: 0 0 0 2px var(--gold);
 }
 
-.poster img,
-.poster :deep(.poster-img) {
+.strip-poster img,
+.strip-poster :deep(.poster-img) {
   width: 100%;
   height: 100%;
   display: block;

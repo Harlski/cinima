@@ -82,8 +82,10 @@ import {
 } from "@/lib/welcome";
 import { takePostAuthPath } from "@/lib/postAuthPath";
 import { useAuthStore } from "@/stores/auth";
+import { useGuidedTourStore } from "@/stores/guidedTour";
 
 const auth = useAuthStore();
+const tour = useGuidedTourStore();
 const router = useRouter();
 
 const inPay = ref(isNimiqPay() || isNimiqPayUserAgent());
@@ -163,6 +165,7 @@ const forceFavoritesPick = async () => {
     if (!auth.user) await auth.boot();
     if (!auth.user) return;
     armForceOnboardingFlow();
+    tour.armForForceOnboarding();
   } catch {
     return;
   }

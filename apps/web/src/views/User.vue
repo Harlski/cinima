@@ -15,14 +15,17 @@
         :avatar-size="64"
       >
         <template v-if="!profile.isSelf" #actions>
-          <button
-            type="button"
-            :class="profile.isFollowing ? 'nq-pill-secondary' : 'nq-pill-blue'"
-            :disabled="followBusy"
-            @click="toggleFollow"
-          >
-            {{ profile.isFollowing ? "Following" : "Follow" }}
-          </button>
+          <TourSpotlight :id="TOUR_SPOTLIGHT.userFollow" radius="999px">
+            <button
+              type="button"
+              :class="profile.isFollowing ? 'nq-pill-secondary' : 'nq-pill-blue'"
+              :disabled="followBusy"
+              :data-tour="TOUR_SPOTLIGHT.userFollow"
+              @click="toggleFollow"
+            >
+              {{ profile.isFollowing ? "Following" : "Follow" }}
+            </button>
+          </TourSpotlight>
         </template>
       </UserCard>
 
@@ -32,11 +35,15 @@
         title="Activity"
       />
 
-      <ProfileTaste
-        :favorites="profile.favorites"
-        :recommends="profile.recommends || []"
-        @select="(title) => goToTitle(title.id)"
-      />
+      <TourSpotlight :id="TOUR_SPOTLIGHT.userRecommends" radius="12px">
+        <div :data-tour="TOUR_SPOTLIGHT.userRecommends">
+          <ProfileTaste
+            :favorites="profile.favorites"
+            :recommends="profile.recommends || []"
+            @select="(title) => goToTitle(title.id)"
+          />
+        </div>
+      </TourSpotlight>
     </div>
   </div>
 </template>
@@ -50,7 +57,9 @@ import type { PublicProfile } from "@cinima/shared";
 import ActivityHeatmap from "@/components/ActivityHeatmap.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
 import ProfileTaste from "@/components/ProfileTaste.vue";
+import TourSpotlight from "@/components/TourSpotlight.vue";
 import UserCard from "@/components/UserCard.vue";
+import { TOUR_SPOTLIGHT } from "@/lib/guidedTour";
 
 const route = useRoute();
 const router = useRouter();

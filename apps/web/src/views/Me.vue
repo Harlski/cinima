@@ -61,6 +61,17 @@
         @select="(title) => goToTitle(title.id)"
       />
 
+      <div class="tour-replay">
+        <button
+          type="button"
+          class="nq-pill-secondary nq-pill-stretch"
+          data-tour="take-guided-tour"
+          @click="startGuidedTour"
+        >
+          Take the tour
+        </button>
+      </div>
+
       <TmdbAttribution variant="legal" />
     </div>
 
@@ -125,6 +136,7 @@ import TmdbAttribution from "@/components/TmdbAttribution.vue";
 import ProfileTaste from "@/components/ProfileTaste.vue";
 import UserCard from "@/components/UserCard.vue";
 import ShareLinkSheet from "@/components/ShareLinkSheet.vue";
+import { useGuidedTourStore } from "@/stores/guidedTour";
 import {
   ACTIVITY_UI_VISIBLE,
   displayName,
@@ -136,6 +148,7 @@ import type { HeatmapDay, MeResponse, PublicProfile, TitleSummary } from "@cinim
 const router = useRouter();
 const { request } = useApi();
 const authStore = useAuthStore();
+const tour = useGuidedTourStore();
 
 const loading = ref(true);
 const user = computed(() => authStore.user);
@@ -231,6 +244,10 @@ const goToTitle = (titleId: string) => {
   router.push({ name: "title", params: { id: titleId } });
 };
 
+const startGuidedTour = () => {
+  tour.beginTour();
+};
+
 const onKeydown = (e: KeyboardEvent) => {
   if (e.key === "Escape") xEditorOpen.value = false;
 };
@@ -306,6 +323,10 @@ onUnmounted(() => {
 
 .handle-prompt p {
   margin: 0 0 0.75rem;
+}
+
+.tour-replay {
+  padding: 0 1rem;
 }
 
 .share-link {

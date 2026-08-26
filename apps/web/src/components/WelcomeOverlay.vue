@@ -12,8 +12,8 @@
             v-if="forcePickEnabled"
             type="button"
             class="welcome-identicon-btn"
-            title="Dev: open onboarding (username + favorites)"
-            aria-label="Dev: open onboarding (username + favorites)"
+            title="Dev: open onboarding (username + favorites + tour)"
+            aria-label="Dev: open onboarding (username + favorites + tour)"
             @click="$emit('force-pick')"
           >
             <Identicon

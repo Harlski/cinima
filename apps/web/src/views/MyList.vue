@@ -47,6 +47,7 @@
         :key="activeTab"
         :items="deckItems"
         :selection-key="`my-list-${activeTab}`"
+        :preferred-title-id="tourPreferredTitleId"
         strip-label="Watchlist"
         dock-bottom-offset="var(--my-list-tabs-height, 2.85rem)"
         :primary-action-label="watchlistLabel"
@@ -54,6 +55,7 @@
         :secondary-action-label="favoriteLabel"
         :secondary-action-active="favorited"
         @open="goToTitle"
+        @open-overview="goToTitleOverview"
         @primary-action="toggleWatchlist"
         @secondary-action="toggleFavorite"
         @select="selectedTitleId = $event"
@@ -110,12 +112,14 @@ import CommunityRecommends from "@/components/CommunityRecommends.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
 import { useTitleActionConfirm } from "@/composables/useTitleActionConfirm";
 import { watchlistButtonLabel } from "@/lib/titleActionLabels";
+import { useGuidedTourStore } from "@/stores/guidedTour";
 
 defineOptions({ name: "MyList" });
 
 const router = useRouter();
 const favoritesStore = useFavoritesStore();
 const watchlistStore = useWatchlistStore();
+const tour = useGuidedTourStore();
 const {
   pendingConfirm,
   confirmMessage,
@@ -134,6 +138,10 @@ const {
 const loading = ref(false);
 const selectedTitleId = ref("");
 const activeTab = ref<MediaType>("movie");
+
+const tourPreferredTitleId = computed(() =>
+  tour.active && tour.tourTitleId ? tour.tourTitleId : null
+);
 
 const hasAnyItems = computed(() => titles.value.length > 0);
 const showDeck = computed(() => filteredItems.value.length > 0);
@@ -166,10 +174,32 @@ function mediaKind(title: { mediaType?: MediaType; kind?: MediaType }) {
 }
 
 function syncSelection() {
+  const preferred = tourPreferredTitleId.value;
+  if (preferred && filteredItems.value.some((title) => title.id === preferred)) {
+    selectedTitleId.value = preferred;
+    return;
+  }
   if (!filteredItems.value.some((title) => title.id === selectedTitleId.value)) {
     selectedTitleId.value = filteredItems.value[0]?.id ?? "";
   }
 }
+
+function applyTourTitleSelection() {
+  const id = tourPreferredTitleId.value;
+  if (!id) return;
+  const item = titles.value.find((t) => t.id === id);
+  if (!item) return;
+  activeTab.value = mediaKind(item) === "tv" ? "tv" : "movie";
+  selectedTitleId.value = id;
+}
+
+watch(
+  () => [tour.active, tour.tourTitleId, titles.value] as const,
+  () => {
+    applyTourTitleSelection();
+  },
+  { immediate: true }
+);
 
 function pickDefaultTab() {
   if (filteredItems.value.length > 0) return;
@@ -188,6 +218,7 @@ async function ensureLoaded() {
   try {
     await watchlistStore.refresh();
     pickDefaultTab();
+    applyTourTitleSelection();
     syncSelection();
     await maybeLoadCommunity();
   } finally {
@@ -218,12 +249,21 @@ const onConfirmAction = async () => {
   await confirmPending({
     onRemoveFromWatchlist: () => {
       syncSelection();
+      tour.reportAction("watchlist-remove");
     },
   });
 };
 
-const goToTitle = (titleId: string) => {
-  router.push({ name: "title", params: { id: titleId } });
+const goToTitle = (titleId: string, expandOverview = false) => {
+  router.push({
+    name: "title",
+    params: { id: titleId },
+    ...(expandOverview ? { query: { overview: "1" } } : {}),
+  });
+};
+
+const goToTitleOverview = (titleId: string) => {
+  goToTitle(titleId, true);
 };
 
 const goToTitleSummary = (title: TitleSummary) => {
@@ -245,6 +285,7 @@ onMounted(() => {
 });
 
 onActivated(() => {
+  applyTourTitleSelection();
   syncSelection();
   void maybeLoadCommunity();
 });

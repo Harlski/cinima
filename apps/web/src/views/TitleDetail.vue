@@ -34,15 +34,36 @@
             <span>{{ title.year }} - {{ title.mediaType }}</span>
           </p>
 
-          <div class="meta-actions">
+          <p class="taste-counts" aria-label="Peer Recommends and Favorites">
             <button
               type="button"
-              @click="toggleWatchlist"
-              class="nq-pill-stretch"
-              :class="title.watchlisted ? 'nq-pill-gold' : 'nq-pill-secondary'"
+              class="taste-count taste-count--recommend"
+              @click="openTastePeople('recommends')"
             >
-              {{ watchlistButtonLabel(title.watchlisted) }}
+              {{ recommendCountLabel }}
             </button>
+            <span class="taste-sep" aria-hidden="true">,</span>
+            <button
+              type="button"
+              class="taste-count"
+              @click="openTastePeople('favorites')"
+            >
+              {{ favoriteCountLabel }}
+            </button>
+          </p>
+
+          <div class="meta-actions">
+            <TourSpotlight :id="TOUR_SPOTLIGHT.titleWatchlist" radius="999px">
+              <button
+                type="button"
+                @click="toggleWatchlist"
+                class="nq-pill-stretch"
+                :class="title.watchlisted ? 'nq-pill-gold' : 'nq-pill-secondary'"
+                :data-tour="TOUR_SPOTLIGHT.titleWatchlist"
+              >
+                {{ watchlistButtonLabel(title.watchlisted) }}
+              </button>
+            </TourSpotlight>
 
             <button
               type="button"
@@ -81,6 +102,7 @@
         class="overview"
         :text="title.overview"
         :lines="4"
+        :initial-expanded="expandOverview"
       />
 
       <HeatMap
@@ -95,7 +117,7 @@
               type="button"
               class="thanks-head-left"
               aria-label="Show who Favorited this"
-              @click="favoritersOpen = true"
+              @click="openTastePeople('favorites')"
             >
               <div class="thanks-stack" aria-hidden="true">
                 <Identicon
@@ -268,8 +290,11 @@
     />
 
     <FavoritersSheet
-      v-if="favoritersOpen"
+      v-if="favoritersOpen && title"
       :people="suggesters"
+      :initial-tab="tastePeopleTab"
+      :recommend-count="title.recommendCount"
+      :favorite-count="title.favoriteCount"
       @close="favoritersOpen = false"
       @open-profile="onOpenFavoriterProfile"
     />
@@ -301,7 +326,7 @@ import { displayName, imdbTitleUrl, makeTitleId, type MediaType } from "@cinima/
 import type { TitleDetail, CommentDto, TitleSuggester } from "@cinima/shared";
 import ExpandableText from "@/components/ExpandableText.vue";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
-import FavoritersSheet from "@/components/FavoritersSheet.vue";
+import FavoritersSheet, { type TastePeopleTab } from "@/components/FavoritersSheet.vue";
 import HeatMap from "@/components/HeatMap.vue";
 import Identicon from "@/components/Identicon.vue";
 import NqIcon from "@/components/NqIcon.vue";
@@ -309,8 +334,11 @@ import NqSpinner from "@/components/NqSpinner.vue";
 import PosterImg from "@/components/PosterImg.vue";
 import ShareTitleSheet from "@/components/ShareTitleSheet.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";
+import TourSpotlight from "@/components/TourSpotlight.vue";
 import { useTitleActionConfirm } from "@/composables/useTitleActionConfirm";
+import { TOUR_SPOTLIGHT } from "@/lib/guidedTour";
 import { watchlistButtonLabel } from "@/lib/titleActionLabels";
+import { useGuidedTourStore } from "@/stores/guidedTour";
 import { formatTitleRating, hasTitleRating } from "@/lib/titleRating";
 
 const route = useRoute();
@@ -319,6 +347,7 @@ const { request } = useApi();
 const authStore = useAuthStore();
 const favoritesStore = useFavoritesStore();
 const catalogStore = useCatalogStore();
+const tour = useGuidedTourStore();
 const {
   pendingConfirm,
   confirmMessage,
@@ -353,6 +382,7 @@ const commentPendingDelete = ref<number | null>(null);
 const suggesters = ref<TitleSuggester[]>([]);
 const thankingAll = ref(false);
 const favoritersOpen = ref(false);
+const tastePeopleTab = ref<TastePeopleTab>("recommends");
 const shareOpen = ref(false);
 const composerEl = ref<HTMLElement | null>(null);
 const composerDocked = ref(false);
@@ -360,6 +390,15 @@ const composerSpacerHeight = ref("0px");
 const meWallet = computed(() => authStore.user?.walletAddress || "");
 const unthankedCount = computed(() => suggesters.value.filter((s) => !s.thanked).length);
 const imdbUrl = computed(() => imdbTitleUrl(title.value?.imdbId));
+const expandOverview = computed(() => String(route.query.overview || "") === "1");
+const recommendCountLabel = computed(() => {
+  const n = title.value?.recommendCount ?? 0;
+  return `${n} ${n === 1 ? "recommend" : "recommends"}`;
+});
+const favoriteCountLabel = computed(() => {
+  const n = title.value?.favoriteCount ?? 0;
+  return `${n} ${n === 1 ? "favorite" : "favorites"}`;
+});
 
 let composerBlurTimer: number | undefined;
 
@@ -443,6 +482,7 @@ const toggleWatchlist = async () => {
     isWatchlisted: title.value.watchlisted,
     onAdded: () => {
       if (title.value) title.value.watchlisted = true;
+      tour.reportAction("watchlist-add");
     },
   });
 };
@@ -456,6 +496,7 @@ const onConfirmAction = async () => {
     },
     onRemoveFromWatchlist: () => {
       if (title.value) title.value.watchlisted = false;
+      tour.reportAction("watchlist-remove");
     },
   });
 };
@@ -568,6 +609,11 @@ const thankAll = async () => {
   } finally {
     thankingAll.value = false;
   }
+};
+
+const openTastePeople = (tab: TastePeopleTab) => {
+  tastePeopleTab.value = tab;
+  favoritersOpen.value = true;
 };
 
 const onOpenFavoriterProfile = (wallet: string) => {
@@ -685,6 +731,36 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 0.35rem;
   overflow: hidden;
+}
+
+.taste-counts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem;
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.3;
+  color: var(--text-secondary);
+}
+
+.taste-count {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.taste-count--recommend {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.taste-sep {
+  margin-right: 0.15rem;
 }
 
 .meta-actions {

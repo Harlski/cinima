@@ -12,7 +12,7 @@
       v-if="overflows"
       type="button"
       class="expandable-toggle"
-      @click.stop="expanded = !expanded"
+      @click.stop="onToggle"
     >
       {{ expanded ? "Show less" : "Read more" }}
     </button>
@@ -26,12 +26,27 @@ const props = withDefaults(
   defineProps<{
     text: string;
     lines?: number;
+    /** Start expanded (e.g. deep-linked from a deck Read more). */
+    initialExpanded?: boolean;
+    /**
+     * When true, the first "Read more" click emits `read-more` instead of
+     * expanding locally (use to open the title page).
+     */
+    emitReadMore?: boolean;
   }>(),
-  { lines: 3 }
+  {
+    lines: 3,
+    initialExpanded: false,
+    emitReadMore: false,
+  }
 );
 
+const emit = defineEmits<{
+  "read-more": [];
+}>();
+
 const textEl = ref<HTMLElement | null>(null);
-const expanded = ref(false);
+const expanded = ref(props.initialExpanded);
 const overflows = ref(false);
 let observer: ResizeObserver | null = null;
 
@@ -51,11 +66,26 @@ const measure = () => {
   overflows.value = el.scrollHeight > el.clientHeight + 1;
 };
 
+function onToggle() {
+  if (props.emitReadMore && !expanded.value) {
+    emit("read-more");
+    return;
+  }
+  expanded.value = !expanded.value;
+}
+
 watch(
   () => props.text,
   () => {
-    expanded.value = false;
+    expanded.value = props.initialExpanded;
     requestAnimationFrame(measure);
+  }
+);
+
+watch(
+  () => props.initialExpanded,
+  (value) => {
+    if (value) expanded.value = true;
   }
 );
 

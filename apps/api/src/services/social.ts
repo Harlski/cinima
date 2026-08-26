@@ -1,5 +1,5 @@
 import { DELETED_COMMENT_LABEL, normalizeWallet } from "@cinima/shared";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { comments, favorites, thanks, titles, unlocks, users } from "../db/schema.js";
 import { toTitleSummary } from "../lib/titles.js";
@@ -89,6 +89,45 @@ export async function addComment(wallet: string, titleId: string, body: string) 
   });
 }
 
+export async function countTitleTastePeers(titleId: string, me: string) {
+  const map = await countTitleTastePeersForTitles([titleId], me);
+  return map.get(titleId) ?? { recommendCount: 0, favoriteCount: 0 };
+}
+
+/** Peer Recommend / Favorite-only counts for many titles (excludes viewer). */
+export async function countTitleTastePeersForTitles(titleIds: string[], me: string) {
+  const out = new Map<string, { recommendCount: number; favoriteCount: number }>();
+  for (const id of titleIds) {
+    out.set(id, { recommendCount: 0, favoriteCount: 0 });
+  }
+  if (!titleIds.length) return out;
+
+  const w = normalizeWallet(me);
+  const rows = await db
+    .select({
+      titleId: favorites.titleId,
+      recommendCount: sql<number>`sum(case when ${favorites.recommendedAt} is not null then 1 else 0 end)`.mapWith(
+        Number
+      ),
+      favoriteCount: sql<number>`sum(case when ${favorites.recommendedAt} is null then 1 else 0 end)`.mapWith(
+        Number
+      ),
+    })
+    .from(favorites)
+    .where(
+      and(inArray(favorites.titleId, titleIds), sql`${favorites.walletAddress} != ${w}`)
+    )
+    .groupBy(favorites.titleId);
+
+  for (const row of rows) {
+    out.set(row.titleId, {
+      recommendCount: row.recommendCount,
+      favoriteCount: row.favoriteCount,
+    });
+  }
+  return out;
+}
+
 export async function listSuggesters(titleId: string, me: string) {
   const w = normalizeWallet(me);
   const peers = await db
@@ -96,6 +135,7 @@ export async function listSuggesters(titleId: string, me: string) {
       walletAddress: favorites.walletAddress,
       handle: users.handle,
       thankedAt: thanks.createdAt,
+      recommendedAt: favorites.recommendedAt,
     })
     .from(favorites)
     .leftJoin(users, eq(favorites.walletAddress, users.walletAddress))
@@ -114,6 +154,7 @@ export async function listSuggesters(titleId: string, me: string) {
     walletAddress: p.walletAddress,
     handle: p.handle,
     thanked: p.thankedAt != null,
+    recommended: p.recommendedAt != null,
   }));
 }
 

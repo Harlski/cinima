@@ -287,6 +287,69 @@ const groups = computed((): LabGroup[] => {
       ],
     },
     {
+      title: "0b. IP vs hostname probes",
+      note:
+        "Bare LAN IP (no :port) checks whether Pay blocks IP hosts. cinima.app:5174 checks :port on a hostname (not an IP).",
+      links: [
+        {
+          id: "probe-scheme-lan-ip-bare",
+          label: "Scheme → 192.168.4.73 (no port)",
+          description: "url=192.168.4.73 — IP only; isolates IP block vs :port",
+          kind: "scheme",
+          href: scheme("192.168.4.73"),
+        },
+        {
+          id: "probe-https-lan-ip-bare",
+          label: "HTTPS open/ → 192.168.4.73 (no port)",
+          description: "…/open/192.168.4.73",
+          kind: "https",
+          href: "https://nimpay.app/miniapps/open/192.168.4.73",
+        },
+        {
+          id: "probe-scheme-lan-ip-http",
+          label: "Scheme → http://192.168.4.73/",
+          description: "Absolute URL with IP, default port 80 implied (no : in host)",
+          kind: "scheme",
+          href: scheme("http://192.168.4.73/"),
+        },
+        {
+          id: "probe-scheme-cinima-port",
+          label: "Scheme → cinima.app:5174",
+          description: "Hostname + :port — if this fails and bare IP passes, colon is the issue",
+          kind: "scheme",
+          href: scheme("cinima.app:5174"),
+        },
+        {
+          id: "probe-scheme-cinima-port-pct3a",
+          label: "Scheme → cinima.app%3A5174",
+          description: "Same host with only port colon encoded",
+          kind: "scheme",
+          href: scheme("cinima.app%3A5174"),
+        },
+        {
+          id: "probe-https-cinima-port",
+          label: "HTTPS open/ → cinima.app:5174",
+          description: "…/open/cinima.app:5174",
+          kind: "https",
+          href: "https://nimpay.app/miniapps/open/cinima.app:5174",
+        },
+        {
+          id: "probe-https-cinima-port-pct3a",
+          label: "HTTPS open/ → cinima.app%3A5174",
+          description: "…/open/cinima.app%3A5174",
+          kind: "https",
+          href: "https://nimpay.app/miniapps/open/cinima.app%3A5174",
+        },
+        {
+          id: "probe-scheme-cinima-prod",
+          label: "Scheme → cinima.app (prod host, no port)",
+          description: "Hostname-only baseline that already works on prod",
+          kind: "scheme",
+          href: scheme("cinima.app"),
+        },
+      ],
+    },
+    {
       title: "A. Current Cinima builders",
       note: "What the app generates today for Already Installed / title deep links.",
       links: [
@@ -467,6 +530,8 @@ const reportMarkdown = computed(() => {
   lines.push("### Encoding conclusions (fill if known)");
   lines.push("- Literal `:port` in url= / open/ :");
   lines.push("- Port as `%3A` only (slashes literal) :");
+  lines.push("- Bare LAN IP `192.168.4.73` (no port) :");
+  lines.push("- `cinima.app:5174` (hostname + port) :");
   lines.push("- No-port tunnel origin :");
   lines.push("- Literal `/` in path :");
   lines.push("- Full `encodeURIComponent` (%2F) :");

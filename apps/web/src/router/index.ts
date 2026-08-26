@@ -20,6 +20,15 @@ const devRoutes = import.meta.env.DEV
         name: "x-header-lab",
         component: () => import("../views/dev/XHeaderLab.vue"),
       },
+      {
+        path: "/testpage",
+        name: "pay-deep-link-lab",
+        component: () => import("../views/dev/PayDeepLinkLab.vue"),
+      },
+      {
+        path: "/dev/pay-deep-links",
+        redirect: { name: "pay-deep-link-lab" },
+      },
     ]
   : [];
 
@@ -29,15 +38,6 @@ export const router = createRouter({
   history: createWebHistory(),
   routes: [
     ...devRoutes,
-    {
-      path: "/testpage",
-      name: "pay-deep-link-lab",
-      component: () => import("../views/dev/PayDeepLinkLab.vue"),
-    },
-    {
-      path: "/dev/pay-deep-links",
-      redirect: { name: "pay-deep-link-lab" },
-    },
     { path: "/", name: "landing", component: Landing },
     /** Always shows Landing, including inside Nimiq Pay (local preview / QA). */
     { path: "/gate", name: "gate", component: Landing },

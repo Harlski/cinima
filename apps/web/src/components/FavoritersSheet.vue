@@ -11,11 +11,38 @@
           <NqIcon name="cross" :size="20" />
         </button>
 
-        <h2 id="favoriters-title">Favorited this</h2>
-        <p class="hint">{{ people.length }} {{ people.length === 1 ? "Handle" : "Handles" }}</p>
+        <h2 id="favoriters-title">Who marked this</h2>
 
-        <ul class="people-list">
-          <li v-for="person in people" :key="person.walletAddress" class="person-row">
+        <div class="taste-tabs" role="tablist" aria-label="Recommend or Favorite">
+          <button
+            type="button"
+            role="tab"
+            class="taste-tab"
+            :class="{ active: tab === 'recommends' }"
+            :aria-selected="tab === 'recommends'"
+            @click="tab = 'recommends'"
+          >
+            Recommends ({{ recommendCount }})
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="taste-tab"
+            :class="{ active: tab === 'favorites' }"
+            :aria-selected="tab === 'favorites'"
+            @click="tab = 'favorites'"
+          >
+            Favorites ({{ favoriteCount }})
+          </button>
+        </div>
+
+        <p class="hint">
+          {{ visiblePeople.length }}
+          {{ visiblePeople.length === 1 ? "Handle" : "Handles" }}
+        </p>
+
+        <ul v-if="visiblePeople.length" class="people-list">
+          <li v-for="person in visiblePeople" :key="person.walletAddress" class="person-row">
             <button
               type="button"
               class="person-main"
@@ -35,25 +62,56 @@
             </button>
           </li>
         </ul>
+        <p v-else class="empty">
+          {{ tab === "recommends" ? "No Recommends yet" : "No Favorites yet" }}
+        </p>
       </div>
     </div>
   </Teleport>
 </template>
 
 <script setup lang="ts">
+import { computed, ref, watch } from "vue";
 import { displayName } from "@cinima/shared";
 import type { TitleSuggester } from "@cinima/shared";
 import Identicon from "@/components/Identicon.vue";
 import NqIcon from "@/components/NqIcon.vue";
 
-defineProps<{
-  people: TitleSuggester[];
-}>();
+export type TastePeopleTab = "recommends" | "favorites";
+
+const props = withDefaults(
+  defineProps<{
+    people: TitleSuggester[];
+    initialTab?: TastePeopleTab;
+    recommendCount?: number;
+    favoriteCount?: number;
+  }>(),
+  {
+    initialTab: "recommends",
+    recommendCount: 0,
+    favoriteCount: 0,
+  }
+);
 
 defineEmits<{
   close: [];
   "open-profile": [wallet: string];
 }>();
+
+const tab = ref<TastePeopleTab>(props.initialTab ?? "recommends");
+
+watch(
+  () => props.initialTab,
+  (next) => {
+    if (next) tab.value = next;
+  }
+);
+
+const recommendPeople = computed(() => props.people.filter((p) => p.recommended));
+const favoritePeople = computed(() => props.people.filter((p) => !p.recommended));
+const visiblePeople = computed(() =>
+  tab.value === "recommends" ? recommendPeople.value : favoritePeople.value
+);
 </script>
 
 <style scoped>
@@ -102,11 +160,41 @@ defineEmits<{
   font-size: 1.2rem;
 }
 
+.taste-tabs {
+  display: flex;
+  padding: 0.15rem;
+  background: var(--bg-surface);
+  border-radius: 999px;
+}
+
+.taste-tab {
+  flex: 1;
+  padding: 0.35rem 0.55rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.taste-tab.active {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
 .hint {
   margin: 0;
   color: var(--text-secondary);
   font-size: 0.85rem;
   line-height: 1.4;
+}
+
+.empty {
+  margin: 0.5rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
 }
 
 .people-list {

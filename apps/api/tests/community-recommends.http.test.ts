@@ -136,9 +136,12 @@ describe("Community Recommends HTTP API", () => {
       tv: { id: string; recommended?: boolean }[];
     };
 
-    expect(body.movies.some((t) => t.id === "movie:550")).toBe(true);
-    expect(body.tv.some((t) => t.id === "tv:1396")).toBe(true);
+    expect(body.movies.map((t) => t.id)).toEqual(["movie:550"]);
+    expect(body.tv.map((t) => t.id)).toEqual(["tv:1396"]);
     expect(body.movies.find((t) => t.id === "movie:550")?.recommended).toBe(true);
+    // Favorite-only (no recommendedAt) must never appear, even as popular filler
+    expect(body.movies.some((t) => t.id === "movie:278")).toBe(false);
+    expect(body.tv.some((t) => t.id === "tv:1399")).toBe(false);
   });
 
   it("excludes titles already on the caller's watchlist", async () => {

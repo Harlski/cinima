@@ -3,6 +3,7 @@
     <div class="find-modal" role="presentation" @click.self="$emit('close')">
       <div
         class="find-dialog nq-card"
+        :class="{ 'find-dialog--tour-glow': highlightCreator }"
         role="dialog"
         aria-modal="true"
         aria-labelledby="find-people-title"
@@ -12,7 +13,7 @@
         </button>
 
         <h2 id="find-people-title">Find people</h2>
-        <p class="hint">Follow Handles whose taste you want on Following.</p>
+        <p class="hint">Follow users whose taste you want on Following.</p>
 
         <div v-if="loading" class="state">
           <NqSpinner />
@@ -21,21 +22,43 @@
           No more Handles to follow right now.
         </div>
         <ul v-else class="people-list">
-          <li v-for="person in people" :key="person.walletAddress" class="person-row">
-            <button
-              type="button"
-              class="person-main"
-              @click="$emit('open-profile', person.walletAddress)"
+          <li
+            v-for="person in people"
+            :key="person.walletAddress"
+            class="person-row"
+            :class="{
+              'person-row--tour-glow':
+                highlightCreator && isTourCreatorWallet(person.walletAddress),
+            }"
+          >
+            <TourSpotlight
+              :id="
+                highlightCreator && isTourCreatorWallet(person.walletAddress)
+                  ? TOUR_SPOTLIGHT.findPeopleCreator
+                  : null
+              "
+              radius="12px"
             >
-              <Identicon :address="person.walletAddress" :size="44" alt="" />
-              <div class="person-meta">
-                <strong>{{ displayName(person.handle, person.walletAddress) }}</strong>
-                <span>
-                  {{ person.movieFavoriteCount }} movies · {{ person.tvFavoriteCount }} TV ·
-                  {{ person.thanksReceived }} Thanks received
-                </span>
-              </div>
-            </button>
+              <button
+                type="button"
+                class="person-main"
+                :data-tour="
+                  highlightCreator && isTourCreatorWallet(person.walletAddress)
+                    ? TOUR_SPOTLIGHT.findPeopleCreator
+                    : undefined
+                "
+                @click="$emit('open-profile', person.walletAddress)"
+              >
+                <Identicon :address="person.walletAddress" :size="44" alt="" />
+                <div class="person-meta">
+                  <strong>{{ displayName(person.handle, person.walletAddress) }}</strong>
+                  <span>
+                    {{ person.movieFavoriteCount }} movies · {{ person.tvFavoriteCount }} TV ·
+                    {{ person.thanksReceived }} Thanks received
+                  </span>
+                </div>
+              </button>
+            </TourSpotlight>
             <button
               type="button"
               class="follow-btn nq-pill-blue"
@@ -57,12 +80,19 @@ import type { FindPeopleEntry } from "@cinima/shared";
 import Identicon from "@/components/Identicon.vue";
 import NqIcon from "@/components/NqIcon.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
+import TourSpotlight from "@/components/TourSpotlight.vue";
+import { TOUR_SPOTLIGHT, isTourCreatorWallet } from "@/lib/guidedTour";
 
-defineProps<{
-  people: FindPeopleEntry[];
-  loading: boolean;
-  busyWallet: string | null;
-}>();
+withDefaults(
+  defineProps<{
+    people: FindPeopleEntry[];
+    loading: boolean;
+    busyWallet: string | null;
+    /** Guided tour: glow the Creator row. */
+    highlightCreator?: boolean;
+  }>(),
+  { highlightCreator: false }
+);
 
 defineEmits<{
   close: [];
@@ -95,6 +125,23 @@ defineEmits<{
   gap: 0.75rem;
   padding: 1.25rem 1.15rem 1.1rem;
   overflow: hidden;
+}
+
+/* Let the tour outline paint past the row edges. */
+.find-dialog--tour-glow {
+  overflow: visible;
+}
+
+.find-dialog--tour-glow .people-list {
+  overflow: visible;
+  padding: 6px;
+  margin: -6px;
+}
+
+.person-row--tour-glow {
+  overflow: visible;
+  z-index: 1;
+  position: relative;
 }
 
 .find-close {
@@ -152,6 +199,18 @@ defineEmits<{
   display: flex;
   align-items: center;
   gap: 0.55rem;
+}
+
+.person-row :deep(.gold-glow-shell) {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+
+.person-row :deep(.gold-glow-content) {
+  flex: 1;
+  min-width: 0;
+  display: flex;
 }
 
 .person-main {

@@ -73,6 +73,10 @@ export type TitleDetail = TitleSummary & {
   watchlisted: boolean;
   episodes: EpisodeCell[];
   commentCount: number;
+  /** Peer Handles who Recommended this title (excludes viewer) */
+  recommendCount: number;
+  /** Peer Handles who Favorited without Recommend (excludes viewer) */
+  favoriteCount: number;
 };
 
 export type CommentDto = {
@@ -89,12 +93,18 @@ export type TitleSuggester = {
   walletAddress: string;
   handle: string | null;
   thanked: boolean;
+  /** True when this peer's Favorite is also a Recommend */
+  recommended: boolean;
 };
 
 export type OverlapSuggestion = {
   title: TitleSummary;
   sharedCount: number;
   sampleWallets: string[];
+  /** Peer Handles who Recommended this title (excludes viewer) */
+  recommendCount: number;
+  /** Peer Handles who Favorited without Recommend (excludes viewer) */
+  favoriteCount: number;
 };
 
 export type DiscoverResponse = {

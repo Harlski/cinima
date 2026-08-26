@@ -30,7 +30,11 @@ import * as schema from "./db/schema.js";
 import { config } from "./lib/config.js";
 import { bearerToken, isPayContext } from "./lib/util.js";
 import { toTitleSummary, ogPosterUrl } from "./lib/titles.js";
-import { assertValidUserHandle, normalizeUserHandle } from "./services/auth.js";
+import {
+  assertValidUserHandle,
+  authChallengeMessage,
+  normalizeUserHandle,
+} from "./services/auth.js";
 import { titleShareOgHtml } from "./lib/titleShareHtml.js";
 import { profileShareOgHtml } from "./lib/profileShareHtml.js";
 import {
@@ -88,6 +92,7 @@ import {
 } from "./services/watchlist.js";
 import {
   addThanks,
+  countTitleTastePeers,
   listSuggesters,
   thankAllSuggesters,
 } from "./services/social.js";
@@ -195,7 +200,7 @@ app.get("/api/auth/challenge", requirePay, async (c) => {
   await db.insert(schema.authNonces).values({ nonce, expiresAt, used: false });
   return c.json({
     nonce,
-    message: `Cinima:v1:${nonce}`,
+    message: authChallengeMessage(nonce),
     expiresAt: expiresAt.getTime(),
   });
 });
@@ -222,7 +227,7 @@ app.post("/api/auth/verify", requirePay, async (c) => {
     if (!nonceRow || nonceRow.used || nonceRow.expiresAt < new Date()) {
       return c.json({ error: "invalid_or_expired_nonce" }, 400);
     }
-    if (body.message !== `Cinima:v1:${body.nonce}`) {
+    if (body.message !== authChallengeMessage(body.nonce)) {
       return c.json({ error: "message_mismatch" }, 400);
     }
 
@@ -420,11 +425,14 @@ app.get("/api/titles/:id", requirePay, requireAuth, async (c) => {
     imdbId: e.imdbId ?? null,
   }));
 
-  const commentCount = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(schema.comments)
-    .where(eq(schema.comments.titleId, id))
-    .then((r) => Number(r[0]?.count || 0));
+  const [commentCount, tasteCounts] = await Promise.all([
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.comments)
+      .where(eq(schema.comments.titleId, id))
+      .then((r) => Number(r[0]?.count || 0)),
+    countTitleTastePeers(id, user.walletAddress),
+  ]);
 
   const summary = toTitleSummary(title);
   const detail: TitleDetail = {
@@ -435,6 +443,8 @@ app.get("/api/titles/:id", requirePay, requireAuth, async (c) => {
     watchlisted,
     episodes: episodeCells,
     commentCount,
+    recommendCount: tasteCounts.recommendCount,
+    favoriteCount: tasteCounts.favoriteCount,
   };
   return c.json(detail);
 });

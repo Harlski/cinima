@@ -1,5 +1,9 @@
 <template>
-  <div class="gold-glow-shell" :style="shellStyle">
+  <div
+    class="gold-glow-shell"
+    :class="{ 'gold-glow-shell--soft': soft }"
+    :style="shellStyle"
+  >
     <div class="gold-glow-content">
       <slot />
     </div>
@@ -13,9 +17,12 @@ const props = withDefaults(
   defineProps<{
     /** CSS border-radius for the frame (matches the slotted surface). */
     radius?: string;
+    /** Soft blurred halo behind the rotating outline (share cards). */
+    soft?: boolean;
   }>(),
   {
     radius: "12px",
+    soft: true,
   }
 );
 
@@ -31,7 +38,7 @@ const shellStyle = computed(() => ({
   flex-shrink: 0;
 }
 
-.gold-glow-shell::before,
+.gold-glow-shell--soft::before,
 .gold-glow-shell::after {
   content: "";
   position: absolute;
@@ -50,7 +57,7 @@ const shellStyle = computed(() => ({
   animation: gold-glow-spin 5.5s linear infinite;
 }
 
-.gold-glow-shell::before {
+.gold-glow-shell--soft::before {
   z-index: 0;
   inset: -8px;
   filter: blur(12px);
@@ -88,7 +95,7 @@ const shellStyle = computed(() => ({
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .gold-glow-shell::before,
+  .gold-glow-shell--soft::before,
   .gold-glow-shell::after {
     animation: none;
   }

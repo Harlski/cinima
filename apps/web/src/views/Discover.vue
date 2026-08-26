@@ -56,6 +56,7 @@
           @toggle-favorite="toggleFavorite"
           @toggle-watchlist="toggleWatchlist"
           @open="goToTitle"
+          @open-overview="goToTitleOverview"
         />
       </section>
 
@@ -75,6 +76,7 @@
           :tv="communityTv"
           heading="What others on Cinima recommend"
           :max-rows="4"
+          tour-first-poster
           @select="goToTitleSummary"
         />
       </section>
@@ -146,40 +148,50 @@
       <nav
         v-if="!loading && mode === 'overlap' && !showHandleStep"
         class="discover-feed-tabs"
+        :class="{ 'discover-feed-tabs--tour-glow': tourFeedTabGlow }"
         aria-label="Discover feeds"
       >
         <div class="discover-feed-tabs-inner">
           <div class="discover-tabs" role="tablist">
-            <button
-              type="button"
-              role="tab"
-              class="discover-tab"
-              :class="{ active: activeTab === 'for-you' }"
-              :aria-selected="activeTab === 'for-you'"
-              @click="activeTab = 'for-you'"
-            >
-              For You
-            </button>
-            <button
-              type="button"
-              role="tab"
-              class="discover-tab"
-              :class="{ active: activeTab === 'recommends' }"
-              :aria-selected="activeTab === 'recommends'"
-              @click="activeTab = 'recommends'"
-            >
-              Recommends
-            </button>
-            <button
-              type="button"
-              role="tab"
-              class="discover-tab"
-              :class="{ active: activeTab === 'following' }"
-              :aria-selected="activeTab === 'following'"
-              @click="activeTab = 'following'"
-            >
-              Following
-            </button>
+            <TourSpotlight :id="TOUR_SPOTLIGHT.discoverTabForYou" radius="6px">
+              <button
+                type="button"
+                role="tab"
+                class="discover-tab"
+                :class="{ active: activeTab === 'for-you' }"
+                :aria-selected="activeTab === 'for-you'"
+                :data-tour="TOUR_SPOTLIGHT.discoverTabForYou"
+                @click="activeTab = 'for-you'"
+              >
+                For You
+              </button>
+            </TourSpotlight>
+            <TourSpotlight :id="TOUR_SPOTLIGHT.discoverTabRecommends" radius="6px">
+              <button
+                type="button"
+                role="tab"
+                class="discover-tab"
+                :class="{ active: activeTab === 'recommends' }"
+                :aria-selected="activeTab === 'recommends'"
+                :data-tour="TOUR_SPOTLIGHT.discoverTabRecommends"
+                @click="activeTab = 'recommends'"
+              >
+                Recommends
+              </button>
+            </TourSpotlight>
+            <TourSpotlight :id="TOUR_SPOTLIGHT.discoverTabFollowing" radius="6px">
+              <button
+                type="button"
+                role="tab"
+                class="discover-tab"
+                :class="{ active: activeTab === 'following' }"
+                :aria-selected="activeTab === 'following'"
+                :data-tour="TOUR_SPOTLIGHT.discoverTabFollowing"
+                @click="activeTab = 'following'"
+              >
+                Following
+              </button>
+            </TourSpotlight>
           </div>
         </div>
       </nav>
@@ -187,9 +199,10 @@
 
     <FindPeopleSheet
       v-if="findPeopleOpen"
-      :people="findPeople"
+      :people="visibleFindPeople"
       :loading="peopleLoading"
       :busy-wallet="followBusyWallet"
+      :highlight-creator="tour.filterFindPeopleToCreator"
       @close="findPeopleOpen = false"
       @open-profile="onOpenPersonProfile"
       @follow="onFollowPerson"
@@ -229,6 +242,7 @@ import type {
   OverlapSuggestion,
   FindPeopleEntry,
   FindPeopleResponse,
+  PublicProfile,
   TitleSummary,
 } from "@cinima/shared";
 import FavoritesOnboarding from "@/components/FavoritesOnboarding.vue";
@@ -242,6 +256,13 @@ import { useAuthStore } from "@/stores/auth";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import CommunityRecommends from "@/components/CommunityRecommends.vue";
 import FindPeopleSheet from "@/components/FindPeopleSheet.vue";
+import TourSpotlight from "@/components/TourSpotlight.vue";
+import {
+  TOUR_CREATOR_WALLET,
+  TOUR_SPOTLIGHT,
+  isTourCreatorWallet,
+} from "@/lib/guidedTour";
+import { useGuidedTourStore } from "@/stores/guidedTour";
 import FollowingStrip from "@/components/FollowingStrip.vue";
 import Identicon from "@/components/Identicon.vue";
 import ForYouPicker from "@/components/ForYouPicker.vue";
@@ -273,6 +294,13 @@ const { request } = useApi();
 const authStore = useAuthStore();
 const favoritesStore = useFavoritesStore();
 const watchlistStore = useWatchlistStore();
+const tour = useGuidedTourStore();
+const tourFeedTabGlow = computed(
+  () =>
+    tour.isSpotlight(TOUR_SPOTLIGHT.discoverTabForYou) ||
+    tour.isSpotlight(TOUR_SPOTLIGHT.discoverTabRecommends) ||
+    tour.isSpotlight(TOUR_SPOTLIGHT.discoverTabFollowing)
+);
 const {
   pendingConfirm,
   confirmMessage,
@@ -310,6 +338,17 @@ const followBusyWallet = ref<string | null>(null);
 const followingStripReady = ref(false);
 /** True once a discover response has been applied (possibly while Handle was open). */
 const discoverApplied = ref(false);
+/** Creator row injected when Find people is filtered for the guided tour. */
+const tourCreatorEntry = ref<FindPeopleEntry | null>(null);
+
+const visibleFindPeople = computed(() => {
+  if (!tour.filterFindPeopleToCreator) return findPeople.value;
+  if (tourCreatorEntry.value) return [tourCreatorEntry.value];
+  const fromList = findPeople.value.filter((p) =>
+    isTourCreatorWallet(p.walletAddress)
+  );
+  return fromList;
+});
 
 /** Merge a user's favorites into one card; unlocks stay one-per-title. */
 const feedCards = computed((): FeedCard[] => {
@@ -549,11 +588,51 @@ const onSelectFollowee = async (wallet: string) => {
 const openFindPeople = async () => {
   findPeopleOpen.value = true;
   peopleLoading.value = true;
+  tourCreatorEntry.value = null;
   try {
     const res = await request<FindPeopleResponse>("/find-people").catch(
       () => ({ people: [] as FindPeopleEntry[] })
     );
     findPeople.value = res.people;
+    tour.reportAction("open-find-people");
+
+    if (tour.filterFindPeopleToCreator) {
+      const existing = res.people.find((p) =>
+        isTourCreatorWallet(p.walletAddress)
+      );
+      if (existing) {
+        tourCreatorEntry.value = existing;
+      } else {
+        const profile = await request<PublicProfile>(
+          `/users/${encodeURIComponent(TOUR_CREATOR_WALLET)}`
+        ).catch(() => null);
+        if (profile) {
+          const movieFavoriteCount = profile.favorites.filter(
+            (t) => (t.mediaType || "movie") === "movie"
+          ).length;
+          const tvFavoriteCount = profile.favorites.filter(
+            (t) => t.mediaType === "tv"
+          ).length;
+          tourCreatorEntry.value = {
+            walletAddress: profile.walletAddress,
+            handle: profile.handle,
+            movieFavoriteCount,
+            tvFavoriteCount,
+            thanksReceived: 0,
+            isFollowing: profile.isFollowing,
+          };
+        } else {
+          tourCreatorEntry.value = {
+            walletAddress: TOUR_CREATOR_WALLET,
+            handle: null,
+            movieFavoriteCount: 0,
+            tvFavoriteCount: 0,
+            thanksReceived: 0,
+            isFollowing: false,
+          };
+        }
+      }
+    }
   } finally {
     peopleLoading.value = false;
   }
@@ -561,6 +640,9 @@ const openFindPeople = async () => {
 
 const onOpenPersonProfile = (wallet: string) => {
   findPeopleOpen.value = false;
+  if (isTourCreatorWallet(wallet)) {
+    tour.reportAction("open-creator-profile");
+  }
   goToUser(wallet);
 };
 
@@ -596,6 +678,40 @@ watch(activeTab, async (tab) => {
   }
 });
 
+watch(
+  () => tour.discoverTab,
+  (tab) => {
+    if (tab) activeTab.value = tab;
+  }
+);
+
+watch(
+  () =>
+    [
+      tour.active,
+      tour.filterFindPeopleToCreator,
+      tour.step?.id,
+    ] as const,
+  async ([active, filterCreator, stepId]) => {
+    if (!active || stepId === "creator-taste" || stepId === "tour-done") {
+      findPeopleOpen.value = false;
+      return;
+    }
+    if (stepId === "creator-profile" || filterCreator) {
+      if (!findPeopleOpen.value) await openFindPeople();
+    }
+  }
+);
+
+watch(
+  () => [mode.value, showHandleStep.value, loading.value] as const,
+  ([modeNow, handleStep, loadingNow]) => {
+    if (modeNow === "overlap" && !handleStep && !loadingNow) {
+      tour.maybeOfferAfterOnboarding();
+    }
+  }
+);
+
 
 const toggleFavorite = async (titleId: string) => {
   const suggestion = suggestions.value.find((s) => s.title.id === titleId);
@@ -628,8 +744,17 @@ const onConfirmAction = async () => {
   });
 };
 
-const goToTitle = (titleId: string) => {
-  router.push({ name: "title", params: { id: titleId } });
+const goToTitle = (titleId: string, expandOverview = false) => {
+  tour.reportAction("open-title", { titleId });
+  router.push({
+    name: "title",
+    params: { id: titleId },
+    ...(expandOverview ? { query: { overview: "1" } } : {}),
+  });
+};
+
+const goToTitleOverview = (titleId: string) => {
+  goToTitle(titleId, true);
 };
 
 const goToTitleSummary = (title: TitleSummary) => {
@@ -649,6 +774,7 @@ const onOnboardingContinue = async (titleIds: string[]) => {
     await favoritesStore.addMany(titleIds);
     favoriteCount.value = favoritesStore.count;
     await awaitDiscoverReady();
+    tour.maybeOfferAfterOnboarding();
   } finally {
     onboardingBusy.value = false;
   }
@@ -663,6 +789,7 @@ const onOnboardingSkip = async () => {
       method: "POST",
     });
     await applyDiscoverResponse(data);
+    tour.maybeOfferAfterOnboarding();
   } finally {
     onboardingBusy.value = false;
   }
@@ -743,6 +870,12 @@ onMounted(() => {
   will-change: transform;
 }
 
+/* Sit above the shell tab bar so the tour outline is not clipped. */
+.discover-feed-tabs--tour-glow {
+  z-index: 55;
+  overflow: visible;
+}
+
 /* Rise with the shell tab bar after Favorites onboarding (Continue / Skip) */
 .feed-tabs-slide-enter-active {
   transition: transform 0.38s cubic-bezier(0.25, 0, 0, 1);
@@ -772,6 +905,20 @@ onMounted(() => {
 .discover-tabs {
   display: flex;
   gap: 0;
+}
+
+.discover-tabs :deep(.gold-glow-shell) {
+  flex: 1;
+  min-width: 0;
+}
+
+.discover-tabs :deep(.gold-glow-content) {
+  display: flex;
+  width: 100%;
+}
+
+.discover-tabs :deep(.discover-tab) {
+  width: 100%;
 }
 
 .discover-tab {
