@@ -6,7 +6,7 @@
     :dock-bottom-offset="dockBottomOffset"
     show-social
     show-refresh
-    actions-prefix="Add to"
+    :actions-prefix="watchlistActionsPrefix"
     :primary-action-label="watchlistLabel"
     :primary-action-active="watchlisted"
     :secondary-action-label="favoriteLabel"
@@ -89,7 +89,12 @@ const watchlisted = computed(() =>
   selectedTitleId.value ? props.isOnWatchlist(selectedTitleId.value) : false
 );
 const favoriteLabel = "Favorites";
-const watchlistLabel = "My List";
+const watchlistLabel = computed(() =>
+  watchlisted.value ? "In Watchlist" : "Watchlist"
+);
+const watchlistActionsPrefix = computed(() =>
+  watchlisted.value ? undefined : "Add to"
+);
 
 function resetFromPool() {
   const next = buildWindow(props.suggestions);

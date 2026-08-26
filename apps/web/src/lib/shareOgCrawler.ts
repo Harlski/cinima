@@ -41,3 +41,21 @@ export function parseShareOgPath(path: string): ShareOgTarget | null {
   if (!handle || RESERVED_PUBLIC_HANDLES.has(handle.toLowerCase())) return null;
   return { type: "profile", handle };
 }
+
+/** API path the static frontend proxies to for Share preview HTML. */
+export function shareOgApiPath(target: ShareOgTarget): string {
+  if (target.type === "short") {
+    return `/api/s/${encodeURIComponent(target.code)}`;
+  }
+  if (target.type === "title") {
+    return `/api/public/${encodeURIComponent(target.handle)}/t/${target.mediaType}/${target.tmdbId}`;
+  }
+  return `/api/public/${encodeURIComponent(target.handle)}`;
+}
+
+/** Vercel Edge middleware matcher for share URLs. */
+export const SHARE_OG_MATCHER = [
+  "/s/:code",
+  "/:handle",
+  "/:handle/t/:mediaType/:tmdbId",
+] as const;

@@ -115,6 +115,8 @@ export const comments = sqliteTable("comments", {
   body: text("body").notNull(),
   txHash: text("tx_hash").notNull(),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }),
+  deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
 });
 
 export const thanks = sqliteTable(

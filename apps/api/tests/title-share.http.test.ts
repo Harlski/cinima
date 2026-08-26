@@ -91,5 +91,7 @@ describe("Title Share HTTP API", () => {
     expect(html).toContain("https://cinima.app/shareuser/t/movie/550");
     expect(html).toContain("og:image");
     expect(html).toContain("w780");
+    expect(html).not.toContain('id="app"');
+    expect(html).not.toContain('property="og:title" content="Cinima"');
   });
 });

@@ -79,6 +79,9 @@ onBeforeUnmount(() => {
   margin: 0;
   line-height: 1.5;
   color: var(--text-primary);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
 }
 
 .expandable-text.is-clamped {

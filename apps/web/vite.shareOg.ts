@@ -2,18 +2,8 @@ import type { Plugin, Connect } from "vite";
 import {
   isShareOgCrawler,
   parseShareOgPath,
-  type ShareOgTarget,
+  shareOgApiPath,
 } from "./src/lib/shareOgCrawler";
-
-function shareOgApiPath(target: ShareOgTarget): string {
-  if (target.type === "short") {
-    return `/api/s/${encodeURIComponent(target.code)}`;
-  }
-  if (target.type === "title") {
-    return `/api/public/${encodeURIComponent(target.handle)}/t/${target.mediaType}/${target.tmdbId}`;
-  }
-  return `/api/public/${encodeURIComponent(target.handle)}`;
-}
 
 function crawlerMiddleware(apiOrigin: string): Connect.NextHandleFunction {
   return async (req, res, next) => {

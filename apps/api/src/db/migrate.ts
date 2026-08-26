@@ -172,6 +172,16 @@ export async function migrate() {
   } catch {
     /* column already exists */
   }
+  try {
+    await client.execute(`ALTER TABLE comments ADD COLUMN updated_at INTEGER`);
+  } catch {
+    /* column already exists */
+  }
+  try {
+    await client.execute(`ALTER TABLE comments ADD COLUMN deleted_at INTEGER`);
+  } catch {
+    /* column already exists */
+  }
   await client.execute(
     `DELETE FROM thanks WHERE id NOT IN (
       SELECT id FROM (

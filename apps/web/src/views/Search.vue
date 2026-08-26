@@ -197,6 +197,13 @@
         </form>
       </div>
     </div>
+
+    <ConfirmDialog
+      v-if="pendingConfirm"
+      :message="confirmMessage"
+      @cancel="cancelConfirm"
+      @confirm="onConfirmAction"
+    />
   </div>
 </template>
 
@@ -207,6 +214,7 @@ import { useFavoritesStore } from "@/stores/favorites";
 import { useWatchlistStore } from "@/stores/watchlist";
 import { useCatalogStore } from "@/stores/catalog";
 import TitleCard from "@/components/TitleCard.vue";
+import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import NqIcon from "@/components/NqIcon.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
 import {
@@ -239,12 +247,21 @@ import {
 } from "@/lib/searchSort";
 import type { TitleSummary } from "@cinima/shared";
 import PosterImg from "@/components/PosterImg.vue";
+import { useTitleActionConfirm } from "@/composables/useTitleActionConfirm";
 
 const route = useRoute();
 const router = useRouter();
 const favoritesStore = useFavoritesStore();
 const watchlistStore = useWatchlistStore();
 const catalogStore = useCatalogStore();
+const {
+  pendingConfirm,
+  confirmMessage,
+  cancelConfirm,
+  confirmPending,
+  requestToggleFavorite,
+  requestToggleWatchlist,
+} = useTitleActionConfirm();
 
 const searchQuery = ref(parseSearchQuery(route.query.q));
 const results = ref<TitleSummary[]>(
@@ -415,12 +432,30 @@ const clearHistory = () => {
   history.value = clearSearchHistory();
 };
 
+function findTitle(titleId: string): TitleSummary | Pick<TitleSummary, "title"> | undefined {
+  return (
+    results.value.find((item) => item.id === titleId) ??
+    displayedResults.value.find((item) => item.id === titleId) ??
+    titleLookups.value.find((item) => item.id === titleId)
+  );
+}
+
 const toggleFavorite = async (titleId: string) => {
-  await favoritesStore.toggle(titleId);
+  await requestToggleFavorite(titleId, {
+    title: findTitle(titleId),
+    isFavorited: favoritesStore.isFavorite(titleId),
+  });
 };
 
 const toggleWatchlist = async (title: TitleSummary) => {
-  await watchlistStore.toggle(title.id, title);
+  await requestToggleWatchlist(title.id, {
+    title,
+    isWatchlisted: watchlistStore.isOnWatchlist(title.id),
+  });
+};
+
+const onConfirmAction = async () => {
+  await confirmPending();
 };
 
 const goToTitle = async (titleId: string) => {

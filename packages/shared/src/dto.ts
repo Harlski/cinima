@@ -81,6 +81,8 @@ export type CommentDto = {
   handle: string | null;
   body: string;
   createdAt: string;
+  updatedAt: string | null;
+  deleted: boolean;
 };
 
 export type TitleSuggester = {

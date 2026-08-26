@@ -11,6 +11,7 @@
     "build": "pnpm --filter @cinima/shared build && pnpm --filter @cinima/api build && pnpm --filter @cinima/web build",
     "typecheck": "pnpm -r run typecheck",
     "test": "pnpm --filter @cinima/api test && pnpm --filter @cinima/web test",
+    "check:share-preview": "bash scripts/check-share-preview.sh",
     "db:push": "pnpm --filter @cinima/api db:push"
   },
   "engines": {

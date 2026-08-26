@@ -1,3 +1,4 @@
+export * from "./comments.js";
 export * from "./constants.js";
 export * from "./siteMeta.js";
 export * from "./payLinks.js";

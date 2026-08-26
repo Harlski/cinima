@@ -26,57 +26,62 @@
         </div>
         <div class="meta">
           <h2>{{ title.title }}</h2>
-          <p class="year-kind">{{ title.year }} · {{ title.mediaType }}</p>
-          <div class="rating" :class="{ muted: !hasTitleRating(title.rating) }">
-            <NqIcon name="star" :size="20" />
-            {{ formatTitleRating(title.rating) }}
+          <p class="meta-line">
+            <span class="rating" :class="{ muted: !hasTitleRating(title.rating) }">
+              <NqIcon name="star" :size="14" />
+              {{ formatTitleRating(title.rating) }}
+            </span>
+            <span>{{ title.year }} - {{ title.mediaType }}</span>
+          </p>
+
+          <div class="meta-actions">
+            <button
+              type="button"
+              @click="toggleWatchlist"
+              class="nq-pill-stretch"
+              :class="title.watchlisted ? 'nq-pill-gold' : 'nq-pill-secondary'"
+            >
+              {{ watchlistButtonLabel(title.watchlisted) }}
+            </button>
+
+            <button
+              type="button"
+              @click="toggleFavorite"
+              class="nq-pill-stretch"
+              :class="title.favorited ? 'nq-pill-blue' : 'nq-pill-secondary'"
+            >
+              {{ title.favorited ? "Favorited" : "Add to Favorites" }}
+            </button>
+
+            <button
+              v-if="title.favorited"
+              type="button"
+              class="nq-pill-stretch"
+              :class="title.recommended ? 'nq-pill-gold' : 'nq-pill-secondary'"
+              @click="toggleRecommend"
+            >
+              {{ title.recommended ? "Recommended ★" : "Recommend ★" }}
+            </button>
+
+            <a
+              v-if="imdbUrl"
+              class="nq-pill-secondary nq-pill-stretch"
+              :href="imdbUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View on IMDb
+            </a>
           </div>
-          <ExpandableText
-            v-if="title.overview"
-            class="overview"
-            :text="title.overview"
-            :lines="4"
-          />
-
-          <button
-            type="button"
-            @click="toggleWatchlist"
-            class="nq-pill-stretch"
-            :class="title.watchlisted ? 'nq-pill-gold' : 'nq-pill-secondary'"
-          >
-            {{ title.watchlisted ? "In My List" : "Add to My List" }}
-          </button>
-
-          <button
-            type="button"
-            @click="toggleFavorite"
-            class="nq-pill-stretch"
-            :class="title.favorited ? 'nq-pill-blue' : 'nq-pill-secondary'"
-          >
-            {{ title.favorited ? "Favorited" : "Add to Favorites" }}
-          </button>
-
-          <button
-            v-if="title.favorited"
-            type="button"
-            class="nq-pill-stretch"
-            :class="title.recommended ? 'nq-pill-gold' : 'nq-pill-secondary'"
-            @click="toggleRecommend"
-          >
-            {{ title.recommended ? "Recommended ★" : "Recommend ★" }}
-          </button>
-
-          <a
-            v-if="imdbUrl"
-            class="nq-pill-secondary nq-pill-stretch"
-            :href="imdbUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            View on IMDb
-          </a>
         </div>
       </div>
+
+      <ExpandableText
+        v-if="title.overview"
+        class="overview"
+        :text="title.overview"
+        :lines="4"
+      />
 
       <HeatMap
         v-if="title.mediaType === 'tv'"
@@ -155,16 +160,78 @@
                 >
                   {{ displayName(comment.handle, comment.walletAddress) }}
                 </button>
-                <span class="comment-time">
-                  {{ formatTime(comment.createdAt) }}
-                </span>
+                <div class="comment-meta">
+                  <span v-if="comment.updatedAt && !comment.deleted" class="comment-edited">
+                    edited
+                  </span>
+                  <span class="comment-time">
+                    {{ formatTime(comment.createdAt) }}
+                  </span>
+                </div>
               </div>
-              <ExpandableText :text="comment.body" :lines="3" />
+
+              <form
+                v-if="editingCommentId === comment.id"
+                class="comment-edit"
+                @submit.prevent="saveEdit(comment.id)"
+              >
+                <textarea
+                  v-model="editText"
+                  class="nq-input-box"
+                  rows="3"
+                  :disabled="savingEdit"
+                />
+                <div class="comment-edit-actions">
+                  <button
+                    type="button"
+                    class="nq-pill-secondary nq-pill-lg"
+                    :disabled="savingEdit"
+                    @click="cancelEdit"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    class="nq-pill-blue nq-pill-lg"
+                    :disabled="!editText.trim() || savingEdit"
+                  >
+                    {{ savingEdit ? "Saving..." : "Save" }}
+                  </button>
+                </div>
+              </form>
+
+              <p v-else-if="comment.deleted" class="comment-deleted">
+                {{ comment.body }}
+              </p>
+              <ExpandableText v-else :text="comment.body" :lines="2" />
+
+              <div
+                v-if="isOwnComment(comment) && !comment.deleted && editingCommentId !== comment.id"
+                class="comment-actions"
+              >
+                <button type="button" class="comment-action" @click="startEdit(comment)">
+                  Edit
+                </button>
+                <button type="button" class="comment-action comment-action--danger" @click="requestDeleteComment(comment.id)">
+                  Delete
+                </button>
+              </div>
             </div>
           </article>
         </div>
 
-        <form class="comment-composer nq-card" @submit.prevent="postComment">
+        <div
+          v-if="composerDocked"
+          class="comment-composer-spacer"
+          :style="{ height: composerSpacerHeight }"
+          aria-hidden="true"
+        />
+        <form
+          ref="composerEl"
+          class="comment-composer nq-card"
+          :class="{ 'comment-composer--docked': composerDocked }"
+          @submit.prevent="postComment"
+        >
           <Identicon :address="meWallet" :size="36" alt="" />
           <div class="composer-main">
             <textarea
@@ -172,6 +239,8 @@
               class="nq-input-box"
               placeholder="Share your thoughts..."
               rows="3"
+              @focus="onComposerFocus"
+              @blur="onComposerBlur"
             />
             <button
               type="submit"
@@ -204,20 +273,34 @@
       @close="favoritersOpen = false"
       @open-profile="onOpenFavoriterProfile"
     />
+
+    <ConfirmDialog
+      v-if="pendingConfirm"
+      :message="confirmMessage"
+      @cancel="cancelConfirm"
+      @confirm="onConfirmAction"
+    />
+
+    <ConfirmDialog
+      v-if="commentPendingDelete != null"
+      message="Delete this comment?"
+      @cancel="commentPendingDelete = null"
+      @confirm="confirmDeleteComment"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, nextTick, onMounted, onUnmounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
 import { useAuthStore } from "@/stores/auth";
 import { useFavoritesStore } from "@/stores/favorites";
-import { useWatchlistStore } from "@/stores/watchlist";
 import { useCatalogStore } from "@/stores/catalog";
 import { displayName, imdbTitleUrl } from "@cinima/shared";
 import type { TitleDetail, CommentDto, TitleSuggester } from "@cinima/shared";
 import ExpandableText from "@/components/ExpandableText.vue";
+import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import FavoritersSheet from "@/components/FavoritersSheet.vue";
 import HeatMap from "@/components/HeatMap.vue";
 import Identicon from "@/components/Identicon.vue";
@@ -226,6 +309,8 @@ import NqSpinner from "@/components/NqSpinner.vue";
 import PosterImg from "@/components/PosterImg.vue";
 import ShareTitleSheet from "@/components/ShareTitleSheet.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";
+import { useTitleActionConfirm } from "@/composables/useTitleActionConfirm";
+import { watchlistButtonLabel } from "@/lib/titleActionLabels";
 import { formatTitleRating, hasTitleRating } from "@/lib/titleRating";
 
 const route = useRoute();
@@ -233,8 +318,15 @@ const router = useRouter();
 const { request } = useApi();
 const authStore = useAuthStore();
 const favoritesStore = useFavoritesStore();
-const watchlistStore = useWatchlistStore();
 const catalogStore = useCatalogStore();
+const {
+  pendingConfirm,
+  confirmMessage,
+  cancelConfirm,
+  confirmPending,
+  requestToggleFavorite,
+  requestToggleWatchlist,
+} = useTitleActionConfirm();
 
 const titleId = computed(() => route.params.id as string);
 const loading = ref(true);
@@ -243,13 +335,51 @@ const comments = ref<CommentDto[]>([]);
 const loadingComments = ref(false);
 const commentText = ref("");
 const posting = ref(false);
+const editingCommentId = ref<number | null>(null);
+const editText = ref("");
+const savingEdit = ref(false);
+const commentPendingDelete = ref<number | null>(null);
 const suggesters = ref<TitleSuggester[]>([]);
 const thankingAll = ref(false);
 const favoritersOpen = ref(false);
 const shareOpen = ref(false);
+const composerEl = ref<HTMLElement | null>(null);
+const composerDocked = ref(false);
+const composerSpacerHeight = ref("0px");
 const meWallet = computed(() => authStore.user?.walletAddress || "");
 const unthankedCount = computed(() => suggesters.value.filter((s) => !s.thanked).length);
 const imdbUrl = computed(() => imdbTitleUrl(title.value?.imdbId));
+
+let composerBlurTimer: number | undefined;
+
+function measureComposerSpacer() {
+  if (!composerEl.value) return;
+  composerSpacerHeight.value = `${composerEl.value.offsetHeight}px`;
+}
+
+function onComposerFocus() {
+  if (composerBlurTimer !== undefined) {
+    window.clearTimeout(composerBlurTimer);
+    composerBlurTimer = undefined;
+  }
+  composerDocked.value = true;
+  void nextTick(measureComposerSpacer);
+}
+
+function undockComposer() {
+  composerDocked.value = false;
+  composerSpacerHeight.value = "0px";
+}
+
+function onComposerBlur() {
+  // Mobile often blurs the textarea before the Post tap registers.
+  composerBlurTimer = window.setTimeout(() => {
+    composerBlurTimer = undefined;
+    if (posting.value) return;
+    if (composerEl.value?.contains(document.activeElement)) return;
+    undockComposer();
+  }, 180);
+}
 
 const loadTitle = async () => {
   loading.value = true;
@@ -286,17 +416,37 @@ const loadSuggesters = async () => {
 
 const toggleFavorite = async () => {
   if (!title.value) return;
-  const wasFavorited = title.value.favorited;
-  await favoritesStore.toggle(title.value.id);
-  title.value.favorited = !wasFavorited;
-  if (wasFavorited) title.value.recommended = false;
+  await requestToggleFavorite(title.value.id, {
+    title: title.value,
+    isFavorited: title.value.favorited,
+    onAdded: () => {
+      if (title.value) title.value.favorited = true;
+    },
+  });
 };
 
 const toggleWatchlist = async () => {
   if (!title.value) return;
-  const wasWatchlisted = title.value.watchlisted;
-  await watchlistStore.toggle(title.value.id, title.value);
-  title.value.watchlisted = !wasWatchlisted;
+  await requestToggleWatchlist(title.value.id, {
+    title: title.value,
+    isWatchlisted: title.value.watchlisted,
+    onAdded: () => {
+      if (title.value) title.value.watchlisted = true;
+    },
+  });
+};
+
+const onConfirmAction = async () => {
+  await confirmPending({
+    onUnfavorite: () => {
+      if (!title.value) return;
+      title.value.favorited = false;
+      title.value.recommended = false;
+    },
+    onRemoveFromWatchlist: () => {
+      if (title.value) title.value.watchlisted = false;
+    },
+  });
 };
 
 const toggleRecommend = async () => {
@@ -329,11 +479,67 @@ const postComment = async () => {
     commentText.value = "";
     await loadComments();
     if (title.value) title.value.commentCount++;
+    undockComposer();
   } catch (err) {
     console.error("Comment failed:", err);
     alert("Failed to post comment");
   } finally {
     posting.value = false;
+  }
+};
+
+const isOwnComment = (comment: CommentDto) =>
+  comment.walletAddress === meWallet.value;
+
+const startEdit = (comment: CommentDto) => {
+  editingCommentId.value = comment.id;
+  editText.value = comment.body;
+};
+
+const cancelEdit = () => {
+  editingCommentId.value = null;
+  editText.value = "";
+};
+
+const saveEdit = async (commentId: number) => {
+  if (!editText.value.trim()) return;
+  savingEdit.value = true;
+  try {
+    const data = await request<{ comment: CommentDto }>(`/comments/${commentId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ body: editText.value.trim() }),
+    });
+    comments.value = comments.value.map((c) =>
+      c.id === commentId ? data.comment : c
+    );
+    cancelEdit();
+  } catch (err) {
+    console.error("Edit failed:", err);
+    alert("Failed to update comment");
+  } finally {
+    savingEdit.value = false;
+  }
+};
+
+const requestDeleteComment = (commentId: number) => {
+  commentPendingDelete.value = commentId;
+};
+
+const confirmDeleteComment = async () => {
+  const commentId = commentPendingDelete.value;
+  if (commentId == null) return;
+  commentPendingDelete.value = null;
+  try {
+    const data = await request<{ comment: CommentDto }>(`/comments/${commentId}`, {
+      method: "DELETE",
+    });
+    comments.value = comments.value.map((c) =>
+      c.id === commentId ? data.comment : c
+    );
+    if (editingCommentId.value === commentId) cancelEdit();
+  } catch (err) {
+    console.error("Delete failed:", err);
+    alert("Failed to delete comment");
   }
 };
 
@@ -381,6 +587,10 @@ const goClaimHandle = () => {
 onMounted(() => {
   loadTitle();
 });
+
+onUnmounted(() => {
+  if (composerBlurTimer !== undefined) window.clearTimeout(composerBlurTimer);
+});
 </script>
 
 <style scoped>
@@ -423,14 +633,13 @@ onMounted(() => {
 
 .poster-section {
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 1rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
 }
 
 .poster {
   flex: none;
-  align-self: flex-start;
   width: 10rem;
   height: 15rem;
   aspect-ratio: 2 / 3;
@@ -460,9 +669,25 @@ onMounted(() => {
 .meta {
   flex: 1;
   min-width: 0;
+  max-height: 15rem;
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.35rem;
+  overflow: hidden;
+}
+
+.meta-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: auto;
+  min-height: 0;
+}
+
+.meta .nq-pill-stretch {
+  font-size: 0.78rem;
+  padding: 0.22rem 0.65rem;
+  line-height: 1.25;
 }
 
 .meta a.nq-pill-stretch {
@@ -472,22 +697,33 @@ onMounted(() => {
 
 .meta h2 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.05rem;
+  line-height: 1.2;
   color: var(--text-primary);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
 }
 
-.year-kind {
+.meta-line {
   margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
   color: var(--text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.3;
 }
 
 .rating {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.2rem;
   color: var(--warning);
   font-weight: 600;
-  font-size: 1.1rem;
 }
 
 .rating.muted {
@@ -496,12 +732,14 @@ onMounted(() => {
 }
 
 .rating :deep(.nq-icon) {
-  width: 20px;
-  height: 20px;
+  width: 14px;
+  height: 14px;
 }
 
 .overview {
-  margin: 0;
+  display: block;
+  width: 100%;
+  margin: 0 0 2rem;
 }
 
 .thanks-section,
@@ -580,6 +818,25 @@ onMounted(() => {
   padding: 0.75rem;
 }
 
+.comment-composer-spacer {
+  margin-top: 0.75rem;
+  pointer-events: none;
+}
+
+.comment-composer--docked {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--bottom-tabs-inset, 0px) + 0.35rem);
+  z-index: 40;
+  width: min(
+    calc(100% - 2 * var(--column-pad)),
+    calc(var(--column-max) - 2 * var(--column-pad))
+  );
+  margin-top: 0;
+  box-sizing: border-box;
+}
+
 .comment-composer :deep(.identicon) {
   flex-shrink: 0;
 }
@@ -589,13 +846,14 @@ onMounted(() => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 0.65rem;
 }
 
 .composer-main textarea {
   width: 100%;
   resize: none;
+  border-radius: 0.75rem;
   background-color: var(--colors-white);
   --color: var(--colors-darkblue);
   --placeholder-color: color-mix(in oklch, var(--colors-darkblue) 45%, transparent);
@@ -604,6 +862,10 @@ onMounted(() => {
 
 .composer-main textarea::placeholder {
   opacity: 1;
+}
+
+.composer-main button {
+  align-self: flex-end;
 }
 
 .composer-main button:disabled {
@@ -655,6 +917,19 @@ onMounted(() => {
   margin-bottom: 0.25rem;
 }
 
+.comment-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.comment-edited {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
 .comment-user {
   padding: 0;
   border: 0;
@@ -680,6 +955,57 @@ onMounted(() => {
 .comment-main :deep(.expandable-text) {
   font-size: 0.9rem;
   line-height: 1.4;
+}
+
+.comment-deleted {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.comment-actions {
+  display: flex;
+  gap: 0.65rem;
+  margin-top: 0.35rem;
+}
+
+.comment-action {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.comment-action:hover {
+  text-decoration: underline;
+}
+
+.comment-action--danger {
+  color: var(--text-secondary);
+}
+
+.comment-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.comment-edit textarea {
+  width: 100%;
+  resize: none;
+  border-radius: 0.75rem;
+}
+
+.comment-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
 .title-attr {

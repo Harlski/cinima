@@ -13,16 +13,18 @@
     "db:push": "tsx src/db/migrate.ts"
   },
   "dependencies": {
+    "@cinima/shared": "workspace:*",
     "@hono/node-server": "^1.13.8",
     "@libsql/client": "^0.14.0",
-    "@cinima/shared": "workspace:*",
     "@nimiq/core": "^2.2.2",
+    "bad-words": "^4.1.5",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.39.1",
     "hono": "^4.7.2",
     "nanoid": "^5.1.0"
   },
   "devDependencies": {
+    "@types/bad-words": "^3.0.3",
     "@types/node": "^22.13.4",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",

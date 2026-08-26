@@ -30,7 +30,7 @@
         type="button"
         class="watchlist-button"
         :class="{ watchlisted }"
-        :aria-label="watchlisted ? 'Remove from My List' : 'Add to My List'"
+        :aria-label="watchlisted ? watchlistRemoveAriaLabel() : watchlistAddAriaLabel()"
         @click.stop="$emit('toggle-watchlist', title)"
       >
         <NqIcon name="plus-circle" :size="20" />
@@ -55,6 +55,7 @@ import type { TitleSummary } from "@cinima/shared";
 import NqIcon from "@/components/NqIcon.vue";
 import PosterImg from "@/components/PosterImg.vue";
 import { formatTitleRating } from "@/lib/titleRating";
+import { watchlistAddAriaLabel, watchlistRemoveAriaLabel } from "@/lib/titleActionLabels";
 
 const props = withDefaults(
   defineProps<{

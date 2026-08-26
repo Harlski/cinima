@@ -4,10 +4,10 @@
 
     <div class="app-content">
       <div class="app-column">
-        <RouterView v-slot="{ Component }">
+        <RouterView v-slot="{ Component, route }">
           <Transition name="page" mode="out-in">
             <KeepAlive include="Discover,MyList">
-              <component :is="Component" />
+              <component :is="Component" :key="route.fullPath" />
             </KeepAlive>
           </Transition>
         </RouterView>
@@ -20,7 +20,7 @@
       </RouterLink>
       <RouterLink to="/my-list" class="tab">
         <NqIcon name="tickets" :size="24" />
-        <span>My List</span>
+        <span>Watchlist</span>
       </RouterLink>
       <RouterLink to="/search" class="tab">
         <NqIcon name="magnifying-glass" :size="24" />
@@ -69,7 +69,7 @@ function resetAppContentScroll() {
 }
 
 // Search uses fixed stage/dock; any leftover shell scroll from rubber-band
-// would shift Discover / My List / Me after leaving Search.
+// would shift Discover / Watchlist / Me after leaving Search.
 watch(
   () => route.name,
   (name, prev) => {

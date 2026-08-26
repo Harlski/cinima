@@ -1,4 +1,4 @@
-import { normalizeWallet } from "@cinima/shared";
+import { DELETED_COMMENT_LABEL, normalizeWallet } from "@cinima/shared";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { comments, favorites, thanks, titles, unlocks, users } from "../db/schema.js";
@@ -210,7 +210,7 @@ export async function activityFeed(limit = 40) {
       titleName: r.titleName ?? r.c.titleId,
       walletAddress: r.c.walletAddress,
       handle: r.handle,
-      body: r.c.body,
+      body: r.c.deletedAt ? DELETED_COMMENT_LABEL : r.c.body,
       createdAt: r.c.createdAt.toISOString(),
     })),
     ...recentThanks.map((r) => ({

@@ -7,7 +7,6 @@ import {
   normalizeWallet,
   openInPayUrl,
   type ActivityItem,
-  type CommentDto,
   type EpisodeCell,
   type GatePayload,
   type MeResponse,
@@ -38,6 +37,14 @@ import {
   resolveShareLinkOgPosterFromDb,
   resolveShareLinkOgPoster,
 } from "./services/shareLinks.js";
+import {
+  CommentError,
+  createComment,
+  deleteComment,
+  listCommentsForTitle,
+  commentActivityBody,
+  updateComment,
+} from "./services/comments.js";
 import { searchCatalog, ensureTitleFresh, getEpisodesForTitle } from "./services/catalog.js";
 import {
   activityHeatmap,
@@ -419,27 +426,7 @@ app.get("/api/titles/:id", requirePay, requireAuth, async (c) => {
 
 app.get("/api/titles/:id/comments", requirePay, requireAuth, async (c) => {
   const id = decodeURIComponent(c.req.param("id"));
-  const rows = await db
-    .select({
-      id: schema.comments.id,
-      walletAddress: schema.comments.walletAddress,
-      body: schema.comments.body,
-      createdAt: schema.comments.createdAt,
-      handle: schema.users.handle,
-    })
-    .from(schema.comments)
-    .leftJoin(schema.users, eq(schema.comments.walletAddress, schema.users.walletAddress))
-    .where(eq(schema.comments.titleId, id))
-    .orderBy(desc(schema.comments.createdAt));
-
-  const comments: CommentDto[] = rows.map((r) => ({
-    id: r.id,
-    walletAddress: r.walletAddress,
-    handle: r.handle,
-    body: r.body,
-    createdAt: r.createdAt.toISOString(),
-  }));
-  return c.json({ comments });
+  return c.json({ comments: await listCommentsForTitle(id) });
 });
 
 // --- Favorites / Discover (social taste module) ---
@@ -531,39 +518,56 @@ app.post("/api/lifetime", requirePay, requireAuth, (c) => c.json(PAYMENTS_RETIRE
 app.post("/api/comments", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
   const body = await c.req.json<{ titleId: string; body: string }>();
-  const text = String(body.body || "").trim().slice(0, 500);
-  if (!text || !body.titleId) return c.json({ error: "missing_fields" }, 400);
+  if (!body.titleId) return c.json({ error: "missing_fields" }, 400);
 
-  await db.insert(schema.comments).values({
-    titleId: body.titleId,
-    walletAddress: user.walletAddress,
-    body: text,
-    txHash: "",
-    createdAt: new Date(),
-  });
+  try {
+    const comments = await createComment(user.walletAddress, body.titleId, body.body ?? "");
+    return c.json({ comments });
+  } catch (e) {
+    if (e instanceof CommentError) {
+      return c.json({ error: e.code, message: e.message }, 400);
+    }
+    throw e;
+  }
+});
 
-  const rows = await db
-    .select({
-      id: schema.comments.id,
-      walletAddress: schema.comments.walletAddress,
-      body: schema.comments.body,
-      createdAt: schema.comments.createdAt,
-      handle: schema.users.handle,
-    })
-    .from(schema.comments)
-    .leftJoin(schema.users, eq(schema.comments.walletAddress, schema.users.walletAddress))
-    .where(eq(schema.comments.titleId, body.titleId))
-    .orderBy(desc(schema.comments.createdAt));
+function commentErrorStatus(code: CommentError["code"]): 400 | 403 | 404 {
+  if (code === "not_found") return 404;
+  if (code === "forbidden") return 403;
+  return 400;
+}
 
-  return c.json({
-    comments: rows.map((r) => ({
-      id: r.id,
-      walletAddress: r.walletAddress,
-      handle: r.handle,
-      body: r.body,
-      createdAt: r.createdAt.toISOString(),
-    })),
-  });
+app.patch("/api/comments/:id", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  const id = Number(c.req.param("id"));
+  if (!Number.isInteger(id) || id <= 0) return c.json({ error: "invalid_id" }, 400);
+
+  const body = await c.req.json<{ body: string }>();
+  try {
+    const comment = await updateComment(user.walletAddress, id, body.body ?? "");
+    return c.json({ comment });
+  } catch (e) {
+    if (e instanceof CommentError) {
+      return c.json({ error: e.code, message: e.message }, commentErrorStatus(e.code));
+    }
+    throw e;
+  }
+});
+
+app.delete("/api/comments/:id", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  const id = Number(c.req.param("id"));
+  if (!Number.isInteger(id) || id <= 0) return c.json({ error: "invalid_id" }, 400);
+
+  try {
+    const comment = await deleteComment(user.walletAddress, id);
+    return c.json({ comment });
+  } catch (e) {
+    if (e instanceof CommentError) {
+      return c.json({ error: e.code, message: e.message }, commentErrorStatus(e.code));
+    }
+    throw e;
+  }
 });
 
 app.post("/api/thanks", requirePay, requireAuth, async (c) => {
@@ -676,6 +680,7 @@ app.get("/api/activity", requirePay, requireAuth, async (c) => {
       titleId: schema.comments.titleId,
       walletAddress: schema.comments.walletAddress,
       body: schema.comments.body,
+      deletedAt: schema.comments.deletedAt,
       createdAt: schema.comments.createdAt,
       handle: schema.users.handle,
       titleName: schema.titles.title,
@@ -726,7 +731,7 @@ app.get("/api/activity", requirePay, requireAuth, async (c) => {
       titleName: r.titleName,
       walletAddress: r.walletAddress,
       handle: r.handle,
-      body: r.body,
+      body: commentActivityBody(r),
       createdAt: r.createdAt.toISOString(),
     })),
     ...thanks.map((r) => ({

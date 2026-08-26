@@ -32,8 +32,8 @@ _Avoid_: twitter username as Cinima identity
 A user’s mark that they enjoy a movie or show. Binary per user and title; the baseline taste signal.
 _Avoid_: like, bookmark
 
-**My List**:
-A user’s private save-for-later queue of titles they intend to watch. Distinct from Favorite (taste signal) and Recommend (gold-star upgrade). Shown on the My List tab as a browsable deck.
+**Watchlist**:
+A user’s private save-for-later queue of titles they intend to watch. Distinct from Favorite (taste signal) and Recommend (gold-star upgrade). Shown on the Watchlist tab as a browsable deck.
 _Avoid_: watchlist as UI label (use “My List”), save, bookmark
 
 **Recommend**:

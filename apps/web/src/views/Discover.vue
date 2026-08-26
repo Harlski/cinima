@@ -151,6 +151,13 @@
       @open-profile="onOpenPersonProfile"
       @follow="onFollowPerson"
     />
+
+    <ConfirmDialog
+      v-if="pendingConfirm"
+      :message="confirmMessage"
+      @cancel="cancelConfirm"
+      @confirm="onConfirmAction"
+    />
   </div>
 </template>
 
@@ -174,6 +181,7 @@ import type {
   TitleSummary,
 } from "@cinima/shared";
 import FavoritesOnboarding from "@/components/FavoritesOnboarding.vue";
+import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import FindPeopleSheet from "@/components/FindPeopleSheet.vue";
 import FollowingStrip from "@/components/FollowingStrip.vue";
 import Identicon from "@/components/Identicon.vue";
@@ -185,6 +193,7 @@ import {
   markFollowingStripSeen,
   sortFollowingStripPeople,
 } from "@/lib/followingStrip";
+import { useTitleActionConfirm } from "@/composables/useTitleActionConfirm";
 
 defineOptions({ name: "Discover" });
 
@@ -203,6 +212,14 @@ const route = useRoute();
 const { request } = useApi();
 const favoritesStore = useFavoritesStore();
 const watchlistStore = useWatchlistStore();
+const {
+  pendingConfirm,
+  confirmMessage,
+  cancelConfirm,
+  confirmPending,
+  requestToggleFavorite,
+  requestToggleWatchlist,
+} = useTitleActionConfirm();
 
 const loading = ref(true);
 const mode = ref<"onboarding" | "overlap">("onboarding");
@@ -429,17 +446,34 @@ watch(activeTab, async (tab) => {
 
 
 const toggleFavorite = async (titleId: string) => {
-  await favoritesStore.toggle(titleId);
-  favoriteCount.value = favoritesStore.count;
+  const suggestion = suggestions.value.find((s) => s.title.id === titleId);
+  await requestToggleFavorite(titleId, {
+    title: suggestion?.title,
+    isFavorited: favoritesStore.isFavorite(titleId),
+    onAdded: () => {
+      favoriteCount.value = favoritesStore.count;
+    },
+  });
 };
 
 const toggleWatchlist = async (titleOrId: string | TitleSummary) => {
-  if (typeof titleOrId === "string") {
-    const suggestion = suggestions.value.find((s) => s.title.id === titleOrId);
-    await watchlistStore.toggle(titleOrId, suggestion?.title);
-    return;
-  }
-  await watchlistStore.toggle(titleOrId.id, titleOrId);
+  const title =
+    typeof titleOrId === "string"
+      ? suggestions.value.find((s) => s.title.id === titleOrId)?.title
+      : titleOrId;
+  const titleId = typeof titleOrId === "string" ? titleOrId : titleOrId.id;
+  await requestToggleWatchlist(titleId, {
+    title,
+    isWatchlisted: watchlistStore.isOnWatchlist(titleId),
+  });
+};
+
+const onConfirmAction = async () => {
+  await confirmPending({
+    onUnfavorite: () => {
+      favoriteCount.value = favoritesStore.count;
+    },
+  });
 };
 
 const goToTitle = (titleId: string) => {

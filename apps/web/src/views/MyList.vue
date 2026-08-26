@@ -11,10 +11,10 @@
     </div>
 
     <div v-else-if="!hasAnyItems" class="empty">
-      <h2>My List</h2>
+      <h2>Watchlist</h2>
       <p>
         Save movies and shows you want to watch. Tap
-        <strong>Add to My List</strong> on Search or Discover.
+        <strong>Add to Watchlist</strong> on Search or Discover.
       </p>
       <RouterLink to="/search" class="nq-pill-blue nq-pill-stretch empty-cta">
         Search titles
@@ -24,7 +24,7 @@
     <template v-else>
       <div v-if="filteredItems.length === 0" class="tab-empty">
         <p>
-          No {{ activeTab === "movie" ? "movies" : "TV shows" }} in your list yet.
+          No {{ activeTab === "movie" ? "movies" : "TV shows" }} in your watchlist yet.
         </p>
       </div>
 
@@ -33,7 +33,7 @@
         :key="activeTab"
         :items="deckItems"
         :selection-key="`my-list-${activeTab}`"
-        strip-label="My List"
+        strip-label="Watchlist"
         dock-bottom-offset="var(--my-list-tabs-height, 2.85rem)"
         :primary-action-label="watchlistLabel"
         :primary-action-active="watchlisted"
@@ -46,7 +46,7 @@
       />
     </template>
 
-    <nav v-if="hasAnyItems" class="my-list-tabs" aria-label="My List media type">
+    <nav v-if="hasAnyItems" class="my-list-tabs" aria-label="Watchlist media type">
       <div class="my-list-tabs-inner">
         <div class="my-list-tab-row" role="tablist">
           <button
@@ -72,6 +72,13 @@
         </div>
       </div>
     </nav>
+
+    <ConfirmDialog
+      v-if="pendingConfirm"
+      :message="confirmMessage"
+      @cancel="cancelConfirm"
+      @confirm="onConfirmAction"
+    />
   </div>
 </template>
 
@@ -83,13 +90,24 @@ import type { MediaType } from "@cinima/shared";
 import { useFavoritesStore } from "@/stores/favorites";
 import { useWatchlistStore } from "@/stores/watchlist";
 import TitleDeckPicker, { type DeckItem } from "@/components/TitleDeckPicker.vue";
+import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
+import { useTitleActionConfirm } from "@/composables/useTitleActionConfirm";
+import { watchlistButtonLabel } from "@/lib/titleActionLabels";
 
 defineOptions({ name: "MyList" });
 
 const router = useRouter();
 const favoritesStore = useFavoritesStore();
 const watchlistStore = useWatchlistStore();
+const {
+  pendingConfirm,
+  confirmMessage,
+  cancelConfirm,
+  confirmPending,
+  requestToggleFavorite,
+  requestToggleWatchlist,
+} = useTitleActionConfirm();
 const { titles } = storeToRefs(watchlistStore);
 
 const loading = ref(false);
@@ -114,9 +132,7 @@ const watchlisted = computed(() =>
   selectedTitleId.value ? watchlistStore.isOnWatchlist(selectedTitleId.value) : true
 );
 const favoriteLabel = computed(() => (favorited.value ? "Favorited" : "Add to Favorites"));
-const watchlistLabel = computed(() =>
-  watchlisted.value ? "In My List" : "Add to My List"
-);
+const watchlistLabel = computed(() => watchlistButtonLabel(watchlisted.value));
 
 function mediaKind(title: { mediaType?: MediaType; kind?: MediaType }) {
   return title.mediaType || title.kind;
@@ -153,15 +169,31 @@ async function ensureLoaded() {
 
 const toggleWatchlist = async (titleId: string) => {
   const item = titles.value.find((t) => t.id === titleId);
-  await watchlistStore.toggle(titleId, item);
-  if (!watchlistStore.isOnWatchlist(titleId)) {
-    pickDefaultTab();
-    syncSelection();
-  }
+  await requestToggleWatchlist(titleId, {
+    title: item,
+    isWatchlisted: watchlistStore.isOnWatchlist(titleId),
+    onAdded: () => {
+      pickDefaultTab();
+      syncSelection();
+    },
+  });
 };
 
 const toggleFavorite = async (titleId: string) => {
-  await favoritesStore.toggle(titleId);
+  const item = titles.value.find((t) => t.id === titleId);
+  await requestToggleFavorite(titleId, {
+    title: item,
+    isFavorited: favoritesStore.isFavorite(titleId),
+  });
+};
+
+const onConfirmAction = async () => {
+  await confirmPending({
+    onRemoveFromWatchlist: () => {
+      pickDefaultTab();
+      syncSelection();
+    },
+  });
 };
 
 const goToTitle = (titleId: string) => {

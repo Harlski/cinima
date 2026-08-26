@@ -11,7 +11,7 @@ This application uses TMDB and the TMDB APIs but is not endorsed, certified, or 
 - Public Landing at `/` (what Cinima is + Pay-only); Pay-only *identity* for the main app; public `/:username` profiles and Title Share `/:handle/t/{movie|tv}/{tmdbId}` pages stay open on the web
 - Wallet session auth via signed challenge (`nimiq.sign`), plus local `?demo=1` bypass
 - Catalog sync TMDB → LibSQL/SQLite cache (seed catalog when keys missing)
-- Bottom tabs: Discover / My List / Search / Me (+ title stack)
+- Bottom tabs: Discover / Watchlist / Search / Me (+ title stack)
 - Cold start: favorite ≥3 titles, then Discover switches to taste overlap
 - Ratings and TV heat-maps are always visible (TMDB `vote_average`)
 - Free flat comments and thanks (no treasury payments)
