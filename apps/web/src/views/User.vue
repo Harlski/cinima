@@ -1,12 +1,5 @@
 <template>
   <div class="user">
-    <header class="detail-header">
-      <button @click="goBack" class="back-button" type="button" aria-label="Back">
-        <NqIcon name="arrow-left" :size="24" />
-      </button>
-      <h1>{{ handle || "User" }}</h1>
-    </header>
-
     <div v-if="loading" class="loading">
       <NqSpinner />
     </div>
@@ -55,7 +48,6 @@ import { useApi } from "@/composables/useApi";
 import { ACTIVITY_UI_VISIBLE, displayName } from "@cinima/shared";
 import type { PublicProfile } from "@cinima/shared";
 import ActivityHeatmap from "@/components/ActivityHeatmap.vue";
-import NqIcon from "@/components/NqIcon.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
 import ProfileTaste from "@/components/ProfileTaste.vue";
 import UserCard from "@/components/UserCard.vue";
@@ -68,7 +60,6 @@ const wallet = computed(() => decodeURIComponent(String(route.params.wallet || "
 const loading = ref(true);
 const followBusy = ref(false);
 const profile = ref<PublicProfile | null>(null);
-const handle = computed(() => profile.value?.handle || null);
 
 const loadProfile = async () => {
   loading.value = true;
@@ -104,10 +95,6 @@ const toggleFollow = async () => {
   }
 };
 
-const goBack = () => {
-  router.back();
-};
-
 const goToTitle = (titleId: string) => {
   router.push({ name: "title", params: { id: titleId } });
 };
@@ -122,39 +109,6 @@ watch(wallet, loadProfile);
   padding-bottom: 2rem;
 }
 
-.detail-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem 0;
-  background: var(--bg-surface);
-  border-bottom: 1px solid var(--border);
-}
-
-.back-button {
-  padding: 0.5rem;
-  background: transparent;
-  border: none;
-  color: var(--text-primary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.back-button :deep(.nq-icon) {
-  width: 24px;
-  height: 24px;
-}
-
-.detail-header h1 {
-  flex: 1;
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
 .loading {
   text-align: center;
   padding: 3rem 0;
@@ -165,6 +119,6 @@ watch(wallet, loadProfile);
   padding: 1rem 0;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 </style>
