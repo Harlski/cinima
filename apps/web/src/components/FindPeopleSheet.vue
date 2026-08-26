@@ -1,53 +1,54 @@
 <template>
-  <div class="find-modal" role="presentation" @click.self="$emit('close')">
-    <div
-      class="find-dialog nq-card"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="find-people-title"
-    >
-      <button type="button" class="find-close" aria-label="Close" @click="$emit('close')">
-        <NqIcon name="cross" :size="20" />
-      </button>
+  <Teleport to="body">
+    <div class="find-modal" role="presentation" @click.self="$emit('close')">
+      <div
+        class="find-dialog nq-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="find-people-title"
+      >
+        <button type="button" class="find-close" aria-label="Close" @click="$emit('close')">
+          <NqIcon name="cross" :size="20" />
+        </button>
 
-      <h2 id="find-people-title">Find people</h2>
-      <p class="hint">Follow Handles whose taste you want on Following.</p>
+        <h2 id="find-people-title">Find people</h2>
+        <p class="hint">Follow Handles whose taste you want on Following.</p>
 
-      <div v-if="loading" class="state">
-        <NqSpinner />
+        <div v-if="loading" class="state">
+          <NqSpinner />
+        </div>
+        <div v-else-if="people.length === 0" class="state muted">
+          No more Handles to follow right now.
+        </div>
+        <ul v-else class="people-list">
+          <li v-for="person in people" :key="person.walletAddress" class="person-row">
+            <button
+              type="button"
+              class="person-main"
+              @click="$emit('open-profile', person.walletAddress)"
+            >
+              <Identicon :address="person.walletAddress" :size="44" alt="" />
+              <div class="person-meta">
+                <strong>{{ displayName(person.handle, person.walletAddress) }}</strong>
+                <span>
+                  {{ person.movieFavoriteCount }} movies · {{ person.tvFavoriteCount }} TV ·
+                  {{ person.thanksReceived }} Thanks received
+                </span>
+              </div>
+            </button>
+            <button
+              type="button"
+              class="follow-btn nq-pill-blue"
+              :disabled="busyWallet === person.walletAddress"
+              @click="$emit('follow', person)"
+            >
+              Follow
+            </button>
+          </li>
+        </ul>
       </div>
-      <div v-else-if="people.length === 0" class="state muted">
-        No other Handles on the platform yet.
-      </div>
-      <ul v-else class="people-list">
-        <li v-for="person in people" :key="person.walletAddress" class="person-row">
-          <button
-            type="button"
-            class="person-main"
-            @click="$emit('open-profile', person.walletAddress)"
-          >
-            <Identicon :address="person.walletAddress" :size="44" alt="" />
-            <div class="person-meta">
-              <strong>{{ displayName(person.handle, person.walletAddress) }}</strong>
-              <span>
-                {{ person.movieFavoriteCount }} movies · {{ person.tvFavoriteCount }} TV ·
-                {{ person.thanksReceived }} Thanks received
-              </span>
-            </div>
-          </button>
-          <button
-            type="button"
-            class="follow-btn"
-            :class="person.isFollowing ? 'nq-pill-secondary' : 'nq-pill-blue'"
-            :disabled="busyWallet === person.walletAddress"
-            @click="$emit('toggle-follow', person)"
-          >
-            {{ person.isFollowing ? "Following" : "Follow" }}
-          </button>
-        </li>
-      </ul>
     </div>
-  </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -66,7 +67,7 @@ defineProps<{
 defineEmits<{
   close: [];
   "open-profile": [wallet: string];
-  "toggle-follow": [person: FindPeopleEntry];
+  follow: [person: FindPeopleEntry];
 }>();
 </script>
 
@@ -77,14 +78,18 @@ defineEmits<{
   z-index: 80;
   display: grid;
   place-items: center;
-  padding: 1.25rem;
+  padding:
+    calc(var(--vv-offset-top, 0px) + var(--app-brand-row, 2.75rem) + 0.75rem)
+    1.25rem
+    calc(var(--bottom-tabs-inset, 5.5rem) + 0.75rem);
   background: color-mix(in oklch, var(--colors-neutral) 28%, transparent);
+  box-sizing: border-box;
 }
 
 .find-dialog {
   position: relative;
   width: min(100%, 26rem);
-  max-height: min(78vh, 36rem);
+  max-height: 100%;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -140,6 +145,7 @@ defineEmits<{
   flex-direction: column;
   gap: 0.55rem;
   -webkit-overflow-scrolling: touch;
+  min-height: 0;
 }
 
 .person-row {

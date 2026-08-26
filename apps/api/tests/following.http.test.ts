@@ -134,7 +134,7 @@ describe("Following strip HTTP API", () => {
     expect(body.error).toBe("not_following");
   });
 
-  it("lists Find people with Favorite counts and Thanks received", async () => {
+  it("lists Find people with Favorite counts and Thanks received, excluding followees", async () => {
     const res = await app.fetch(new Request("http://test/api/find-people", { headers }));
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
@@ -148,8 +148,8 @@ describe("Following strip HTTP API", () => {
       }[];
     };
     expect(body.people.map((p) => p.walletAddress)).not.toContain(ME);
+    expect(body.people.map((p) => p.walletAddress)).not.toContain(CURATOR);
     const other = body.people.find((p) => p.walletAddress === OTHER);
-    const curator = body.people.find((p) => p.walletAddress === CURATOR);
     expect(other).toMatchObject({
       handle: "otheruser",
       movieFavoriteCount: 1,
@@ -157,14 +157,6 @@ describe("Following strip HTTP API", () => {
       thanksReceived: 1,
       isFollowing: false,
     });
-    expect(curator).toMatchObject({
-      handle: "curator",
-      movieFavoriteCount: 1,
-      tvFavoriteCount: 1,
-      thanksReceived: 0,
-      isFollowing: true,
-    });
-    // Thanks received ranks above equal Favorite totals
     expect(body.people[0]?.walletAddress).toBe(OTHER);
   });
 });

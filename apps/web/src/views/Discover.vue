@@ -149,7 +149,7 @@
       :busy-wallet="followBusyWallet"
       @close="findPeopleOpen = false"
       @open-profile="onOpenPersonProfile"
-      @toggle-follow="onToggleFollowPerson"
+      @follow="onFollowPerson"
     />
   </div>
 </template>
@@ -398,18 +398,16 @@ const onOpenPersonProfile = (wallet: string) => {
   goToUser(wallet);
 };
 
-const onToggleFollowPerson = async (person: FindPeopleEntry) => {
+const onFollowPerson = async (person: FindPeopleEntry) => {
   if (followBusyWallet.value) return;
   followBusyWallet.value = person.walletAddress;
   try {
-    const w = encodeURIComponent(person.walletAddress);
-    if (person.isFollowing) {
-      await request(`/users/${w}/follow`, { method: "DELETE" });
-      person.isFollowing = false;
-    } else {
-      await request(`/users/${w}/follow`, { method: "POST" });
-      person.isFollowing = true;
-    }
+    await request(`/users/${encodeURIComponent(person.walletAddress)}/follow`, {
+      method: "POST",
+    });
+    findPeople.value = findPeople.value.filter(
+      (p) => p.walletAddress !== person.walletAddress
+    );
     await loadFollowingPeople();
     if (!selectedFollowee.value && followingPeople.value.length) {
       selectedFollowee.value = followingPeople.value[0]!.walletAddress;

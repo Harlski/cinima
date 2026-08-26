@@ -228,14 +228,16 @@ export async function listFindPeople(viewer: string): Promise<FindPeopleEntry[]>
 
   const following = new Set(followRows.map((r) => r.followeeWallet));
 
-  const people: FindPeopleEntry[] = users.map((u) => ({
-    walletAddress: u.walletAddress,
-    handle: u.handle ?? null,
-    movieFavoriteCount: movieCounts.get(u.walletAddress) ?? 0,
-    tvFavoriteCount: tvCounts.get(u.walletAddress) ?? 0,
-    thanksReceived: thanksReceived.get(u.walletAddress) ?? 0,
-    isFollowing: following.has(u.walletAddress),
-  }));
+  const people: FindPeopleEntry[] = users
+    .filter((u) => !following.has(u.walletAddress))
+    .map((u) => ({
+      walletAddress: u.walletAddress,
+      handle: u.handle ?? null,
+      movieFavoriteCount: movieCounts.get(u.walletAddress) ?? 0,
+      tvFavoriteCount: tvCounts.get(u.walletAddress) ?? 0,
+      thanksReceived: thanksReceived.get(u.walletAddress) ?? 0,
+      isFollowing: false,
+    }));
 
   people.sort((a, b) => {
     if (b.thanksReceived !== a.thanksReceived) return b.thanksReceived - a.thanksReceived;

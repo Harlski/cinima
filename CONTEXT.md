@@ -77,7 +77,7 @@ On Discover Following, the horizontal selectable row of followee Identicons (plu
 _Avoid_: stories rail, avatar carousel, Following tabs chrome
 
 **Find people**:
-The Following strip entry (black-and-white hexagon with +) that opens a browsable list of other Handles on the platform, with Favorite counts by media type and Thanks received, so the viewer can follow or open a Public Profile.
+The Following strip entry (black-and-white hexagon with +) that opens a centered list of Handles the viewer does not already follow, with Favorite counts by media type and Thanks received, so the viewer can follow or open a Public Profile.
 _Avoid_: user search, directory as a top-level tab, invite sheet
 
 **Thanks received**:
