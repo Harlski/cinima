@@ -315,8 +315,12 @@ const loadFolloweeFeed = async (wallet: string | null) => {
   ).catch(() => ({ items: [] as FollowingFeedItem[] }));
   feed.value = feedRes.items;
   const person = followingPeople.value.find((p) => p.walletAddress === wallet);
+  // Record seen now; strip order updates when the viewer leaves Following and returns.
   markFollowingStripSeen(wallet, person?.lastActivityAt);
-  // Re-sort so newly seen Handles drop below remaining unseen.
+};
+
+const applyFollowingStripOrder = () => {
+  if (!followingPeople.value.length) return;
   followingPeople.value = sortFollowingStripPeople(
     followingPeople.value,
     loadFollowingStripSeen()
@@ -326,6 +330,8 @@ const loadFolloweeFeed = async (wallet: string | null) => {
 const ensureFollowingTabData = async () => {
   if (!followingStripReady.value) {
     await loadFollowingPeople();
+  } else {
+    applyFollowingStripOrder();
   }
   await loadFolloweeFeed(selectedFollowee.value);
 };
