@@ -164,6 +164,8 @@ export type FollowingFeedResponse = {
 export type FollowingPerson = {
   walletAddress: string;
   handle: string | null;
+  /** ISO timestamp of newest Favorite or unlock; null if none. */
+  lastActivityAt: string | null;
 };
 
 export type FollowingPeopleResponse = {

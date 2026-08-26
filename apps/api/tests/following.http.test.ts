@@ -98,8 +98,13 @@ describe("Following strip HTTP API", () => {
       people: { walletAddress: string; handle: string | null }[];
     };
     expect(body.people).toEqual([
-      { walletAddress: CURATOR, handle: "curator" },
+      {
+        walletAddress: CURATOR,
+        handle: "curator",
+        lastActivityAt: expect.any(String),
+      },
     ]);
+    expect(Date.parse(body.people[0]!.lastActivityAt!)).not.toBeNaN();
   });
 
   it("filters the Following feed to one followee", async () => {

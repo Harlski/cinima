@@ -164,7 +164,14 @@ export async function listFollowingPeople(follower: string): Promise<FollowingPe
 
   return [...followees]
     .sort((a, b) => (activityAt.get(b.walletAddress) ?? 0) - (activityAt.get(a.walletAddress) ?? 0))
-    .map((f) => ({ walletAddress: f.walletAddress, handle: f.handle ?? null }));
+    .map((f) => {
+      const t = activityAt.get(f.walletAddress);
+      return {
+        walletAddress: f.walletAddress,
+        handle: f.handle ?? null,
+        lastActivityAt: t ? new Date(t).toISOString() : null,
+      };
+    });
 }
 
 /** Find people: other accounts with Favorite counts and Thanks received. */

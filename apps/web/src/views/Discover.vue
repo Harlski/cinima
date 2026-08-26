@@ -21,6 +21,14 @@
     />
 
     <div v-else class="discover-body">
+      <FollowingStrip
+        v-if="activeTab === 'following'"
+        :people="followingPeople"
+        :selected-wallet="selectedFollowee"
+        @select="onSelectFollowee"
+        @find-people="openFindPeople"
+      />
+
       <section v-if="activeTab === 'for-you'" class="suggestions-section">
         <div v-if="suggestions.length === 0" class="feed-empty">
           No overlap suggestions yet — favorite a few more titles.
@@ -40,7 +48,7 @@
 
       <section v-else class="feed-section">
         <div v-if="followingPeople.length === 0" class="feed-empty">
-          Tap Find people on the strip below to follow Handles and see their recent Favorites here.
+          Tap Find people above to follow Handles and see their recent Favorites here.
         </div>
         <div v-else-if="feed.length === 0" class="feed-empty">
           No recent Favorites or unlocks from this Handle yet.
@@ -100,14 +108,6 @@
         </div>
       </section>
     </div>
-
-    <FollowingStrip
-      v-if="!loading && mode === 'overlap' && activeTab === 'following'"
-      :people="followingPeople"
-      :selected-wallet="selectedFollowee"
-      @select="onSelectFollowee"
-      @find-people="openFindPeople"
-    />
 
     <Transition name="feed-tabs-slide">
       <nav
@@ -180,6 +180,11 @@ import Identicon from "@/components/Identicon.vue";
 import ForYouPicker from "@/components/ForYouPicker.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
 import PosterImg from "@/components/PosterImg.vue";
+import {
+  loadFollowingStripSeen,
+  markFollowingStripSeen,
+  sortFollowingStripPeople,
+} from "@/lib/followingStrip";
 
 defineOptions({ name: "Discover" });
 
@@ -287,14 +292,15 @@ const loadFollowingPeople = async () => {
   const res = await request<FollowingPeopleResponse>("/following").catch(
     () => ({ people: [] as FollowingPerson[] })
   );
-  followingPeople.value = res.people;
+  const sorted = sortFollowingStripPeople(res.people, loadFollowingStripSeen());
+  followingPeople.value = sorted;
   if (
     selectedFollowee.value &&
-    !res.people.some((p) => p.walletAddress === selectedFollowee.value)
+    !sorted.some((p) => p.walletAddress === selectedFollowee.value)
   ) {
-    selectedFollowee.value = res.people[0]?.walletAddress ?? null;
-  } else if (!selectedFollowee.value && res.people.length) {
-    selectedFollowee.value = res.people[0]!.walletAddress;
+    selectedFollowee.value = sorted[0]?.walletAddress ?? null;
+  } else if (!selectedFollowee.value && sorted.length) {
+    selectedFollowee.value = sorted[0]!.walletAddress;
   }
   followingStripReady.value = true;
 };
@@ -308,6 +314,13 @@ const loadFolloweeFeed = async (wallet: string | null) => {
     `/feed?followee=${encodeURIComponent(wallet)}`
   ).catch(() => ({ items: [] as FollowingFeedItem[] }));
   feed.value = feedRes.items;
+  const person = followingPeople.value.find((p) => p.walletAddress === wallet);
+  markFollowingStripSeen(wallet, person?.lastActivityAt);
+  // Re-sort so newly seen Handles drop below remaining unseen.
+  followingPeople.value = sortFollowingStripPeople(
+    followingPeople.value,
+    loadFollowingStripSeen()
+  );
 };
 
 const ensureFollowingTabData = async () => {
@@ -316,6 +329,11 @@ const ensureFollowingTabData = async () => {
   }
   await loadFolloweeFeed(selectedFollowee.value);
 };
+
+function resetAppContentScroll() {
+  const el = document.querySelector(".app-content");
+  if (el instanceof HTMLElement) el.scrollTop = 0;
+}
 
 const loadDiscover = async () => {
   loading.value = true;
@@ -400,6 +418,7 @@ const onToggleFollowPerson = async (person: FindPeopleEntry) => {
 
 watch(activeTab, async (tab) => {
   if (tab === "following" && mode.value === "overlap") {
+    resetAppContentScroll();
     await ensureFollowingTabData();
   }
 });
@@ -478,7 +497,6 @@ onMounted(() => {
 
 .discover--overlap {
   --discover-feed-tabs-height: 2.85rem;
-  --discover-following-strip-height: 5.1rem;
   padding-bottom: calc(var(--discover-feed-tabs-height) + 0.75rem);
 }
 
@@ -486,10 +504,9 @@ onMounted(() => {
   padding-bottom: 0;
 }
 
-.discover--overlap:not(.discover--for-you) {
-  padding-bottom: calc(
-    var(--discover-feed-tabs-height) + var(--discover-following-strip-height) + 0.75rem
-  );
+.discover--overlap:not(.discover--for-you) .discover-body {
+  padding-top: 0.35rem;
+  gap: 0.85rem;
 }
 
 .discover--for-you .discover-body {

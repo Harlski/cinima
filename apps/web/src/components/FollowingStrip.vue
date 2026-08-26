@@ -74,19 +74,17 @@ defineEmits<{
 
 <style scoped>
 .following-strip-dock {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: calc(var(--bottom-tabs-inset) + var(--discover-feed-tabs-height, 2.85rem));
+  position: sticky;
+  top: 0;
   z-index: 44;
   padding-bottom: 0.2rem;
   background: linear-gradient(
-    to top,
+    to bottom,
     var(--bg-primary) 0%,
-    var(--bg-primary) 55%,
+    var(--bg-primary) 70%,
     transparent 100%
   );
-  touch-action: none;
+  touch-action: pan-x;
   overscroll-behavior: none;
 }
 
@@ -97,11 +95,9 @@ defineEmits<{
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
-  padding: 0.35rem var(--column-pad) 0.55rem;
+  padding: 0.35rem 0 0.55rem;
   scrollbar-width: none;
   touch-action: pan-x;
-  max-width: var(--column-max);
-  margin-inline: auto;
   box-sizing: border-box;
 }
 
@@ -143,7 +139,7 @@ defineEmits<{
   width: 2.85rem;
   height: 2.85rem;
   padding: 0;
-  border: 2px solid transparent;
+  border: 0;
   border-radius: 999px;
   background: transparent;
   display: grid;
@@ -153,8 +149,7 @@ defineEmits<{
   transform: scale(0.94);
   transition:
     transform 0.18s ease,
-    opacity 0.18s ease,
-    border-color 0.18s ease;
+    opacity 0.18s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -165,7 +160,6 @@ defineEmits<{
 .identicon-btn.is-selected {
   opacity: 1;
   transform: scale(1);
-  border-color: var(--gold);
 }
 
 .find-people {

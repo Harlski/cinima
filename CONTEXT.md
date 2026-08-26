@@ -73,7 +73,7 @@ The Discover gate for accounts under the Favorite minimum. Shows three scrolling
 _Avoid_: swipe deck, search-to-unlock, auto-favorite on tap, live catalog fetch on this screen
 
 **Following strip**:
-On Discover Following, the horizontal selectable row of followee Identicons (plus Find people) docked just above the For You / Following tabs. Selecting a followee shows their Handle above the Identicon and filters the feed to that person's recent Favorites and unlocks.
+On Discover Following, the horizontal selectable row of followee Identicons (plus Find people) sticky under the brand header. Selecting a followee shows their Handle above the Identicon and filters the feed to that person's recent Favorites and unlocks. Unseen activity sorts ahead of already-viewed activity.
 _Avoid_: stories rail, avatar carousel, Following tabs chrome
 
 **Find people**:
