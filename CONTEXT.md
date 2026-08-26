@@ -65,7 +65,7 @@ A user’s directed signal that another user’s Favorite of a title was useful.
 _Avoid_: tip, like, kudos, shout-out
 
 **Thank all**:
-One action that sends Thanks to every remaining peer who Favorited a title.
+One action that sends Thanks to every remaining peer who Favorited a title. On title detail, peers are shown as Identicons with a Favorited count; tapping the stack opens a centered Handle list (like Find people) to open Public Profiles. Individual per-peer Thanks are not offered on that screen.
 _Avoid_: mass tip, blast, thank everyone as a separate mark
 
 **Favorites onboarding**:

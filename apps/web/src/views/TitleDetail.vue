@@ -86,7 +86,12 @@
       <section v-if="suggesters.length" class="thanks-section">
         <div class="thanks-card nq-card">
           <div class="thanks-head">
-            <div class="thanks-head-left">
+            <button
+              type="button"
+              class="thanks-head-left"
+              aria-label="Show who Favorited this"
+              @click="favoritersOpen = true"
+            >
               <div class="thanks-stack" aria-hidden="true">
                 <Identicon
                   v-for="s in suggesters.slice(0, 5)"
@@ -102,7 +107,7 @@
               <p class="thanks-count">
                 {{ suggesters.length }} favorited this
               </p>
-            </div>
+            </button>
             <button
               v-if="unthankedCount"
               type="button"
@@ -113,22 +118,6 @@
               {{ thankingAll ? "Thanking..." : "Thank all" }}
             </button>
           </div>
-          <ul class="thanks-people">
-            <li v-for="s in suggesters" :key="s.walletAddress" class="thanks-person">
-              <button type="button" class="thanks-who" @click="goToUser(s.walletAddress)">
-                <Identicon :address="s.walletAddress" :size="32" alt="" />
-                <span>{{ displayName(s.handle, s.walletAddress) }}</span>
-              </button>
-              <button
-                type="button"
-                class="nq-pill-secondary nq-pill-lg thanks-btn"
-                :disabled="s.thanked || thanking === s.walletAddress"
-                @click="sendThanks(s.walletAddress)"
-              >
-                {{ s.thanked ? "Thanked" : "Thanks" }}
-              </button>
-            </li>
-          </ul>
         </div>
       </section>
 
@@ -208,6 +197,13 @@
       @close="shareOpen = false"
       @claim="goClaimHandle"
     />
+
+    <FavoritersSheet
+      v-if="favoritersOpen"
+      :people="suggesters"
+      @close="favoritersOpen = false"
+      @open-profile="onOpenFavoriterProfile"
+    />
   </div>
 </template>
 
@@ -222,6 +218,7 @@ import { useCatalogStore } from "@/stores/catalog";
 import { displayName, imdbTitleUrl } from "@cinima/shared";
 import type { TitleDetail, CommentDto, TitleSuggester } from "@cinima/shared";
 import ExpandableText from "@/components/ExpandableText.vue";
+import FavoritersSheet from "@/components/FavoritersSheet.vue";
 import HeatMap from "@/components/HeatMap.vue";
 import Identicon from "@/components/Identicon.vue";
 import NqIcon from "@/components/NqIcon.vue";
@@ -247,8 +244,8 @@ const loadingComments = ref(false);
 const commentText = ref("");
 const posting = ref(false);
 const suggesters = ref<TitleSuggester[]>([]);
-const thanking = ref<string | null>(null);
 const thankingAll = ref(false);
+const favoritersOpen = ref(false);
 const shareOpen = ref(false);
 const meWallet = computed(() => authStore.user?.walletAddress || "");
 const unthankedCount = computed(() => suggesters.value.filter((s) => !s.thanked).length);
@@ -340,27 +337,6 @@ const postComment = async () => {
   }
 };
 
-const sendThanks = async (toWallet: string) => {
-  if (!title.value) return;
-  thanking.value = toWallet;
-  try {
-    await request("/thanks", {
-      method: "POST",
-      body: JSON.stringify({
-        toWallet,
-        titleId: title.value.id,
-      }),
-    });
-    suggesters.value = suggesters.value.map((s) =>
-      s.walletAddress === toWallet ? { ...s, thanked: true } : s
-    );
-  } catch (err) {
-    console.error("Thanks failed:", err);
-  } finally {
-    thanking.value = null;
-  }
-};
-
 const thankAll = async () => {
   if (!title.value || !unthankedCount.value) return;
   thankingAll.value = true;
@@ -375,6 +351,11 @@ const thankAll = async () => {
   } finally {
     thankingAll.value = false;
   }
+};
+
+const onOpenFavoriterProfile = (wallet: string) => {
+  favoritersOpen.value = false;
+  goToUser(wallet);
 };
 
 const formatTime = (iso: string) => {
@@ -544,7 +525,6 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-bottom: 0.85rem;
 }
 
 .thanks-head-left {
@@ -552,6 +532,13 @@ onMounted(() => {
   align-items: center;
   gap: 0.7rem;
   min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .thanks-count {
@@ -582,57 +569,6 @@ onMounted(() => {
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--text-secondary);
-}
-
-.thanks-people {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.thanks-person {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  flex: 1 1 11.5rem;
-  min-width: 11.5rem;
-  padding: 0.35rem 0.4rem 0.35rem 0.2rem;
-  border-radius: 12px;
-  background: var(--colors-neutral-200);
-}
-
-.thanks-who {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--text-primary);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-  text-align: left;
-}
-
-.thanks-who span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.thanks-btn {
-  flex-shrink: 0;
-}
-
-.thanks-btn:disabled {
-  opacity: 0.7;
-  cursor: default;
 }
 
 .comment-composer {
