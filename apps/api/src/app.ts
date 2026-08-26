@@ -20,7 +20,9 @@ import {
   type FindPeopleResponse,
   type WatchlistResponse,
   type ShareLinkCreated,
+  profileShareOgImageUrl,
   shortShareUrl,
+  titleShareOgImageUrl,
   titleShareUrl,
 } from "@cinima/shared";
 import { db } from "./db/index.js";
@@ -28,14 +30,21 @@ import * as schema from "./db/schema.js";
 import { config } from "./lib/config.js";
 import { bearerToken, isPayContext } from "./lib/util.js";
 import { toTitleSummary, ogPosterUrl } from "./lib/titles.js";
+import { assertValidUserHandle, normalizeUserHandle } from "./services/auth.js";
 import { titleShareOgHtml } from "./lib/titleShareHtml.js";
 import { profileShareOgHtml } from "./lib/profileShareHtml.js";
+import {
+  renderProfileShareOgImage,
+  renderTitleShareOgImage,
+  shareOgImageCacheControl,
+} from "./lib/shareOgImage.js";
 import {
   getOrCreateProfileShareLink,
   getOrCreateTitleShareLink,
   resolveShareLink,
   resolveShareLinkOgPosterFromDb,
   resolveShareLinkOgPoster,
+  resolveProfileShareOgPoster,
 } from "./services/shareLinks.js";
 import {
   CommentError,
@@ -67,6 +76,7 @@ import {
   isRecommended,
   listFavorites,
   listRecommends,
+  listCommunityRecommends,
   removeFavorite,
   setRecommend,
 } from "./services/favorites.js";
@@ -314,11 +324,16 @@ app.get("/api/me", requirePay, requireAuth, async (c) => {
 app.post("/api/me/handle", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
   const { handle } = await c.req.json<{ handle: string }>();
-  const cleaned = String(handle || "")
-    .replace(/^@/, "")
-    .trim()
-    .toLowerCase();
-  if (!/^[a-z0-9_]{3,24}$/.test(cleaned)) return c.json({ error: "invalid_handle" }, 400);
+  const cleaned = normalizeUserHandle(handle);
+  try {
+    assertValidUserHandle(cleaned);
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "invalid_handle";
+    if (code === "invalid_handle" || code === "handle_profane") {
+      return c.json({ error: code }, 400);
+    }
+    throw err;
+  }
 
   const existing = await db.query.users.findFirst({
     where: and(eq(schema.users.handle, cleaned), sql`${schema.users.walletAddress} != ${user.walletAddress}`),
@@ -458,6 +473,11 @@ app.delete("/api/favorites/:titleId", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
   await removeFavorite(user.walletAddress, titleId);
   return c.json({ ok: true, user: await sessionUserFor(user.walletAddress) });
+});
+
+app.get("/api/recommends/community", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  return c.json(await listCommunityRecommends(user.walletAddress));
 });
 
 app.post("/api/recommends/:titleId", requirePay, requireAuth, async (c) => {
@@ -770,6 +790,50 @@ function wantsHtml(accept: string | undefined): boolean {
   return a.includes("text/html") && !a.includes("application/json");
 }
 
+function pngResponse(body: Buffer): Response {
+  return new Response(new Uint8Array(body), {
+    headers: {
+      "Content-Type": "image/png",
+      "Cache-Control": shareOgImageCacheControl(),
+    },
+  });
+}
+
+// Branded Share preview images — no pay gate
+app.get("/api/og/profile/:handle.png", async (c) => {
+  const handle = c.req.param("handle") ?? "";
+  const user = await findPublicUserByHandle(handle);
+  if (!user?.handle) return c.json({ error: "not_found" }, 404);
+
+  const recommends = await listRecommends(user.walletAddress);
+  const favorites = await listFavorites(user.walletAddress);
+  const posterUrl = await resolveProfileShareOgPoster(recommends, favorites);
+  const png = await renderProfileShareOgImage({ handle: user.handle, posterUrl });
+  return pngResponse(png);
+});
+
+app.get("/api/og/title/:handle/:mediaType/:tmdbId.png", async (c) => {
+  const mediaType = c.req.param("mediaType");
+  const tmdbId = Number(c.req.param("tmdbId"));
+  if ((mediaType !== "movie" && mediaType !== "tv") || !Number.isInteger(tmdbId) || tmdbId <= 0) {
+    return c.json({ error: "not_found" }, 404);
+  }
+
+  const user = await findPublicUserByHandle(c.req.param("handle"));
+  if (!user?.handle) return c.json({ error: "not_found" }, 404);
+
+  const id = makeTitleId(mediaType, tmdbId);
+  const title = await db.query.titles.findFirst({ where: eq(schema.titles.id, id) });
+  if (!title) return c.json({ error: "not_found" }, 404);
+
+  const png = await renderTitleShareOgImage({
+    handle: user.handle,
+    titleName: title.title,
+    posterUrl: ogPosterUrl(title.posterPath),
+  });
+  return pngResponse(png);
+});
+
 // Title Share — no pay gate
 app.get("/api/public/:handle/t/:mediaType/:tmdbId", async (c) => {
   const mediaType = c.req.param("mediaType");
@@ -799,7 +863,12 @@ app.get("/api/public/:handle/t/:mediaType/:tmdbId", async (c) => {
         pageUrl,
         handle: user.handle,
         titleName: summary.title,
-        posterUrl: ogPosterUrl(title.posterPath),
+        ogImageUrl: titleShareOgImageUrl(
+          config.apiOrigin,
+          user.handle,
+          mediaType,
+          tmdbId
+        ),
       })
     );
   }
@@ -822,17 +891,11 @@ app.get("/api/public/:username", async (c) => {
 
   if (wantsHtml(c.req.header("accept"))) {
     const pageUrl = `${config.webOrigin}/${user.handle}`;
-    const previewPoster =
-      recommends.find((t) => t.posterUrl)?.posterUrl ??
-      favorites.find((t) => t.posterUrl)?.posterUrl ??
-      null;
     return c.html(
       profileShareOgHtml({
         pageUrl,
         handle: user.handle,
-        recommendCount: recommends.length,
-        favoriteCount: favorites.length,
-        imageUrl: previewPoster,
+        ogImageUrl: profileShareOgImageUrl(config.apiOrigin, user.handle),
       })
     );
   }
@@ -889,13 +952,17 @@ app.get("/api/s/:code", async (c) => {
   if (wantsHtml(c.req.header("accept"))) {
     const pageUrl = shortShareUrl(config.webOrigin, resolved.code);
     if (resolved.kind === "title") {
-      const posterUrl = await resolveShareLinkOgPosterFromDb(resolved);
       return c.html(
         titleShareOgHtml({
           pageUrl,
           handle: resolved.handle,
           titleName: resolved.title.title,
-          posterUrl,
+          ogImageUrl: titleShareOgImageUrl(
+            config.apiOrigin,
+            resolved.handle,
+            resolved.title.mediaType,
+            resolved.title.tmdbId
+          ),
         })
       );
     }
@@ -904,9 +971,7 @@ app.get("/api/s/:code", async (c) => {
       profileShareOgHtml({
         pageUrl,
         handle: resolved.handle,
-        recommendCount: resolved.recommends.length,
-        favoriteCount: resolved.favorites.length,
-        imageUrl: resolveShareLinkOgPoster(resolved),
+        ogImageUrl: profileShareOgImageUrl(config.apiOrigin, resolved.handle),
       })
     );
   }

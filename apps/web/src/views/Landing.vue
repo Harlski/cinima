@@ -8,6 +8,8 @@
         <h1 class="landing-title">{{ landingCopy.title }}</h1>
         <p class="landing-lead">{{ landingCopy.lead }}</p>
 
+        <TitleMarquee class="landing-marquee" />
+
         <button
           v-if="inPay"
           type="button"
@@ -32,11 +34,9 @@
           <span class="landing-enter-prefix" aria-hidden="true">Explore</span>
           <BrandWordmark size="sm" accent aria-hidden="true" />
         </button>
+
+        <SocialPlaceholders class="landing-social" />
       </div>
-
-      <TitleMarquee class="landing-marquee" />
-
-      <SocialPlaceholders class="landing-social" />
 
       <TmdbAttribution variant="compact" class="landing-attr" />
     </div>
@@ -74,6 +74,7 @@ import {
   FORCE_FAVORITES_PICK_QUERY,
   WELCOME_FADE_MS,
   WELCOME_HOLD_MS,
+  armForceOnboardingFlow,
   canForceFavoritesPick,
   isReturningUser,
   sleep,
@@ -146,12 +147,19 @@ const enterCinima = async () => {
   }
 };
 
-/** Local / demo: tap welcome identicon → Favorites onboarding. */
+/** Local / demo: tap welcome identicon → full onboarding (username + favorites). */
 const forceFavoritesPick = async () => {
   if (!forcePickEnabled) return;
   enterGeneration += 1;
   welcomeOpen.value = false;
   entering.value = false;
+  try {
+    if (!auth.user) await auth.boot();
+    if (!auth.user) return;
+    armForceOnboardingFlow();
+  } catch {
+    return;
+  }
   await router.replace({
     name: "discover",
     query: { [FORCE_FAVORITES_PICK_QUERY]: "1" },
@@ -215,7 +223,7 @@ const forceFavoritesPick = async () => {
 }
 
 .landing-lead {
-  margin: 0 0 0.5rem;
+  margin: 0;
   font-size: 1.02rem;
   line-height: 1.55;
   color: var(--text-secondary);
@@ -227,7 +235,8 @@ const forceFavoritesPick = async () => {
   justify-content: center;
   gap: 0.5rem;
   width: auto;
-  margin-top: 2.75rem;
+  flex-shrink: 0;
+  margin-top: 1.75rem;
   margin-bottom: 0;
   padding: 1.2rem 1.65rem;
   border: 1px solid rgba(255, 255, 255, 0.35);
@@ -269,14 +278,16 @@ const forceFavoritesPick = async () => {
 }
 
 .landing-marquee {
-  width: 100%;
+  width: 100vw;
+  max-width: none;
   flex-shrink: 0;
-  margin-top: 0.5rem;
-  padding-block: 0.75rem 1rem;
+  margin-top: 1.25rem;
+  margin-inline: calc(50% - 50vw);
+  padding-block: 0.5rem 1.25rem;
 }
 
 .landing-social {
-  margin-top: 0.25rem;
+  margin-top: 1rem;
   margin-bottom: 1rem;
   flex-shrink: 0;
 }

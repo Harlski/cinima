@@ -9,9 +9,9 @@ const TTL_MS = CATALOG_TTL_DAYS * 24 * 60 * 60 * 1000;
 
 /** Recent-year floor for onboarding / popular prefetch pool. */
 export const POPULAR_PREFETCH_YEAR_FROM = 2015;
-/** Enough posters for three onboarding slider rows with room to scroll. */
-export const POPULAR_PREFETCH_POOL_MIN = 48;
-const PREFETCH_PAGES_PER_KIND = 3;
+/** Enough posters for a top-~100 popularity onboarding grid. */
+export const POPULAR_PREFETCH_POOL_MIN = 100;
+const PREFETCH_PAGES_PER_KIND = 5;
 
 type TmdbListItem = {
   id: number;

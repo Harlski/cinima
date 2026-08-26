@@ -111,6 +111,7 @@ describe("Share links HTTP API", () => {
     expect(page).toContain(`https://cinima.app/s/${code}`);
     expect(page).toContain("linkuser wants you to check out Fight Club");
     expect(page).toContain("og:image");
+    expect(page).toContain("/api/og/title/linkuser/movie/550.png");
   });
 
   it("returns short profile links from Me", async () => {

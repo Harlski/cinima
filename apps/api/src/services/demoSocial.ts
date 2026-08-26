@@ -1,14 +1,21 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import { makeTitleId } from "@cinima/shared";
 import { db } from "../db/index.js";
 import { favorites, follows, users } from "../db/schema.js";
+
+/** Fixed wallets inserted for local demo / taste-overlap fixtures. */
+export const DEMO_WALLETS = [
+  "NQ05DEMOCINIMACYCLETWOWALLET0000001",
+  "NQ01PEERAAAAOVERLAPDEMOWALLET00001",
+  "NQ02PEERBBBBTOASTEOVERLAPWALLET02",
+] as const;
 
 /** Seed a small social graph so taste-overlap + follow feed + heatmap are demoable */
 export async function seedDemoSocialGraph() {
   const now = Date.now();
   const peers = [
     {
-      wallet: "NQ01PEERAAAAOVERLAPDEMOWALLET00001",
+      wallet: DEMO_WALLETS[1],
       handle: "cinephile",
       titles: [
         makeTitleId("movie", 550),
@@ -19,7 +26,7 @@ export async function seedDemoSocialGraph() {
       ],
     },
     {
-      wallet: "NQ02PEERBBBBTOASTEOVERLAPWALLET02",
+      wallet: DEMO_WALLETS[2],
       handle: "nightowl",
       titles: [
         makeTitleId("movie", 550),
@@ -29,11 +36,6 @@ export async function seedDemoSocialGraph() {
         makeTitleId("tv", 60625),
       ],
     },
-  ];
-
-  const demoWallets = [
-    "NQ05DEMOCINIMACYCLETWOWALLET0000001",
-    "NQ05DEMOCINIMACYCLETWOWALLET0000001",
   ];
 
   for (const p of peers) {
@@ -51,19 +53,21 @@ export async function seedDemoSocialGraph() {
       const t = p.titles[i]!;
       // Spread activity across recent weeks for a visible heatmap
       const createdAt = new Date(now - (3 + i * 11) * 86400000 - i * 3600000);
+      // Gold-star a couple titles per peer so Watchlist empty state has community Recommends
+      const recommendedAt = i < 2 ? new Date(now - (2 + i * 7) * 86400000) : null;
       await db
         .insert(favorites)
-        .values({ walletAddress: p.wallet, titleId: t, createdAt })
+        .values({ walletAddress: p.wallet, titleId: t, createdAt, recommendedAt })
         .onConflictDoNothing();
       await db
         .update(favorites)
-        .set({ createdAt })
+        .set({ createdAt, recommendedAt })
         .where(and(eq(favorites.walletAddress, p.wallet), eq(favorites.titleId, t)));
     }
   }
 
   // Auto-follow seeded curators for local demo wallet so Discover feed is populated
-  const demo = "NQ05DEMOCINIMACYCLETWOWALLET0000001";
+  const demo = DEMO_WALLETS[0];
   await db
     .insert(users)
     .values({
@@ -108,6 +112,4 @@ export async function seedDemoSocialGraph() {
       .set({ createdAt })
       .where(and(eq(favorites.walletAddress, demo), eq(favorites.titleId, mine[i]!)));
   }
-
-  void demoWallets;
 }

@@ -35,19 +35,8 @@ export function profileShareCopy(handle: string): string {
   return `${handle} on Cinima`;
 }
 
-export function profileShareDescription(
-  recommendCount: number,
-  favoriteCount: number
-): string {
-  const parts: string[] = [];
-  if (recommendCount > 0) {
-    parts.push(`${recommendCount} Recommend${recommendCount === 1 ? "" : "s"}`);
-  }
-  if (favoriteCount > 0) {
-    parts.push(`${favoriteCount} Favorite${favoriteCount === 1 ? "" : "s"}`);
-  }
-  if (parts.length === 0) return "Movie and TV taste on Cinima";
-  return `${parts.join(" · ")} on Cinima`;
+export function profileShareDescription(handle: string): string {
+  return `Check out ${handle}'s favorite movies & tv shows on Cinima.app`;
 }
 
 export function titleSharePath(

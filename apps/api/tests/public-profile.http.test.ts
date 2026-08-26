@@ -113,8 +113,12 @@ describe("Public Profile HTTP API", () => {
     expect(res.headers.get("content-type") || "").toContain("text/html");
     const html = await res.text();
     expect(html).toContain("pubuser on Cinima");
+    expect(html).toContain(
+      "Check out pubuser's favorite movies &amp; tv shows on Cinima.app"
+    );
     expect(html).toContain('property="og:site_name" content="Cinima"');
     expect(html).toContain("https://cinima.app/pubuser");
-    expect(html).toContain("1 Favorite");
+    expect(html).toContain("og:image");
+    expect(html).toContain("/api/og/profile/pubuser.png");
   });
 });

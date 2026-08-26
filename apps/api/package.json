@@ -10,7 +10,9 @@
     "typecheck": "pnpm run --dir ../../packages/shared build && tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:push": "tsx src/db/migrate.ts"
+    "db:push": "tsx src/db/migrate.ts",
+    "db:remove-demo-users": "tsx scripts/remove-demo-users.ts",
+    "db:seed-social": "tsx scripts/seed-social.ts"
   },
   "dependencies": {
     "@cinima/shared": "workspace:*",
@@ -21,7 +23,8 @@
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.39.1",
     "hono": "^4.7.2",
-    "nanoid": "^5.1.0"
+    "nanoid": "^5.1.0",
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
     "@types/bad-words": "^3.0.3",

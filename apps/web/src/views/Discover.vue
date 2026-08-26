@@ -2,14 +2,25 @@
   <div
     class="discover"
     :class="{
-      'discover--onboarding': mode === 'onboarding',
-      'discover--overlap': !loading && mode === 'overlap',
-      'discover--for-you': !loading && mode === 'overlap' && activeTab === 'for-you',
+      'discover--onboarding': mode === 'onboarding' && !showHandleStep,
+      'discover--handle': showHandleStep,
+      'discover--overlap': !loading && mode === 'overlap' && !showHandleStep,
+      'discover--for-you':
+        !loading && mode === 'overlap' && !showHandleStep && activeTab === 'for-you',
     }"
   >
-    <div v-if="loading" class="loading">
+    <div v-if="loading && !showHandleStep" class="loading">
       <NqSpinner />
     </div>
+
+    <HandleOnboarding
+      v-else-if="showHandleStep"
+      :wallet-address="authStore.user?.walletAddress ?? null"
+      :initial-handle="isForceHandleArmed() ? authStore.user?.handle : null"
+      :busy="handleBusy"
+      :save-error="handleSaveError"
+      @continue="onHandleContinue"
+    />
 
     <FavoritesOnboarding
       v-else-if="mode === 'onboarding'"
@@ -111,7 +122,7 @@
 
     <Transition name="feed-tabs-slide">
       <nav
-        v-if="!loading && mode === 'overlap'"
+        v-if="!loading && mode === 'overlap' && !showHandleStep"
         class="discover-feed-tabs"
         aria-label="Discover feeds"
       >
@@ -165,7 +176,15 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
-import { FORCE_FAVORITES_PICK_QUERY, canForceFavoritesPick } from "@/lib/welcome";
+import {
+  FORCE_FAVORITES_PICK_QUERY,
+  advanceForceOnboardingToFavorites,
+  armForceOnboardingFlow,
+  canForceFavoritesPick,
+  clearForceOnboardingFlow,
+  isForceHandleArmed,
+  isForceOnboardingArmed,
+} from "@/lib/welcome";
 import { useFavoritesStore } from "@/stores/favorites";
 import { useWatchlistStore } from "@/stores/watchlist";
 import { displayName } from "@cinima/shared";
@@ -181,6 +200,13 @@ import type {
   TitleSummary,
 } from "@cinima/shared";
 import FavoritesOnboarding from "@/components/FavoritesOnboarding.vue";
+import HandleOnboarding from "@/components/HandleOnboarding.vue";
+import {
+  mapHandleSaveError,
+  shouldOfferHandleOnboarding,
+} from "@/lib/handleOnboarding";
+import { preloadImages } from "@/lib/preloadImages";
+import { useAuthStore } from "@/stores/auth";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import FindPeopleSheet from "@/components/FindPeopleSheet.vue";
 import FollowingStrip from "@/components/FollowingStrip.vue";
@@ -210,6 +236,7 @@ type FeedCard = {
 const router = useRouter();
 const route = useRoute();
 const { request } = useApi();
+const authStore = useAuthStore();
 const favoritesStore = useFavoritesStore();
 const watchlistStore = useWatchlistStore();
 const {
@@ -228,6 +255,9 @@ const favoriteCount = ref(0);
 const minFavorites = ref(3);
 const onboardingCandidates = ref<TitleSummary[]>([]);
 const onboardingBusy = ref(false);
+const showHandleStep = ref(false);
+const handleBusy = ref(false);
+const handleSaveError = ref<string | null>(null);
 const suggestions = ref<OverlapSuggestion[]>([]);
 const feed = ref<FollowingFeedItem[]>([]);
 const followingPeople = ref<FollowingPerson[]>([]);
@@ -237,6 +267,8 @@ const findPeople = ref<FindPeopleEntry[]>([]);
 const peopleLoading = ref(false);
 const followBusyWallet = ref<string | null>(null);
 const followingStripReady = ref(false);
+/** True once a discover response has been applied (possibly while Handle was open). */
+const discoverApplied = ref(false);
 
 /** Merge a user's favorites into one card; unlocks stay one-per-title. */
 const feedCards = computed((): FeedCard[] => {
@@ -358,36 +390,112 @@ function resetAppContentScroll() {
   if (el instanceof HTMLElement) el.scrollTop = 0;
 }
 
-const loadDiscover = async () => {
+const syncHandleStep = () => {
+  showHandleStep.value = shouldOfferHandleOnboarding({
+    walletAddress: authStore.user?.walletAddress,
+    handle: authStore.user?.handle,
+    forceOffer: isForceHandleArmed(),
+  });
+};
+
+/** In-flight discover + poster warm-up while the username step is visible. */
+let discoverWarmPromise: Promise<void> | null = null;
+
+const applyDiscoverResponse = async (data: DiscoverResponse) => {
+  mode.value = data.mode;
+  favoriteCount.value = data.favoriteCount;
+  minFavorites.value = data.minFavorites;
+
+  if (data.mode === "onboarding" && data.onboardingCandidates) {
+    onboardingCandidates.value = data.onboardingCandidates;
+    await preloadImages(
+      data.onboardingCandidates.map((t) => t.posterUrl),
+      { timeoutMs: 4_000 }
+    );
+  } else if (data.mode === "overlap" && data.suggestions) {
+    suggestions.value = data.suggestions;
+    followingStripReady.value = false;
+    if (activeTab.value === "following") {
+      await ensureFollowingTabData();
+    }
+  }
+  discoverApplied.value = true;
+};
+
+const fetchDiscover = async () => {
+  const forcePick = canForceFavoritesPick() && isForceOnboardingArmed();
+  const discoverPath = forcePick ? "/discover?forceOnboarding=1" : "/discover";
+  const data = await request<DiscoverResponse>(discoverPath);
+  await applyDiscoverResponse(data);
+};
+
+const warmDiscoverInBackground = () => {
+  if (discoverWarmPromise) return discoverWarmPromise;
+  discoverWarmPromise = (async () => {
+    try {
+      await fetchDiscover();
+    } finally {
+      discoverWarmPromise = null;
+    }
+  })();
+  return discoverWarmPromise;
+};
+
+const awaitDiscoverReady = async () => {
   loading.value = true;
   try {
-    const forcePick =
-      canForceFavoritesPick() &&
-      String(route.query[FORCE_FAVORITES_PICK_QUERY] ?? "") === "1";
-    const discoverPath = forcePick ? "/discover?forceOnboarding=1" : "/discover";
-
-    const data = await request<DiscoverResponse>(discoverPath);
-    mode.value = data.mode;
-    favoriteCount.value = data.favoriteCount;
-    minFavorites.value = data.minFavorites;
-
-    if (data.mode === "onboarding" && data.onboardingCandidates) {
-      onboardingCandidates.value = data.onboardingCandidates;
-    } else if (data.mode === "overlap" && data.suggestions) {
-      suggestions.value = data.suggestions;
-      followingStripReady.value = false;
-      if (activeTab.value === "following") {
-        await ensureFollowingTabData();
-      }
-    }
-
-    if (forcePick && route.query[FORCE_FAVORITES_PICK_QUERY]) {
-      const q = { ...route.query };
-      delete q[FORCE_FAVORITES_PICK_QUERY];
-      await router.replace({ name: "discover", query: q });
-    }
+    if (discoverWarmPromise) await discoverWarmPromise;
+    else await fetchDiscover();
   } finally {
     loading.value = false;
+  }
+};
+
+const loadDiscover = async () => {
+  const queryForce =
+    canForceFavoritesPick() &&
+    String(route.query[FORCE_FAVORITES_PICK_QUERY] ?? "") === "1";
+  if (queryForce) {
+    armForceOnboardingFlow();
+  }
+
+  syncHandleStep();
+
+  if (showHandleStep.value) {
+    // Username first: show Handle immediately and warm Favorites cards behind it.
+    loading.value = false;
+    void warmDiscoverInBackground();
+  } else {
+    await awaitDiscoverReady();
+  }
+
+  if (queryForce && route.query[FORCE_FAVORITES_PICK_QUERY]) {
+    const q = { ...route.query };
+    delete q[FORCE_FAVORITES_PICK_QUERY];
+    await router.replace({ name: "discover", query: q });
+  }
+};
+
+const finishHandleStep = async () => {
+  if (isForceHandleArmed()) advanceForceOnboardingToFavorites();
+  showHandleStep.value = false;
+  handleSaveError.value = null;
+
+  // Finish any in-flight warm so Favorites cards are ready (no empty/loading grid).
+  if (discoverWarmPromise) {
+    loading.value = true;
+    try {
+      await discoverWarmPromise;
+    } catch {
+      // Retry below if the background warm failed.
+    } finally {
+      loading.value = false;
+    }
+    if (discoverApplied.value) return;
+  }
+
+  if (!discoverApplied.value) {
+    await awaitDiscoverReady();
   }
 };
 
@@ -489,9 +597,10 @@ const onOnboardingContinue = async (titleIds: string[]) => {
   if (onboardingBusy.value) return;
   onboardingBusy.value = true;
   try {
+    clearForceOnboardingFlow();
     await favoritesStore.addMany(titleIds);
     favoriteCount.value = favoritesStore.count;
-    await loadDiscover();
+    await awaitDiscoverReady();
   } finally {
     onboardingBusy.value = false;
   }
@@ -501,26 +610,33 @@ const onOnboardingSkip = async () => {
   if (onboardingBusy.value) return;
   onboardingBusy.value = true;
   try {
+    clearForceOnboardingFlow();
     const data = await request<DiscoverResponse>("/discover/skip-onboarding", {
       method: "POST",
     });
-    mode.value = data.mode;
-    favoriteCount.value = data.favoriteCount;
-    minFavorites.value = data.minFavorites;
-    if (data.mode === "overlap" && data.suggestions) {
-      suggestions.value = data.suggestions;
-      followingStripReady.value = false;
-      if (activeTab.value === "following") {
-        await ensureFollowingTabData();
-      }
-    }
+    await applyDiscoverResponse(data);
   } finally {
     onboardingBusy.value = false;
   }
 };
 
+const onHandleContinue = async (handle: string) => {
+  if (handleBusy.value) return;
+  handleBusy.value = true;
+  handleSaveError.value = null;
+  try {
+    await authStore.setHandle(handle);
+    await finishHandleStep();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Could not save handle.";
+    handleSaveError.value = mapHandleSaveError(message);
+  } finally {
+    handleBusy.value = false;
+  }
+};
+
 onMounted(() => {
-  loadDiscover();
+  void loadDiscover();
 });
 </script>
 
@@ -529,7 +645,8 @@ onMounted(() => {
   padding-bottom: 2rem;
 }
 
-.discover--onboarding {
+.discover--onboarding,
+.discover--handle {
   padding-bottom: 0;
 }
 

@@ -21,7 +21,9 @@ async function main() {
     console.log("[seed] catalog…");
     await seedTitles(db);
   }
-  await seedDemoSocialGraph();
+  if (config.demoMode) {
+    await seedDemoSocialGraph();
+  }
 
   if (config.tmdbApiKey) {
     console.log("[catalog] prefetching popular recent titles…");

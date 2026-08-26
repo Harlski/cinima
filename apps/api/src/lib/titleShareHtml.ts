@@ -5,7 +5,7 @@ export function titleShareOgHtml(opts: {
   pageUrl: string;
   handle: string;
   titleName: string;
-  posterUrl: string | null;
+  ogImageUrl: string;
 }): string {
   const invitation = titleShareCopy(opts.handle, opts.titleName);
 
@@ -13,6 +13,6 @@ export function titleShareOgHtml(opts: {
     pageTitle: invitation,
     description: invitation,
     url: opts.pageUrl,
-    imageUrl: opts.posterUrl,
+    imageUrl: opts.ogImageUrl,
   });
 }

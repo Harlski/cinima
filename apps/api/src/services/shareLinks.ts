@@ -143,7 +143,28 @@ export function resolveShareLinkOgPoster(
     resolved.recommends.find((t) => t.posterUrl)?.posterUrl ??
     resolved.favorites.find((t) => t.posterUrl)?.posterUrl ??
     null;
+  if (!previewPoster) return null;
+  if (previewPoster.includes("image.tmdb.org")) {
+    return previewPoster.replace("/t/p/w342", "/t/p/w780");
+  }
   return previewPoster;
+}
+
+export async function resolveProfileShareOgPoster(
+  recommends: Awaited<ReturnType<typeof listRecommends>>,
+  favorites: Awaited<ReturnType<typeof listFavorites>>
+): Promise<string | null> {
+  for (const title of recommends) {
+    const row = await db.query.titles.findFirst({ where: eq(schema.titles.id, title.id) });
+    const url = ogPosterUrl(row?.posterPath);
+    if (url) return url;
+  }
+  for (const title of favorites) {
+    const row = await db.query.titles.findFirst({ where: eq(schema.titles.id, title.id) });
+    const url = ogPosterUrl(row?.posterPath);
+    if (url) return url;
+  }
+  return null;
 }
 
 export async function resolveShareLinkOgPosterFromDb(

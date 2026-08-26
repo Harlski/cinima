@@ -12,8 +12,8 @@
             v-if="forcePickEnabled"
             type="button"
             class="welcome-identicon-btn"
-            title="Dev: open Favorites onboarding"
-            aria-label="Dev: open Favorites onboarding"
+            title="Dev: open onboarding (username + favorites)"
+            aria-label="Dev: open onboarding (username + favorites)"
             @click="$emit('force-pick')"
           >
             <Identicon
@@ -45,7 +45,7 @@ withDefaults(
     open: boolean;
     walletAddress: string;
     message: string;
-    /** Local / demo: identicon is tappable to force Favorites onboarding */
+    /** Local / demo: identicon is tappable to force full onboarding */
     forcePickEnabled?: boolean;
   }>(),
   { forcePickEnabled: false }

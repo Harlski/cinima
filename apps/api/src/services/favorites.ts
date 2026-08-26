@@ -8,6 +8,7 @@ export {
   removeFavorite,
   listFavorites,
   listRecommends,
+  listCommunityRecommends,
   favoriteCount,
   recommendCount,
   isFavorited,

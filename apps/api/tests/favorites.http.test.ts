@@ -107,58 +107,45 @@ describe("Favorite HTTP API", () => {
     expect(Array.isArray(body.onboardingCandidates)).toBe(true);
   });
 
-  it("ranks onboarding candidates by peer Favorite count among cached titles", async () => {
+  it("ranks onboarding candidates by popularity among cached titles", async () => {
     const headers = {
       Authorization: `Bearer ${TOKEN}`,
       "X-Cinima-Demo": "1",
     };
     const { db } = await import("../src/db/index.js");
     const schema = await import("../src/db/schema.js");
-    const peer = "NQ05PEERWALLETFORONBOARDINGRANKTESTS01";
-    await db.insert(schema.users).values({
-      walletAddress: peer,
-      handle: null,
-      lifetimeUnlockedAt: null,
-      createdAt: new Date(),
-    });
-    const hotId = "movie:99";
-    const coldId = "movie:98";
+    const popularId = "movie:98";
+    const nicheId = "movie:99";
     await db.insert(schema.titles).values([
       {
-        id: hotId,
+        id: nicheId,
         mediaType: "movie",
         tmdbId: 99,
-        title: "Hot Cached",
+        title: "Niche Cached",
         year: 2020,
-        posterPath: "/hot.jpg",
-        overview: "hot",
+        posterPath: "/niche.jpg",
+        overview: "niche",
         imdbId: null,
-        rating: "5.0",
+        rating: "9.5",
         popularity: 10,
         fetchedAt: new Date(),
         source: "seed",
       },
       {
-        id: coldId,
+        id: popularId,
         mediaType: "movie",
         tmdbId: 98,
-        title: "Cold Cached",
+        title: "Popular Cached",
         year: 2021,
-        posterPath: "/cold.jpg",
-        overview: "cold",
+        posterPath: "/popular.jpg",
+        overview: "popular",
         imdbId: null,
-        rating: "9.5",
+        rating: "5.0",
         popularity: 90,
         fetchedAt: new Date(),
         source: "seed",
       },
     ]);
-    await db.insert(schema.favorites).values({
-      walletAddress: peer,
-      titleId: hotId,
-      createdAt: new Date(),
-      recommendedAt: null,
-    });
 
     const res = await app.fetch(new Request("http://test/api/discover", { headers }));
     expect(res.status).toBe(200);
@@ -168,7 +155,8 @@ describe("Favorite HTTP API", () => {
     };
     expect(body.mode).toBe("onboarding");
     const ids = (body.onboardingCandidates ?? []).map((t) => t.id);
-    expect(ids.indexOf(hotId)).toBeLessThan(ids.indexOf(coldId));
+    expect(ids.indexOf(popularId)).toBeLessThan(ids.indexOf(nicheId));
+    expect(ids.length).toBeLessThanOrEqual(100);
   });
 
   it("skip onboarding returns overlap mode without Favorites", async () => {

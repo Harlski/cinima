@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   profileShareCopy,
   profileShareDescription,
+  profileShareOgImageUrl,
   profileSharePath,
   profileShareUrl,
   shortSharePath,
   shortShareUrl,
   titleShareCopy,
+  titleShareOgImageUrl,
   titleSharePath,
   titleShareUrl,
 } from "@cinima/shared";
@@ -32,8 +34,18 @@ describe("Share link helpers", () => {
     expect(profileSharePath("Alice")).toBe("/alice");
     expect(profileShareUrl("https://cinima.app", "alice")).toBe("https://cinima.app/alice");
     expect(profileShareCopy("alice")).toBe("alice on Cinima");
-    expect(profileShareDescription(2, 5)).toBe("2 Recommends · 5 Favorites on Cinima");
-    expect(profileShareDescription(0, 0)).toBe("Movie and TV taste on Cinima");
+    expect(profileShareDescription("alice")).toBe(
+      "Check out alice's favorite movies & tv shows on Cinima.app"
+    );
+  });
+
+  it("builds branded Share preview image URLs on the API origin", () => {
+    expect(profileShareOgImageUrl("https://api.cinima.app", "alice")).toBe(
+      "https://api.cinima.app/api/og/profile/alice.png"
+    );
+    expect(titleShareOgImageUrl("https://api.cinima.app", "alice", "movie", 550)).toBe(
+      "https://api.cinima.app/api/og/title/alice/movie/550.png"
+    );
   });
 
   it("builds compact short share links", () => {

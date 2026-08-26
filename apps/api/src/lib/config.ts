@@ -40,6 +40,9 @@ export const config = {
   get webOrigin() {
     return envString("WEB_ORIGIN", "http://localhost:5174");
   },
+  get apiOrigin() {
+    return envString("API_ORIGIN", envString("VITE_API_BASE", "https://api.cinima.app"));
+  },
   prices: {
     unlockNim: UNLOCK_NIM,
     lifetimeNim: LIFETIME_UNLOCK_NIM,

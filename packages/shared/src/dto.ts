@@ -224,6 +224,12 @@ export type WatchlistResponse = {
   items: TitleSummary[];
 };
 
+/** Community gold-star Recommends for empty Watchlist inspiration. */
+export type CommunityRecommendsResponse = {
+  movies: TitleSummary[];
+  tv: TitleSummary[];
+};
+
 export type MeResponse = {
   user: SessionUser;
   favorites: TitleSummary[];

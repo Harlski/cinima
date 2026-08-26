@@ -160,7 +160,7 @@ const sharePreview = computed(() => {
   return {
     url: shareUrl.value,
     headline: profileShareCopy(user.value.handle),
-    description: profileShareDescription(recommends.value.length, favorites.value.length),
+    description: profileShareDescription(user.value.handle),
     imageUrl,
   };
 });

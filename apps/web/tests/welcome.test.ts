@@ -1,5 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import {
+  advanceForceOnboardingToFavorites,
+  armForceOnboardingFlow,
+  clearForceOnboardingFlow,
+  isForceFavoritesArmed,
+  isForceHandleArmed,
+  isForceOnboardingArmed,
   isReturningUser,
   welcomeMessage,
 } from "../src/lib/welcome";
@@ -46,5 +52,55 @@ describe("Welcome gate", () => {
         }),
       })
     ).toBe("Welcome!");
+  });
+});
+
+describe("Dev force onboarding session arm", () => {
+  const memory = new Map<string, string>();
+
+  beforeEach(() => {
+    memory.clear();
+    Object.defineProperty(globalThis, "sessionStorage", {
+      configurable: true,
+      value: {
+        getItem: (key: string) => memory.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          memory.set(key, value);
+        },
+        removeItem: (key: string) => {
+          memory.delete(key);
+        },
+      },
+    });
+  });
+
+  afterEach(() => {
+    Reflect.deleteProperty(globalThis, "sessionStorage");
+  });
+
+  it("arms handle first, then advances to favorites", () => {
+    expect(isForceOnboardingArmed()).toBe(false);
+    armForceOnboardingFlow();
+    expect(isForceHandleArmed()).toBe(true);
+    expect(isForceFavoritesArmed()).toBe(false);
+    expect(isForceOnboardingArmed()).toBe(true);
+
+    // Simulates remount after ?pickFavorites=1 is stripped from the URL
+    expect(isForceHandleArmed()).toBe(true);
+
+    advanceForceOnboardingToFavorites();
+    expect(isForceHandleArmed()).toBe(false);
+    expect(isForceFavoritesArmed()).toBe(true);
+    expect(isForceOnboardingArmed()).toBe(true);
+
+    clearForceOnboardingFlow();
+    expect(isForceHandleArmed()).toBe(false);
+    expect(isForceFavoritesArmed()).toBe(false);
+    expect(isForceOnboardingArmed()).toBe(false);
+  });
+
+  it("advance is a no-op when flow was never armed", () => {
+    advanceForceOnboardingToFavorites();
+    expect(isForceFavoritesArmed()).toBe(false);
   });
 });

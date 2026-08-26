@@ -120,13 +120,15 @@ onMounted(() => {
   transition: padding-bottom 0.38s cubic-bezier(0.25, 0, 0, 1);
 }
 
-/* Favorites onboarding: full-bleed pick UI; tab bar stays mounted for slide-in */
-.app-shell:has(.discover--onboarding) {
+/* Favorites / handle onboarding: full-bleed pick UI; tab bar stays mounted for slide-in */
+.app-shell:has(.discover--onboarding),
+.app-shell:has(.discover--handle) {
   --bottom-tabs-height: 0px;
   --bottom-tabs-inset: calc(env(safe-area-inset-bottom, 0px) + var(--vv-bottom-inset, 0px));
 }
 
-.app-shell:has(.discover--onboarding) .app-content {
+.app-shell:has(.discover--onboarding) .app-content,
+.app-shell:has(.discover--handle) .app-content {
   /* Snap inset closed when entering onboarding — no slide-down */
   transition: none;
 }
@@ -155,7 +157,8 @@ onMounted(() => {
   will-change: transform;
 }
 
-.app-shell:has(.discover--onboarding) .bottom-tabs {
+.app-shell:has(.discover--onboarding) .bottom-tabs,
+.app-shell:has(.discover--handle) .bottom-tabs {
   transform: translateY(100%);
   pointer-events: none;
   visibility: hidden;

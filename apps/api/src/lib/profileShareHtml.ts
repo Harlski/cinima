@@ -4,17 +4,15 @@ import { socialOgHtml } from "./ogHtml.js";
 export function profileShareOgHtml(opts: {
   pageUrl: string;
   handle: string;
-  recommendCount: number;
-  favoriteCount: number;
-  imageUrl: string | null;
+  ogImageUrl: string;
 }): string {
   const title = profileShareCopy(opts.handle);
-  const description = profileShareDescription(opts.recommendCount, opts.favoriteCount);
+  const description = profileShareDescription(opts.handle);
 
   return socialOgHtml({
     pageTitle: title,
     description,
     url: opts.pageUrl,
-    imageUrl: opts.imageUrl,
+    imageUrl: opts.ogImageUrl,
   });
 }

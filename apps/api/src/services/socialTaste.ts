@@ -4,6 +4,7 @@ import {
   MAX_RECOMMENDS,
   MIN_FAVORITES_FOR_DISCOVER,
   normalizeWallet,
+  type CommunityRecommendsResponse,
   type DiscoverResponse,
   type MediaType,
   type OverlapSuggestion,
@@ -11,9 +12,8 @@ import {
 } from "@cinima/shared";
 import { and, count, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { favorites, titles, users } from "../db/schema.js";
+import { favorites, titles, users, watchlist } from "../db/schema.js";
 import { hasOverview, toTitleSummary } from "../lib/titles.js";
-import { POPULAR_PREFETCH_YEAR_FROM } from "./catalog.js";
 
 export class SocialTasteError extends Error {
   constructor(
@@ -199,38 +199,26 @@ async function popularSuggestions(excludeIds: Set<string>): Promise<OverlapSugge
   ).slice(0, 20);
 }
 
-/** Cached titles with posters — peer Favorite count, then recent + popular. */
-async function onboardingCandidates(
-  wallet: string,
-  excludeIds: Set<string>
-): Promise<TitleSummary[]> {
-  const w = normalizeWallet(wallet);
+/** Cached titles with posters — top by TMDB popularity (popular catalog stand-in). */
+const ONBOARDING_CANDIDATE_LIMIT = 100;
+
+async function onboardingCandidates(excludeIds: Set<string>): Promise<TitleSummary[]> {
   const rows = await db
-    .select({
-      title: titles,
-      peerFavCount: sql<number>`count(${favorites.titleId})`.mapWith(Number),
-    })
+    .select()
     .from(titles)
-    .leftJoin(
-      favorites,
-      and(eq(favorites.titleId, titles.id), sql`${favorites.walletAddress} != ${w}`)
-    )
     .where(
       and(
         sql`${titles.posterPath} IS NOT NULL AND TRIM(${titles.posterPath}) != ''`,
         sql`TRIM(COALESCE(${titles.overview}, '')) != ''`
       )
     )
-    .groupBy(titles.id)
     .orderBy(
-      desc(sql`count(${favorites.titleId})`),
-      sql`CASE WHEN ${titles.year} >= ${POPULAR_PREFETCH_YEAR_FROM} THEN 0 ELSE 1 END`,
       desc(titles.popularity),
       sql`CAST(COALESCE(${titles.rating}, '0') AS REAL) DESC`
     )
-    .limit(48);
+    .limit(ONBOARDING_CANDIDATE_LIMIT);
 
-  return rows.map((r) => toTitleSummary(r.title)).filter((t) => !excludeIds.has(t.id));
+  return rows.map(toTitleSummary).filter((t) => !excludeIds.has(t.id));
 }
 
 export async function skipDiscoverOnboarding(wallet: string) {
@@ -239,6 +227,94 @@ export async function skipDiscoverOnboarding(wallet: string) {
     .update(users)
     .set({ onboardingSkippedAt: new Date() })
     .where(eq(users.walletAddress, w));
+}
+
+async function popularByMediaType(
+  mediaType: MediaType,
+  excludeIds: Set<string>,
+  limit: number
+): Promise<TitleSummary[]> {
+  const rows = await db
+    .select()
+    .from(titles)
+    .where(
+      and(
+        eq(titles.mediaType, mediaType),
+        sql`${titles.posterPath} IS NOT NULL AND TRIM(${titles.posterPath}) != ''`,
+        sql`TRIM(COALESCE(${titles.overview}, '')) != ''`
+      )
+    )
+    .orderBy(
+      desc(titles.popularity),
+      sql`CAST(COALESCE(${titles.rating}, '0') AS REAL) DESC`
+    )
+    .limit(limit + excludeIds.size + 8);
+
+  return rows
+    .map(toTitleSummary)
+    .filter((t) => !excludeIds.has(t.id))
+    .slice(0, limit);
+}
+
+/**
+ * Titles others have gold-star Recommended, split by media type.
+ * Excludes the caller's watchlist. Falls back to popular catalog per kind when sparse.
+ */
+export async function listCommunityRecommends(
+  wallet: string,
+  opts?: { limitPerKind?: number }
+): Promise<CommunityRecommendsResponse> {
+  const w = normalizeWallet(wallet);
+  const limit = opts?.limitPerKind ?? 12;
+
+  const watchRows = await db
+    .select({ titleId: watchlist.titleId })
+    .from(watchlist)
+    .where(eq(watchlist.walletAddress, w));
+  const exclude = new Set(watchRows.map((r) => r.titleId));
+
+  const rows = await db
+    .select({
+      title: titles,
+      recommendCount: sql<number>`count(*)`.mapWith(Number),
+    })
+    .from(favorites)
+    .innerJoin(titles, eq(favorites.titleId, titles.id))
+    .where(
+      and(
+        isNotNull(favorites.recommendedAt),
+        sql`${favorites.walletAddress} != ${w}`,
+        sql`${titles.posterPath} IS NOT NULL AND TRIM(${titles.posterPath}) != ''`
+      )
+    )
+    .groupBy(titles.id)
+    .orderBy(
+      desc(sql`count(*)`),
+      desc(titles.popularity),
+      sql`CAST(COALESCE(${titles.rating}, '0') AS REAL) DESC`
+    )
+    .limit(limit * 4);
+
+  const movies: TitleSummary[] = [];
+  const tv: TitleSummary[] = [];
+  for (const row of rows) {
+    if (exclude.has(row.title.id)) continue;
+    const summary = withRecommended(toTitleSummary(row.title), true);
+    if (row.title.mediaType === "movie" && movies.length < limit) movies.push(summary);
+    else if (row.title.mediaType === "tv" && tv.length < limit) tv.push(summary);
+    if (movies.length >= limit && tv.length >= limit) break;
+  }
+
+  const used = new Set([...exclude, ...movies.map((t) => t.id), ...tv.map((t) => t.id)]);
+  if (movies.length < limit) {
+    movies.push(...(await popularByMediaType("movie", used, limit - movies.length)));
+  }
+  for (const t of movies) used.add(t.id);
+  if (tv.length < limit) {
+    tv.push(...(await popularByMediaType("tv", used, limit - tv.length)));
+  }
+
+  return { movies, tv };
 }
 
 /** Taste-overlap Discover — Recommend overlap outranks plain Favorite overlap. */
@@ -257,7 +333,7 @@ export async function discoverFor(
       mode: "onboarding",
       favoriteCount: favs.length,
       minFavorites: MIN_FAVORITES_FOR_DISCOVER,
-      onboardingCandidates: await onboardingCandidates(w, myIds),
+      onboardingCandidates: await onboardingCandidates(myIds),
     };
   }
 
@@ -276,7 +352,7 @@ export async function discoverFor(
       mode: "onboarding",
       favoriteCount: favs.length,
       minFavorites: MIN_FAVORITES_FOR_DISCOVER,
-      onboardingCandidates: await onboardingCandidates(w, myIds),
+      onboardingCandidates: await onboardingCandidates(myIds),
     };
   }
 

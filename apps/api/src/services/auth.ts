@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 import { db } from "../db/index.js";
 import { authNonces, favorites, sessions, users } from "../db/schema.js";
 import { config } from "../lib/config.js";
+import { containsProfanity } from "../lib/profanity.js";
 
 const NONCE_TTL_MS = 5 * 60 * 1000;
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -140,14 +141,28 @@ export async function sessionFromToken(token: string | null): Promise<SessionUse
 }
 
 export async function setUserHandle(wallet: string, handle: string) {
-  const cleaned = handle.replace(/^@/, "").trim().toLowerCase();
-  if (!/^[a-z0-9_]{3,24}$/.test(cleaned)) throw new Error("invalid_handle");
+  const cleaned = normalizeUserHandle(handle);
+  assertValidUserHandle(cleaned);
   await ensureUser(wallet);
   await db
     .update(users)
     .set({ handle: cleaned })
     .where(eq(users.walletAddress, normalizeWallet(wallet)));
   return buildSessionUser(wallet);
+}
+
+/** Strip @ / trim / lowercase. */
+export function normalizeUserHandle(handle: string): string {
+  return String(handle || "")
+    .replace(/^@/, "")
+    .trim()
+    .toLowerCase();
+}
+
+/** Throws `invalid_handle` or `handle_profane`. */
+export function assertValidUserHandle(cleaned: string): void {
+  if (!/^[a-z0-9_]{3,24}$/.test(cleaned)) throw new Error("invalid_handle");
+  if (containsProfanity(cleaned)) throw new Error("handle_profane");
 }
 
 export async function markLifetimeUnlocked(wallet: string) {
