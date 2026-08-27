@@ -22,13 +22,20 @@ describe("socialOgHtml", () => {
       pageTitle: "alice wants you to check out Fight Club",
       description: "alice wants you to check out Fight Club",
       url: "https://cinima.app/alice/t/movie/550",
-      imageUrl: "https://image.tmdb.org/t/p/w780/poster.jpg",
+      imageUrl: "https://api.cinima.app/api/og/title/alice/movie/550.png",
     });
 
     expect(html).toContain(
-      'property="og:image" content="https://image.tmdb.org/t/p/w780/poster.jpg"'
+      'property="og:image" content="https://api.cinima.app/api/og/title/alice/movie/550.png"'
     );
+    expect(html).toContain(
+      'property="og:image:secure_url" content="https://api.cinima.app/api/og/title/alice/movie/550.png"'
+    );
+    expect(html).toContain('property="og:image:type" content="image/png"');
+    expect(html).toContain('property="og:image:width" content="1200"');
+    expect(html).toContain('property="og:image:height" content="630"');
     expect(html).toContain('name="twitter:card" content="summary_large_image"');
+    expect(html).not.toContain('http-equiv="refresh"');
     expect(html).not.toContain('id="app"');
     expect(html).not.toContain('property="og:title" content="Cinima"');
   });

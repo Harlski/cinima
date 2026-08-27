@@ -37,6 +37,14 @@ if ! grep -q 'property="og:image"' "$body"; then
   echo "RED: missing og:image (Share preview needs a poster)"
   exit 1
 fi
+if ! grep -q 'property="og:image:width"' "$body"; then
+  echo "RED: missing og:image:width (Facebook needs dimensions for first-share card image)"
+  exit 1
+fi
+if ! grep -q 'property="og:image:height"' "$body"; then
+  echo "RED: missing og:image:height (Facebook needs dimensions for first-share card image)"
+  exit 1
+fi
 
 echo "GREEN: Share preview HTML for $url"
 grep -E 'og:title|og:image|og:description' "$body" | head -10

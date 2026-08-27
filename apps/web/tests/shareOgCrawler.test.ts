@@ -14,6 +14,13 @@ import {
 describe("Share OG crawler detection", () => {
   it("treats major social crawlers as crawlers", () => {
     expect(isShareOgCrawler("facebookexternalhit/1.1")).toBe(true);
+    expect(isShareOgCrawler("Facebot")).toBe(true);
+    expect(isShareOgCrawler("FacebookBot")).toBe(true);
+    expect(
+      isShareOgCrawler(
+        "meta-externalagent/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/crawler)"
+      )
+    ).toBe(true);
     expect(isShareOgCrawler("Twitterbot/1.0")).toBe(true);
     expect(isShareOgCrawler("WhatsApp/2.0")).toBe(true);
     expect(isShareOgCrawler("TelegramBot")).toBe(true);

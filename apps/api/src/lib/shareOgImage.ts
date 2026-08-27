@@ -1,8 +1,11 @@
 import sharp from "sharp";
-import { SITE_THEME_COLOR } from "@cinima/shared";
+import {
+  SHARE_OG_IMAGE_HEIGHT,
+  SHARE_OG_IMAGE_WIDTH,
+  SITE_THEME_COLOR,
+} from "@cinima/shared";
 
-export const SHARE_OG_IMAGE_WIDTH = 1200;
-export const SHARE_OG_IMAGE_HEIGHT = 630;
+export { SHARE_OG_IMAGE_HEIGHT, SHARE_OG_IMAGE_WIDTH };
 const BAR_HEIGHT = 88;
 const GOLD = "#E5C158";
 const MUTED = "#9ca3af";

@@ -90,6 +90,9 @@ describe("Title Share HTTP API", () => {
     expect(html).toContain('property="og:site_name" content="Cinima"');
     expect(html).toContain("https://cinima.app/shareuser/t/movie/550");
     expect(html).toContain("og:image");
+    expect(html).toContain('property="og:image:width" content="1200"');
+    expect(html).toContain('property="og:image:height" content="630"');
+    expect(html).not.toContain('http-equiv="refresh"');
     expect(html).not.toContain('id="app"');
     expect(html).not.toContain('property="og:title" content="Cinima"');
     expect(html).toContain("/api/og/title/shareuser/movie/550.png");

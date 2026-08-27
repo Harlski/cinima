@@ -809,9 +809,14 @@ function pngResponse(body: Buffer): Response {
   });
 }
 
+/** Hono treats `:name.png` as a param named `name.png`; keep `.png` in the path segment and strip it. */
+function ogPathSegment(raw: string | undefined): string {
+  return (raw ?? "").replace(/\.png$/i, "");
+}
+
 // Branded Share preview images — no pay gate
-app.get("/api/og/profile/:handle.png", async (c) => {
-  const handle = c.req.param("handle") ?? "";
+app.get("/api/og/profile/:handle", async (c) => {
+  const handle = ogPathSegment(c.req.param("handle"));
   const user = await findPublicUserByHandle(handle);
   if (!user?.handle) return c.json({ error: "not_found" }, 404);
 
@@ -822,9 +827,9 @@ app.get("/api/og/profile/:handle.png", async (c) => {
   return pngResponse(png);
 });
 
-app.get("/api/og/title/:handle/:mediaType/:tmdbId.png", async (c) => {
+app.get("/api/og/title/:handle/:mediaType/:tmdbId", async (c) => {
   const mediaType = c.req.param("mediaType");
-  const tmdbId = Number(c.req.param("tmdbId"));
+  const tmdbId = Number(ogPathSegment(c.req.param("tmdbId")));
   if ((mediaType !== "movie" && mediaType !== "tv") || !Number.isInteger(tmdbId) || tmdbId <= 0) {
     return c.json({ error: "not_found" }, 404);
   }

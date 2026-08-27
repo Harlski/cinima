@@ -2,7 +2,7 @@ import { RESERVED_PUBLIC_HANDLES } from "@cinima/shared";
 
 /** Social crawlers that need Open Graph HTML instead of the SPA shell. */
 export function isShareOgCrawler(userAgent: string): boolean {
-  return /facebookexternalhit|Facebot|Twitterbot|WhatsApp|Slackbot|TelegramBot|LinkedInBot|Discordbot|Pinterest/i.test(
+  return /facebookexternalhit|Facebot|FacebookBot|meta-externalagent|meta-externalfetcher|Twitterbot|WhatsApp|Slackbot|TelegramBot|LinkedInBot|Discordbot|Pinterest/i.test(
     userAgent
   );
 }
