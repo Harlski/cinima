@@ -57,7 +57,6 @@ function renderSvgWithMulish(svg: string): Buffer {
       fontFiles: [MULISH_REGULAR, MULISH_BOLD],
       loadSystemFonts: false,
       defaultFontFamily: FONT_FAMILY,
-      defaultFontWeight: 400,
     },
   });
   return Buffer.from(resvg.render().asPng());
