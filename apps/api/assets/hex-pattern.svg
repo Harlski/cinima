@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="84" height="72" viewBox="0 0 84 72" fill="none">
+  <!-- Pointy-top honeycomb tile (size 24). Stroke only; opacity set in CSS. -->
+  <g stroke="#E5C158" stroke-width="0.9" stroke-linejoin="round">
+    <path d="M20.785 0 L41.57 12 L41.57 36 L20.785 48 L0 36 L0 12 Z"/>
+    <path d="M62.354 0 L83.139 12 L83.139 36 L62.354 48 L41.569 36 L41.569 12 Z"/>
+    <path d="M41.569 36 L62.354 48 L62.354 72 L41.569 84 L20.785 72 L20.785 48 Z"/>
+    <path d="M41.569 -12 L62.354 0 L41.569 12 L20.785 0 Z"/>
+  </g>
+</svg>

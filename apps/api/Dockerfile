@@ -1,7 +1,8 @@
 # Cinima API - production image (Linode VPS, Railway, etc.)
 FROM node:20-alpine
 
-RUN apk add --no-cache wget \
+# font-noto: librsvg/sharp SVG text needs fontconfig glyphs (Arial is absent on Alpine).
+RUN apk add --no-cache wget fontconfig font-noto \
   && corepack enable \
   && corepack prepare pnpm@9.15.0 --activate
 
@@ -14,6 +15,11 @@ COPY apps/api/package.json apps/api/
 RUN pnpm install --frozen-lockfile
 
 COPY apps/api apps/api
+
+# Also register vendored Noto files so Share preview text works even if apk set changes.
+RUN mkdir -p /usr/share/fonts/cinima \
+  && cp apps/api/assets/fonts/*.ttf /usr/share/fonts/cinima/ \
+  && fc-cache -f
 
 RUN pnpm --filter @cinima/shared build && pnpm --filter @cinima/api build
 
