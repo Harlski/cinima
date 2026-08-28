@@ -11,16 +11,25 @@ import {
 
 export { SHARE_OG_IMAGE_HEIGHT, SHARE_OG_IMAGE_WIDTH };
 
-const BAR_HEIGHT = 88;
+const BAR_HEIGHT = 116;
 const CONTENT_HEIGHT = SHARE_OG_IMAGE_HEIGHT - BAR_HEIGHT;
-/** Poster height as a fraction of the content area (above the brand bar). */
+/** Poster height as a fraction of the content area (centered profile layout). */
 export const SHARE_OG_POSTER_HEIGHT_RATIO = 0.8;
 const POSTER_TOP_PAD = 40;
 const POSTER_SIDE_PAD = 48;
 const POSTER_MAX_WIDTH = SHARE_OG_IMAGE_WIDTH - POSTER_SIDE_PAD * 2;
+/** Title card: poster anchored left, copy on the right. */
+const TITLE_POSTER_LEFT = 56;
+const TITLE_POSTER_MAX_WIDTH = 340;
+const TITLE_TEXT_GAP = 44;
+const TITLE_TEXT_RIGHT = 48;
+const TITLE_POSTER_HEIGHT_RATIO = 0.88;
 const POSTER_RADIUS = 14;
 const GLOW_PAD = 36;
-/** Space between poster bottom and title name baseline. */
+const BRAND_PAD_RIGHT = 52;
+const BRAND_PAD_TOP = 14;
+const BRAND_PAD_BOTTOM = 40;
+/** Space between poster bottom and title name baseline (centered profile layout). */
 export const SHARE_OG_TITLE_GAP = 100;
 const GOLD = "#E5C158";
 const GOLD_HOT = "#ffe9a8";
@@ -89,6 +98,65 @@ export function shareOgPosterSlot(
     left: Math.round((SHARE_OG_IMAGE_WIDTH - width) / 2),
     top: POSTER_TOP_PAD,
   };
+}
+
+/** Title Share card: poster on the left, title copy on the right. */
+export function shareOgTitlePosterSlot(
+  posterWidth: number,
+  posterHeight: number
+): {
+  width: number;
+  height: number;
+  left: number;
+  top: number;
+  textColumnLeft: number;
+  textColumnWidth: number;
+} {
+  const aspect =
+    posterWidth > 0 && posterHeight > 0 ? posterWidth / posterHeight : 2 / 3;
+  let height = Math.round(CONTENT_HEIGHT * TITLE_POSTER_HEIGHT_RATIO);
+  let width = Math.round(height * aspect);
+  if (width > TITLE_POSTER_MAX_WIDTH) {
+    width = TITLE_POSTER_MAX_WIDTH;
+    height = Math.round(width / aspect);
+  }
+  const maxHeight = CONTENT_HEIGHT - POSTER_TOP_PAD * 2;
+  if (height > maxHeight) {
+    height = maxHeight;
+    width = Math.round(height * aspect);
+  }
+  const top = Math.round((CONTENT_HEIGHT - height) / 2);
+  const left = TITLE_POSTER_LEFT;
+  const textColumnLeft = left + width + TITLE_TEXT_GAP;
+  const textColumnWidth = SHARE_OG_IMAGE_WIDTH - textColumnLeft - TITLE_TEXT_RIGHT;
+  return { width, height, left, top, textColumnLeft, textColumnWidth };
+}
+
+function wrapTextLines(value: string, maxChars: number, maxLines: number): string[] {
+  const words = value.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [];
+
+  const lines: string[] = [];
+  let current = "";
+
+  for (let i = 0; i < words.length; i += 1) {
+    const word = words[i]!;
+    const next = current ? `${current} ${word}` : word;
+    if (next.length <= maxChars) {
+      current = next;
+      continue;
+    }
+    if (current) lines.push(current);
+    if (lines.length >= maxLines - 1) {
+      const rest = [word, ...words.slice(i + 1)].join(" ");
+      lines.push(truncate(rest, maxChars));
+      return lines.slice(0, maxLines);
+    }
+    current = word.length > maxChars ? truncate(word, maxChars) : word;
+  }
+
+  if (current) lines.push(current);
+  return lines.slice(0, maxLines);
 }
 
 function hexPatternBackgroundSvg(): Buffer {
@@ -220,11 +288,14 @@ async function roundedPosterPng(
 
 /** Far-right brand cluster: Nimiq hex + CI/NIM/A wordmark + cinima.app. */
 function brandWordmarkSvg(): string {
-  const right = SHARE_OG_IMAGE_WIDTH - 36;
+  const right = SHARE_OG_IMAGE_WIDTH - BRAND_PAD_RIGHT;
   const wordmarkSize = 32;
-  const wordmarkY = 38; // baseline for CINIMA
   const urlSize = 22;
-  const urlY = wordmarkY + 30;
+  const urlDescender = 5;
+  const wordmarkAscent = Math.round(wordmarkSize * 0.88);
+  const lineGap = 26;
+  const urlY = BAR_HEIGHT - BRAND_PAD_BOTTOM - urlDescender;
+  const wordmarkY = Math.max(BRAND_PAD_TOP + wordmarkAscent, urlY - lineGap);
   // Measured Mulish 32px bold + tracking for "CINIMA".
   const wordmarkWidth = 125;
   const iconSize = 28;
@@ -273,6 +344,41 @@ function overlaySvg(opts: {
       ? `<text x="${cx}" y="${opts.textY + 38}" text-anchor="middle" fill="${MUTED}" font-family="${FONT_FAMILY}" font-size="22" font-weight="400">${subline}</text>`
       : ""
   }
+</svg>`;
+  return renderSvgWithMulish(svg);
+}
+
+/** Title card copy column: left-aligned, vertically centered beside the poster. */
+function titleOverlaySvg(opts: {
+  headline: string;
+  subline: string;
+  textColumnLeft: number;
+  textColumnWidth: number;
+}): Buffer {
+  const headlineLines = wrapTextLines(opts.headline, 22, 3);
+  const headlineSize =
+    headlineLines.length > 2 ? 38 : headlineLines.length > 1 ? 44 : 52;
+  const lineHeight = Math.round(headlineSize * 1.18);
+  const sublineSize = 24;
+  const sublineGap = 28;
+  const blockHeight =
+    headlineLines.length * lineHeight + sublineGap + sublineSize;
+  const blockTop = Math.round((CONTENT_HEIGHT - blockHeight) / 2);
+  const textX = opts.textColumnLeft;
+  const headlineY = blockTop + headlineSize;
+
+  const headlineSpans = headlineLines
+    .map((line, index) => {
+      const dy = index === 0 ? 0 : lineHeight;
+      return `<tspan x="${textX}" dy="${dy}">${escapeXml(line)}</tspan>`;
+    })
+    .join("");
+
+  const sublineY = blockTop + headlineLines.length * lineHeight + sublineGap + sublineSize;
+
+  const svg = `<svg width="${SHARE_OG_IMAGE_WIDTH}" height="${SHARE_OG_IMAGE_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
+  <text x="${textX}" y="${headlineY}" text-anchor="start" fill="${WHITE}" font-family="${FONT_FAMILY}" font-size="${headlineSize}" font-weight="700">${headlineSpans}</text>
+  <text x="${textX}" y="${sublineY}" text-anchor="start" fill="${MUTED}" font-family="${FONT_FAMILY}" font-size="${sublineSize}" font-weight="400">${escapeXml(truncate(opts.subline, 40))}</text>
 </svg>`;
   return renderSvgWithMulish(svg);
 }
@@ -354,6 +460,71 @@ async function composeShareOgImage(opts: {
   return canvas.composite(layers).png().toBuffer();
 }
 
+async function composeTitleShareOgImage(opts: {
+  posterUrl?: string | null;
+  posterBuffer?: Buffer | null;
+  headline: string;
+  subline: string;
+}): Promise<Buffer> {
+  const poster =
+    opts.posterBuffer && opts.posterBuffer.length > 0
+      ? opts.posterBuffer
+      : await fetchPosterBuffer(opts.posterUrl);
+
+  const canvas = sharp({
+    create: {
+      width: SHARE_OG_IMAGE_WIDTH,
+      height: SHARE_OG_IMAGE_HEIGHT,
+      channels: 3,
+      background: SITE_THEME_COLOR,
+    },
+  });
+
+  const layers: { input: Buffer; top: number; left: number }[] = [];
+
+  layers.push({
+    input: await sharp(hexPatternBackgroundSvg()).png().toBuffer(),
+    top: 0,
+    left: 0,
+  });
+
+  let textColumnLeft = TITLE_POSTER_LEFT + TITLE_POSTER_MAX_WIDTH + TITLE_TEXT_GAP;
+  let textColumnWidth = SHARE_OG_IMAGE_WIDTH - textColumnLeft - TITLE_TEXT_RIGHT;
+
+  if (poster) {
+    const meta = await sharp(poster).metadata();
+    const slot = shareOgTitlePosterSlot(meta.width || 2, meta.height || 3);
+    textColumnLeft = slot.textColumnLeft;
+    textColumnWidth = slot.textColumnWidth;
+    const glow = await posterGoldGlowLayer(slot.width, slot.height);
+    const posterLayer = await roundedPosterPng(poster, slot.width, slot.height);
+    layers.push({
+      input: glow,
+      top: Math.max(0, slot.top - GLOW_PAD),
+      left: Math.max(0, slot.left - GLOW_PAD),
+    });
+    layers.push({ input: posterLayer, top: slot.top, left: slot.left });
+  }
+
+  layers.push({
+    input: titleOverlaySvg({
+      headline: opts.headline,
+      subline: opts.subline,
+      textColumnLeft,
+      textColumnWidth,
+    }),
+    top: 0,
+    left: 0,
+  });
+  layers.push({
+    input: brandBarSvg(),
+    top: SHARE_OG_IMAGE_HEIGHT - BAR_HEIGHT,
+    left: 0,
+  });
+
+  return canvas.composite(layers).png().toBuffer();
+}
+
 export async function renderProfileShareOgImage(opts: {
   handle: string;
   posterUrl?: string | null;
@@ -373,11 +544,11 @@ export async function renderTitleShareOgImage(opts: {
   posterUrl?: string | null;
   posterBuffer?: Buffer | null;
 }): Promise<Buffer> {
-  return composeShareOgImage({
+  return composeTitleShareOgImage({
     posterUrl: opts.posterUrl,
     posterBuffer: opts.posterBuffer,
     headline: opts.titleName,
-    subline: `${opts.handle} on Cinima`,
+    subline: `Recommended by ${opts.handle}`,
   });
 }
 

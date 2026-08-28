@@ -7,6 +7,7 @@ import {
   renderTitleShareOgImage,
   shareOgFontFilesPresent,
   shareOgPosterSlot,
+  shareOgTitlePosterSlot,
   SHARE_OG_IMAGE_HEIGHT,
   SHARE_OG_IMAGE_WIDTH,
 } from "../src/lib/shareOgImage.js";
@@ -16,12 +17,20 @@ const FIXTURE_POSTER = path.join(tmpdir(), "cinima-og-poster-fixture.jpg");
 describe("shareOgImage template", () => {
   it("centers the poster with left/top/right padding", () => {
     const slot = shareOgPosterSlot(780, 1170);
-    const contentHeight = SHARE_OG_IMAGE_HEIGHT - 88;
+    const contentHeight = SHARE_OG_IMAGE_HEIGHT - 116;
     expect(slot.height).toBeLessThanOrEqual(Math.round(contentHeight * 0.8));
     expect(slot.left).toBeGreaterThan(40);
     expect(slot.top).toBe(40);
     expect(slot.left + slot.width).toBeLessThan(SHARE_OG_IMAGE_WIDTH - 40);
     expect(Math.abs(slot.left - (SHARE_OG_IMAGE_WIDTH - slot.width - slot.left))).toBeLessThanOrEqual(1);
+  });
+
+  it("places the title poster on the left with copy space on the right", () => {
+    const slot = shareOgTitlePosterSlot(780, 1170);
+    expect(slot.left).toBe(56);
+    expect(slot.top).toBeGreaterThan(20);
+    expect(slot.textColumnLeft).toBeGreaterThan(slot.left + slot.width);
+    expect(slot.textColumnLeft + slot.textColumnWidth).toBeLessThan(SHARE_OG_IMAGE_WIDTH - 40);
   });
 
   it("ships Mulish fonts for Share preview SVG text", () => {
