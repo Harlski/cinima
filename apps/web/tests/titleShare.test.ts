@@ -40,11 +40,11 @@ describe("Share link helpers", () => {
   });
 
   it("builds branded Share preview image URLs on the API origin", () => {
-    expect(profileShareOgImageUrl("https://api.cinima.app", "alice")).toBe(
-      "https://api.cinima.app/api/og/profile/alice.png"
+    expect(profileShareOgImageUrl("https://www.cinima.app", "alice")).toBe(
+      "https://www.cinima.app/api/og/profile/alice.png"
     );
-    expect(titleShareOgImageUrl("https://api.cinima.app", "alice", "movie", 550)).toBe(
-      "https://api.cinima.app/api/og/title/alice/movie/550.png"
+    expect(titleShareOgImageUrl("https://www.cinima.app", "alice", "movie", 550)).toBe(
+      "https://www.cinima.app/api/og/title/alice/movie/550.png"
     );
   });
 

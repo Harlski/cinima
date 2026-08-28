@@ -866,7 +866,7 @@ app.get("/api/public/:handle/t/:mediaType/:tmdbId", async (c) => {
         handle: user.handle,
         titleName: summary.title,
         ogImageUrl: titleShareOgImageUrl(
-          config.apiOrigin,
+          config.webOrigin,
           user.handle,
           mediaType,
           tmdbId
@@ -897,7 +897,7 @@ app.get("/api/public/:username", async (c) => {
       profileShareOgHtml({
         pageUrl,
         handle: user.handle,
-        ogImageUrl: profileShareOgImageUrl(config.apiOrigin, user.handle),
+        ogImageUrl: profileShareOgImageUrl(config.webOrigin, user.handle),
       })
     );
   }
@@ -962,7 +962,7 @@ app.get("/api/s/:code", async (c) => {
           handle: resolved.handle,
           titleName: resolved.title.title,
           ogImageUrl: titleShareOgImageUrl(
-            config.apiOrigin,
+            config.webOrigin,
             resolved.handle,
             resolved.title.mediaType,
             resolved.title.tmdbId
@@ -975,7 +975,7 @@ app.get("/api/s/:code", async (c) => {
       profileShareOgHtml({
         pageUrl,
         handle: resolved.handle,
-        ogImageUrl: profileShareOgImageUrl(config.apiOrigin, resolved.handle),
+        ogImageUrl: profileShareOgImageUrl(config.webOrigin, resolved.handle),
       })
     );
   }

@@ -9,16 +9,16 @@ export const SHARE_OG_IMAGE_HEIGHT = 630;
  * Keep og:image width/height meta tags in sync with these values.
  */
 
-/** Branded Share preview image served by the API. */
-export function profileShareOgImageUrl(apiOrigin: string, handle: string): string {
-  return `${apiOrigin.replace(/\/$/, "")}/api/og/profile/${encodeURIComponent(handle)}.png`;
+/** Branded Share preview PNG URL on the public site (proxied to the API in production). */
+export function profileShareOgImageUrl(siteOrigin: string, handle: string): string {
+  return `${siteOrigin.replace(/\/$/, "")}/api/og/profile/${encodeURIComponent(handle)}.png`;
 }
 
 export function titleShareOgImageUrl(
-  apiOrigin: string,
+  siteOrigin: string,
   handle: string,
   mediaType: MediaType,
   tmdbId: number
 ): string {
-  return `${apiOrigin.replace(/\/$/, "")}/api/og/title/${encodeURIComponent(handle)}/${mediaType}/${tmdbId}.png`;
+  return `${siteOrigin.replace(/\/$/, "")}/api/og/title/${encodeURIComponent(handle)}/${mediaType}/${tmdbId}.png`;
 }
