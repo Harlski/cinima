@@ -29,7 +29,7 @@ import { db } from "./db/index.js";
 import * as schema from "./db/schema.js";
 import { config } from "./lib/config.js";
 import { bearerToken, isPayContext } from "./lib/util.js";
-import { toTitleSummary, ogPosterUrl } from "./lib/titles.js";
+import { toTitleSummary } from "./lib/titles.js";
 import {
   assertValidUserHandle,
   authChallengeMessage,
@@ -37,19 +37,18 @@ import {
 } from "./services/auth.js";
 import { titleShareOgHtml } from "./lib/titleShareHtml.js";
 import { profileShareOgHtml } from "./lib/profileShareHtml.js";
-import {
-  renderProfileShareOgImage,
-  renderTitleShareOgImage,
-  shareOgImageCacheControl,
-} from "./lib/shareOgImage.js";
+import { shareOgImageCacheControl } from "./lib/shareOgImage.js";
 import {
   getOrCreateProfileShareLink,
   getOrCreateTitleShareLink,
   resolveShareLink,
-  resolveShareLinkOgPosterFromDb,
-  resolveShareLinkOgPoster,
-  resolveProfileShareOgPoster,
 } from "./services/shareLinks.js";
+import {
+  getProfileShareOgImage,
+  getTitleShareOgImage,
+  prewarmProfileShareOgImage,
+  prewarmTitleShareOgImage,
+} from "./services/shareOgServe.js";
 import {
   CommentError,
   createComment,
@@ -312,6 +311,7 @@ app.get("/api/me", requirePay, requireAuth, async (c) => {
   const profileShareCode = user.handle
     ? await getOrCreateProfileShareLink(user.walletAddress, user.handle)
     : null;
+  if (user.handle) prewarmProfileShareOgImage(user.handle);
 
   const response: MeResponse = {
     user: c.get("sessionUser"),
@@ -348,6 +348,7 @@ app.post("/api/me/handle", requirePay, requireAuth, async (c) => {
   await db.update(schema.users).set({ handle: cleaned }).where(eq(schema.users.walletAddress, user.walletAddress));
   const sessionUser = await sessionUserFor(user.walletAddress);
   const code = await getOrCreateProfileShareLink(user.walletAddress, cleaned);
+  prewarmProfileShareOgImage(cleaned);
   return c.json({ user: sessionUser, shareUrl: shortShareUrl(config.webOrigin, code) });
 });
 
@@ -804,6 +805,7 @@ function pngResponse(body: Buffer): Response {
   return new Response(new Uint8Array(body), {
     headers: {
       "Content-Type": "image/png",
+      "Content-Length": String(body.length),
       "Cache-Control": shareOgImageCacheControl(),
     },
   });
@@ -817,13 +819,8 @@ function ogPathSegment(raw: string | undefined): string {
 // Branded Share preview images — no pay gate
 app.get("/api/og/profile/:handle", async (c) => {
   const handle = ogPathSegment(c.req.param("handle"));
-  const user = await findPublicUserByHandle(handle);
-  if (!user?.handle) return c.json({ error: "not_found" }, 404);
-
-  const recommends = await listRecommends(user.walletAddress);
-  const favorites = await listFavorites(user.walletAddress);
-  const posterUrl = await resolveProfileShareOgPoster(recommends, favorites);
-  const png = await renderProfileShareOgImage({ handle: user.handle, posterUrl });
+  const png = await getProfileShareOgImage(handle);
+  if (!png) return c.json({ error: "not_found" }, 404);
   return pngResponse(png);
 });
 
@@ -834,18 +831,8 @@ app.get("/api/og/title/:handle/:mediaType/:tmdbId", async (c) => {
     return c.json({ error: "not_found" }, 404);
   }
 
-  const user = await findPublicUserByHandle(c.req.param("handle"));
-  if (!user?.handle) return c.json({ error: "not_found" }, 404);
-
-  const id = makeTitleId(mediaType, tmdbId);
-  const title = await db.query.titles.findFirst({ where: eq(schema.titles.id, id) });
-  if (!title) return c.json({ error: "not_found" }, 404);
-
-  const png = await renderTitleShareOgImage({
-    handle: user.handle,
-    titleName: title.title,
-    posterUrl: ogPosterUrl(title.posterPath),
-  });
+  const png = await getTitleShareOgImage(c.req.param("handle"), mediaType, tmdbId);
+  if (!png) return c.json({ error: "not_found" }, 404);
   return pngResponse(png);
 });
 
@@ -947,6 +934,7 @@ app.post("/api/share/title", requirePay, requireAuth, async (c) => {
     mediaType,
     tmdbId
   );
+  prewarmTitleShareOgImage(user.handle, mediaType, tmdbId);
   const response: ShareLinkCreated = { code, kind: "title" };
   return c.json(response);
 });
@@ -956,6 +944,7 @@ app.post("/api/share/profile", requirePay, requireAuth, async (c) => {
   if (!user.handle) return c.json({ error: "handle_required" }, 400);
 
   const code = await getOrCreateProfileShareLink(user.walletAddress, user.handle);
+  prewarmProfileShareOgImage(user.handle);
   const response: ShareLinkCreated = { code, kind: "profile" };
   return c.json(response);
 });
