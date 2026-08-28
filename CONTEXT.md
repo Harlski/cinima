@@ -9,7 +9,7 @@ A user’s chosen shareable Cinima identity, distinct from their wallet address.
 _Avoid_: username, wallet name
 
 **Public Profile**:
-The unauthenticated share page for a Handle: identity, Recommends, and Favorites.
+The unauthenticated share page for a Handle: identity, Recommends, and Favorites. Favorites on Public Profile, Me, and other Handles' profiles are Favorite-only; Recommended titles appear under Recommends, not again under Favorites.
 _Avoid_: activity feed, heatmap, Me, User page
 
 **Title Share**:
@@ -29,8 +29,12 @@ An optional public link to the user’s X profile. Not their Cinima Handle.
 _Avoid_: twitter username as Cinima identity
 
 **Favorite**:
-A user’s mark that they enjoy a movie or show. Binary per user and title; the baseline taste signal.
+A user’s mark that they enjoy a movie or show. Binary per user and title; the baseline taste signal. A Recommend is still a Favorite in the mark, but Favorite lists on profiles show Favorite-only titles.
 _Avoid_: like, bookmark
+
+**Favorite-only**:
+A Favorite that is not also a Recommend. Profile Favorite lists (Public Profile, Me, other Handles) and title taste Favorite counts show Favorite-only titles; Recommended titles appear under Recommends instead.
+_Avoid_: un-recommended favorite, leftover favorite
 
 **Watchlist**:
 A user’s private save-for-later queue of titles they intend to watch. Distinct from Favorite (taste signal) and Recommend (gold-star upgrade). Shown on the Watchlist tab as a browsable deck.
@@ -77,8 +81,8 @@ The Discover gate for accounts under the Favorite minimum. Shows three scrolling
 _Avoid_: swipe deck, search-to-unlock, auto-favorite on tap, live catalog fetch on this screen
 
 **Guided tour**:
-An optional walkthrough of Watchlist, Search, community Recommends, Watchlist actions, For You, and Find people (Creator profile). Offered once after Favorites onboarding clears; skippable anytime; replayable from Me. Distinct from Favorites onboarding and Handle onboarding.
-_Avoid_: product tour as a separate product term, tutorial modal stack, forced Favorite during the walkthrough
+An optional walkthrough of Watchlist, Search, community Recommends, Watchlist actions, For You, Find people (Creator profile), and that the viewer can Recommend up to six movies and six TV shows. Offered once after Favorites onboarding clears; skippable anytime; replayable from Me. Distinct from Favorites onboarding and Handle onboarding.
+_Avoid_: product tour as a separate product term, tutorial modal stack, forced Favorite during the walkthrough, forced Recommend during the walkthrough
 
 **Following strip**:
 On Discover Following, the horizontal selectable row of followee Identicons (plus Find people) sticky under the brand header. Selecting a followee shows their Handle above the Identicon and filters the feed to that person's recent Favorites and unlocks. Unseen activity sorts ahead of already-viewed activity when the viewer returns to Following.

@@ -1,4 +1,4 @@
-import { formatWallet, normalizeWallet } from "@cinima/shared";
+import { formatWallet, MAX_RECOMMENDS, normalizeWallet } from "@cinima/shared";
 
 /** Spotlight target ids — every step spotlight must appear as data-tour in templates. */
 export const TOUR_SPOTLIGHT = {
@@ -15,6 +15,7 @@ export const TOUR_SPOTLIGHT = {
   findPeople: "find-people",
   findPeopleCreator: "find-people-creator",
   userRecommends: "user-recommends",
+  userFavorites: "user-favorites",
   userFollow: "user-follow",
 } as const;
 
@@ -223,8 +224,22 @@ export const GUIDED_TOUR_STEPS: readonly TourStepDef[] = [
   {
     id: "creator-taste",
     title: "Taste & Follow",
-    body: "See their recommended movies and TV. Follow if you like their taste.",
-    spotlights: [TOUR_SPOTLIGHT.userRecommends, TOUR_SPOTLIGHT.userFollow],
+    body: "Recommends are gold-star picks. Favorites are the rest of what they enjoy. Follow if you like their taste.",
+    spotlights: [
+      TOUR_SPOTLIGHT.userRecommends,
+      TOUR_SPOTLIGHT.userFavorites,
+      TOUR_SPOTLIGHT.userFollow,
+    ],
+    routeName: "user",
+    useCreatorWallet: true,
+    advance: "next",
+    primaryLabel: "Next",
+  },
+  {
+    id: "you-can-recommend",
+    title: "Recommend a title",
+    body: `If you love a title and would tell someone to watch it, Recommend it from the title. You can hold ${MAX_RECOMMENDS} movie Recommends and ${MAX_RECOMMENDS} TV Recommends at a time.`,
+    spotlights: [TOUR_SPOTLIGHT.userRecommends],
     routeName: "user",
     useCreatorWallet: true,
     advance: "next",

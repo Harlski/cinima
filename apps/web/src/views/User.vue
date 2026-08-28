@@ -35,15 +35,11 @@
         title="Activity"
       />
 
-      <TourSpotlight :id="TOUR_SPOTLIGHT.userRecommends" radius="12px">
-        <div :data-tour="TOUR_SPOTLIGHT.userRecommends">
-          <ProfileTaste
-            :favorites="profile.favorites"
-            :recommends="profile.recommends || []"
-            @select="(title) => goToTitle(title.id)"
-          />
-        </div>
-      </TourSpotlight>
+      <ProfileTaste
+        :favorites="profile.favorites"
+        :recommends="profile.recommends || []"
+        @select="(title) => goToTitle(title.id)"
+      />
     </div>
   </div>
 </template>

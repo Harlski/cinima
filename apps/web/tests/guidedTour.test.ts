@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import { MAX_RECOMMENDS } from "@cinima/shared";
 import {
   ALL_TOUR_SPOTLIGHT_IDS,
   GUIDED_TOUR_STEPS,
@@ -159,7 +160,19 @@ const EXPECTED_WALKTHROUGH: readonly {
     showsPrimary: true,
     primaryLabel: "Next",
     coach: "bottom",
-    spotlights: [TOUR_SPOTLIGHT.userRecommends, TOUR_SPOTLIGHT.userFollow],
+    spotlights: [
+      TOUR_SPOTLIGHT.userRecommends,
+      TOUR_SPOTLIGHT.userFavorites,
+      TOUR_SPOTLIGHT.userFollow,
+    ],
+    routeName: "user",
+  },
+  {
+    id: "you-can-recommend",
+    showsPrimary: true,
+    primaryLabel: "Next",
+    coach: "bottom",
+    spotlights: [TOUR_SPOTLIGHT.userRecommends],
     routeName: "user",
   },
   {
@@ -229,6 +242,14 @@ describe("Guided tour step contracts", () => {
     expect(added?.body).toBe(
       "There it is! Now you won't forget to watch it."
     );
+    const taste = GUIDED_TOUR_STEPS.find((s) => s.id === "creator-taste");
+    expect(taste?.body).toBe(
+      "Recommends are gold-star picks. Favorites are the rest of what they enjoy. Follow if you like their taste."
+    );
+    const youCan = GUIDED_TOUR_STEPS.find((s) => s.id === "you-can-recommend");
+    expect(youCan?.body).toBe(
+      `If you love a title and would tell someone to watch it, Recommend it from the title. You can hold ${MAX_RECOMMENDS} movie Recommends and ${MAX_RECOMMENDS} TV Recommends at a time.`
+    );
   });
 
   it("every expected spotlight / route / coach placement matches", () => {
@@ -292,6 +313,11 @@ describe("Guided tour step machine", () => {
     state = reportTourAction(state, "open-creator-profile");
     expect(tourStepAt(state.stepIndex)?.id).toBe("creator-taste");
     expect(tourStepShowsPrimaryButton(tourStepAt(state.stepIndex))).toBe(true);
+
+    state = advanceTourNext(state);
+    expect(tourStepAt(state.stepIndex)?.id).toBe("you-can-recommend");
+    expect(tourStepShowsPrimaryButton(tourStepAt(state.stepIndex))).toBe(true);
+    expect(tourStepAt(state.stepIndex)?.routeName).toBe("user");
 
     state = advanceTourNext(state);
     expect(tourStepAt(state.stepIndex)?.id).toBe("tour-done");

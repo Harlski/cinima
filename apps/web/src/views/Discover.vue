@@ -691,9 +691,10 @@ watch(
       tour.active,
       tour.filterFindPeopleToCreator,
       tour.step?.id,
+      tour.step?.routeName,
     ] as const,
-  async ([active, filterCreator, stepId]) => {
-    if (!active || stepId === "creator-taste" || stepId === "tour-done") {
+  async ([active, filterCreator, stepId, routeName]) => {
+    if (!active || routeName === "user" || stepId === "tour-done") {
       findPeopleOpen.value = false;
       return;
     }
