@@ -1,7 +1,7 @@
 <template>
   <div class="me">
     <div v-if="loading" class="loading">
-      <NqSpinner />
+      <LoadingWait />
     </div>
 
     <div v-else class="content">
@@ -130,7 +130,7 @@ import { useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
 import { useAuthStore } from "@/stores/auth";
 import NqIcon from "@/components/NqIcon.vue";
-import NqSpinner from "@/components/NqSpinner.vue";
+import LoadingWait from "@/components/LoadingWait.vue";
 import ActivityHeatmap from "@/components/ActivityHeatmap.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";
 import ProfileTaste from "@/components/ProfileTaste.vue";

@@ -3,7 +3,7 @@
     <div class="search-stage" :style="searchStageStyle">
       <div class="search-stage-inner">
         <div v-if="!showHistory && loading" class="loading">
-          <NqSpinner label="Searching" />
+          <LoadingWait label="Searching" />
         </div>
 
         <div
@@ -216,7 +216,7 @@ import { useCatalogStore } from "@/stores/catalog";
 import TitleCard from "@/components/TitleCard.vue";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import NqIcon from "@/components/NqIcon.vue";
-import NqSpinner from "@/components/NqSpinner.vue";
+import LoadingWait from "@/components/LoadingWait.vue";
 import {
   clearSearchHistory,
   loadSearchHistory,

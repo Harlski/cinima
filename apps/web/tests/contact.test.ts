@@ -46,6 +46,10 @@ describe("Pay-only gate copy", () => {
     expect(payOnlyGateCopy.alreadyInstalledOpen).toBe("open");
     expect(payOnlyGateCopy.getNimiqPay).toBe("Get Nimiq Pay");
     expect(payOnlyGateCopy.inquiries).toBe("Inquiries?");
+    expect(payOnlyGateCopy.fullAccessOnlyOnMobile).toBe(
+      "Full access only on mobile"
+    );
+    expect(payOnlyGateCopy.learnAboutNimiqPay).toBe("Learn about Nimiq Pay");
     expect(GET_NIMIQ_PAY_URL).toBe("https://nimpay.app/");
   });
 });

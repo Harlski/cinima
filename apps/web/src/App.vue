@@ -5,7 +5,7 @@ import { useAuthStore } from "./stores/auth";
 import { useTouchScrollGuard } from "./composables/useTouchScrollGuard";
 import { isLandingFrontDoor } from "./lib/landingGate";
 import { stashPostAuthPath } from "./lib/postAuthPath";
-import NqSpinner from "./components/NqSpinner.vue";
+import LoadingWait from "./components/LoadingWait.vue";
 
 useTouchScrollGuard();
 
@@ -54,10 +54,7 @@ onMounted(async () => {
     v-if="!reveal && !isShareRoute()"
     class="boot"
   >
-    <div class="boot-stack">
-      <NqSpinner label="Starting Cinima" />
-      <div aria-hidden="true">Starting Cinima…</div>
-    </div>
+    <LoadingWait label="Starting Cinima" />
   </div>
   <RouterView v-else />
 </template>
@@ -73,13 +70,5 @@ onMounted(async () => {
   padding: 2rem;
   color: var(--text-primary);
   font-family: var(--font);
-}
-
-.boot-stack {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-  text-align: center;
 }
 </style>

@@ -4,7 +4,7 @@
 
     <div class="public-main">
       <div v-if="loading" class="app-column loading">
-        <NqSpinner />
+        <LoadingWait />
       </div>
 
       <div v-else-if="profile" class="app-column content">
@@ -47,7 +47,7 @@ import type { PublicProfile, TitleSummary } from "@cinima/shared";
 import { profileShareCopy, profileShareUrl } from "@cinima/shared";
 import AppBrandHeader from "@/components/AppBrandHeader.vue";
 import ExploreCinimaPayBar from "@/components/ExploreCinimaPayBar.vue";
-import NqSpinner from "@/components/NqSpinner.vue";
+import LoadingWait from "@/components/LoadingWait.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";
 import PayTitleModal from "@/components/PayTitleModal.vue";
 import ProfileTaste from "@/components/ProfileTaste.vue";

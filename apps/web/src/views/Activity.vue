@@ -1,7 +1,7 @@
 <template>
   <div class="activity">
     <div v-if="loading" class="loading">
-      <NqSpinner />
+      <LoadingWait />
     </div>
 
     <div v-else-if="items.length === 0" class="empty">
@@ -55,7 +55,7 @@ import { useApi } from "@/composables/useApi";
 import type { ActivityItem } from "@cinima/shared";
 import { displayName } from "@cinima/shared";
 import Identicon from "@/components/Identicon.vue";
-import NqSpinner from "@/components/NqSpinner.vue";
+import LoadingWait from "@/components/LoadingWait.vue";
 
 const router = useRouter();
 const { request } = useApi();

@@ -5,6 +5,7 @@ import {
   LIFETIME_UNLOCK_NIM,
   UNLOCK_LUNA,
   UNLOCK_NIM,
+  canonicalWebOrigin,
 } from "@cinima/shared";
 
 function envBool(name: string, fallback = false): boolean {
@@ -38,7 +39,7 @@ export const config = {
     return envString("TMDB_API_KEY");
   },
   get webOrigin() {
-    return envString("WEB_ORIGIN", "http://localhost:5174");
+    return canonicalWebOrigin(envString("WEB_ORIGIN", "http://localhost:5174"));
   },
   get apiOrigin() {
     return envString("API_ORIGIN", envString("VITE_API_BASE", "https://api.cinima.app"));

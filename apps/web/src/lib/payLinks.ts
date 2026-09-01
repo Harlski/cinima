@@ -1,4 +1,5 @@
 import {
+  canonicalWebOrigin,
   nimiqPayMiniAppHttpsUrl,
   nimiqPayMiniAppSchemeUrl,
   openInPayUrl,
@@ -19,7 +20,7 @@ export {
 /** Origin to open inside Pay: live page in the browser, else configured site. */
 export function payAppOrigin(): string {
   if (typeof window !== "undefined" && window.location?.origin) {
-    return window.location.origin;
+    return canonicalWebOrigin(window.location.origin);
   }
   return siteOrigin;
 }

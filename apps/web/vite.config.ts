@@ -6,6 +6,7 @@ import {
   SITE_LOCALE,
   SITE_NAME,
   SITE_THEME_COLOR,
+  canonicalWebOrigin,
 } from "@cinima/shared";
 import { shareOgPlugin } from "./vite.shareOg";
 
@@ -21,9 +22,10 @@ function siteMetaHtml(origin: string): (html: string) => string {
 }
 
 export default defineConfig(({ mode }) => {
-  const siteOrigin =
+  const siteOrigin = canonicalWebOrigin(
     process.env.VITE_SITE_ORIGIN ||
-    (mode === "production" ? "https://cinima.app" : "http://localhost:5174");
+      (mode === "production" ? "https://cinima.app" : "http://localhost:5174")
+  );
   const apiOrigin =
     process.env.VITE_API_BASE?.replace(/\/$/, "") || "http://127.0.0.1:8787";
 

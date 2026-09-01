@@ -15,7 +15,7 @@
     </header>
 
     <div v-if="loading" class="loading">
-      <NqSpinner />
+      <LoadingWait />
     </div>
 
     <div v-else-if="title" class="content">
@@ -330,6 +330,7 @@ import FavoritersSheet, { type TastePeopleTab } from "@/components/FavoritersShe
 import HeatMap from "@/components/HeatMap.vue";
 import Identicon from "@/components/Identicon.vue";
 import NqIcon from "@/components/NqIcon.vue";
+import LoadingWait from "@/components/LoadingWait.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
 import PosterImg from "@/components/PosterImg.vue";
 import ShareTitleSheet from "@/components/ShareTitleSheet.vue";
@@ -652,8 +653,12 @@ onUnmounted(() => {
 
 <style scoped>
 .title-detail {
-  min-height: 100%;
-  padding-bottom: 2rem;
+  min-height: calc(
+    100dvh - var(--app-brand-row, 2.75rem) - var(--vv-offset-top, 0px) -
+      var(--bottom-tabs-inset)
+  );
+  display: flex;
+  flex-direction: column;
 }
 
 .detail-header {
@@ -679,13 +684,15 @@ onUnmounted(() => {
 }
 
 .loading {
-  text-align: center;
-  padding: 3rem 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--text-secondary);
 }
 
 .content {
-  padding: 1rem 0;
+  padding: 1rem 0 3rem;
 }
 
 .poster-section {

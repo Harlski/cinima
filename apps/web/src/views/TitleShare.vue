@@ -4,7 +4,7 @@
 
     <div class="share-main">
       <div v-if="loading" class="app-column loading">
-        <NqSpinner />
+        <LoadingWait />
       </div>
 
       <div v-else-if="payload" class="app-column content">
@@ -95,7 +95,7 @@ import AppBrandHeader from "@/components/AppBrandHeader.vue";
 import ExploreCinimaPayBar from "@/components/ExploreCinimaPayBar.vue";
 import GoldGlowShell from "@/components/GoldGlowShell.vue";
 import Identicon from "@/components/Identicon.vue";
-import NqSpinner from "@/components/NqSpinner.vue";
+import LoadingWait from "@/components/LoadingWait.vue";
 import PayTitleModal from "@/components/PayTitleModal.vue";
 import PosterImg from "@/components/PosterImg.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";

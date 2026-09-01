@@ -2,13 +2,19 @@
   <img
     v-if="src"
     class="identicon"
+    :class="{ 'identicon--plain': plain }"
     :src="src"
     :alt="alt"
     :width="size"
     :height="size"
     decoding="async"
   />
-  <span v-else class="identicon identicon--fallback" :style="fallbackStyle">{{ fallback }}</span>
+  <span
+    v-else
+    class="identicon identicon--fallback"
+    :class="{ 'identicon--plain': plain }"
+    :style="fallbackStyle"
+  >{{ fallback }}</span>
 </template>
 
 <script setup lang="ts">
@@ -20,11 +26,14 @@ const props = withDefaults(
     address?: string | null;
     size?: number;
     alt?: string;
+    /** Character on the hexagon plate: no circular CSS clip or fill. */
+    plain?: boolean;
   }>(),
   {
     address: "",
     size: 40,
     alt: "Identicon",
+    plain: false,
   }
 );
 
@@ -63,6 +72,11 @@ watch(
   object-fit: cover;
   background: var(--bg-primary);
   flex-shrink: 0;
+}
+
+.identicon--plain {
+  border-radius: 0;
+  background: transparent;
 }
 
 .identicon--fallback {

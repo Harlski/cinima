@@ -16,7 +16,7 @@
         <p class="hint">Follow users whose taste you want on Following.</p>
 
         <div v-if="loading" class="state">
-          <NqSpinner />
+          <LoadingWait />
         </div>
         <div v-else-if="people.length === 0" class="state muted">
           No more Handles to follow right now.
@@ -79,7 +79,7 @@ import { displayName } from "@cinima/shared";
 import type { FindPeopleEntry } from "@cinima/shared";
 import Identicon from "@/components/Identicon.vue";
 import NqIcon from "@/components/NqIcon.vue";
-import NqSpinner from "@/components/NqSpinner.vue";
+import LoadingWait from "@/components/LoadingWait.vue";
 import TourSpotlight from "@/components/TourSpotlight.vue";
 import { TOUR_SPOTLIGHT, isTourCreatorWallet } from "@/lib/guidedTour";
 
@@ -174,7 +174,7 @@ defineEmits<{
 .state {
   display: grid;
   place-items: center;
-  min-height: 8rem;
+  min-height: 10rem;
 }
 
 .state.muted {

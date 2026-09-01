@@ -48,6 +48,7 @@ import NqIcon from "@/components/NqIcon.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
 import ShareLinkSheet from "@/components/ShareLinkSheet.vue";
 import { useApi } from "@/composables/useApi";
+import { payAppOrigin } from "@/lib/payLinks";
 
 const props = defineProps<{
   handle: string | null;
@@ -83,7 +84,7 @@ onMounted(async () => {
         tmdbId: props.tmdbId,
       }),
     });
-    shareUrl.value = shortShareUrl(window.location.origin, data.code);
+    shareUrl.value = shortShareUrl(payAppOrigin(), data.code);
   } catch {
     shareUrl.value = "";
   } finally {

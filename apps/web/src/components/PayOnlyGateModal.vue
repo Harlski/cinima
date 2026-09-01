@@ -16,6 +16,7 @@
       <PayOnlyActions
         :already-installed-url="alreadyInstalledUrl"
         :social-variant="socialVariant"
+        glow-already-installed
       />
     </div>
   </div>
@@ -62,6 +63,7 @@ defineEmits<{
   gap: 0.85rem;
   padding: 2.25rem 1.75rem 1.75rem;
   text-align: center;
+  overflow: visible;
   background-color: color-mix(in oklch, var(--colors-neutral-50) 72%, transparent);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);

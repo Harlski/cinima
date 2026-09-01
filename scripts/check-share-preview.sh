@@ -3,10 +3,10 @@
 # HTML (not the SPA shell). Not a substitute for unit tests in apps/web.
 #
 #   pnpm check:share-preview
-#   WEB_ORIGIN=https://www.cinima.app SHARE_PATH=/realhandle/t/movie/550 pnpm check:share-preview
+#   WEB_ORIGIN=https://cinima.app SHARE_PATH=/realhandle/t/movie/550 pnpm check:share-preview
 set -euo pipefail
 
-WEB_ORIGIN="${WEB_ORIGIN:-https://www.cinima.app}"
+WEB_ORIGIN="${WEB_ORIGIN:-https://cinima.app}"
 SHARE_PATH="${SHARE_PATH:-/alice/t/movie/550}"
 UA="${UA:-Twitterbot/1.0}"
 

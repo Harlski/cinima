@@ -14,6 +14,7 @@ import { and, count, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { favorites, titles, users, watchlist } from "../db/schema.js";
 import { hasOverview, toTitleSummary } from "../lib/titles.js";
+import { ensureTitleFresh } from "./catalog.js";
 import { countTitleTastePeersForTitles } from "./social.js";
 
 export class SocialTasteError extends Error {
@@ -72,6 +73,11 @@ export async function addFavorite(wallet: string, titleId: string) {
     .insert(favorites)
     .values({ walletAddress: w, titleId, createdAt: new Date(), recommendedAt: null })
     .onConflictDoNothing();
+  try {
+    await ensureTitleFresh(titleId);
+  } catch {
+    /* keep the Favorite even if catalog hydrate fails */
+  }
 }
 
 export async function removeFavorite(wallet: string, titleId: string) {

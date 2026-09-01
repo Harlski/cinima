@@ -9,6 +9,10 @@
  * slashes are `%2F` (manual open of the decoded URL works).
  */
 
+function apexHostname(hostname: string): string {
+  return hostname.replace(/^www\./i, "");
+}
+
 function parseAppUrl(originOrUrl: string): URL | null {
   const raw = originOrUrl.trim().replace(/\/$/, "");
   if (!raw) return null;
@@ -16,10 +20,20 @@ function parseAppUrl(originOrUrl: string): URL | null {
     const withScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw)
       ? raw
       : `https://${raw}`;
-    return new URL(withScheme);
+    const u = new URL(withScheme);
+    u.hostname = apexHostname(u.hostname);
+    return u;
   } catch {
     return null;
   }
+}
+
+/** Public origin with trailing slash and leading www. dropped. */
+export function canonicalWebOrigin(origin: string): string {
+  const raw = origin.trim();
+  if (!raw) return raw;
+  const u = parseAppUrl(raw);
+  return u ? u.origin : raw.replace(/\/$/, "");
 }
 
 /** Host form used in HTTPS intent links (no scheme; keeps port and non-root path). */

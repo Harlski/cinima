@@ -1,7 +1,7 @@
 <template>
   <div class="user">
     <div v-if="loading" class="loading">
-      <NqSpinner />
+      <LoadingWait />
     </div>
 
     <div v-else-if="profile" class="content">
@@ -51,7 +51,7 @@ import { useApi } from "@/composables/useApi";
 import { ACTIVITY_UI_VISIBLE, displayName } from "@cinima/shared";
 import type { PublicProfile } from "@cinima/shared";
 import ActivityHeatmap from "@/components/ActivityHeatmap.vue";
-import NqSpinner from "@/components/NqSpinner.vue";
+import LoadingWait from "@/components/LoadingWait.vue";
 import ProfileTaste from "@/components/ProfileTaste.vue";
 import TourSpotlight from "@/components/TourSpotlight.vue";
 import UserCard from "@/components/UserCard.vue";

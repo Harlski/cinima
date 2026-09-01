@@ -102,7 +102,7 @@ describe("handleShareOgRequest", () => {
     });
 
     const res = await handleShareOgRequest(
-      new Request("https://www.cinima.app/alice/t/movie/550", {
+      new Request("https://cinima.app/alice/t/movie/550", {
         headers: { "user-agent": "Twitterbot/1.0" },
       }),
       { apiBase: "https://api.cinima.app", fetchImpl }
@@ -120,7 +120,7 @@ describe("handleShareOgRequest", () => {
   it("falls through for a normal browser", async () => {
     const fetchImpl = vi.fn();
     const res = await handleShareOgRequest(
-      new Request("https://www.cinima.app/alice/t/movie/550", {
+      new Request("https://cinima.app/alice/t/movie/550", {
         headers: {
           "user-agent":
             "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/126.0.0.0",
@@ -137,7 +137,7 @@ describe("handleShareOgRequest", () => {
       throw new Error("network");
     });
     const res = await handleShareOgRequest(
-      new Request("https://www.cinima.app/alice/t/movie/550", {
+      new Request("https://cinima.app/alice/t/movie/550", {
         headers: { "user-agent": "WhatsApp/2.0" },
       }),
       { apiBase: "https://api.example.test", fetchImpl }

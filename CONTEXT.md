@@ -20,6 +20,10 @@ _Avoid_: Public Profile, invite, checkout page, OG page
 The public URL that names a Handle and a Title together so a recipient lands on that Title Share.
 _Avoid_: query-string share, profile-only URL, encoded Title ID in the path
 
+**Site origin**:
+The public web host Nimiq Pay trusts: cinima.app. Share URLs, Share preview, and Pay intents use https://cinima.app.
+_Avoid_: www.cinima.app
+
 **Share preview**:
 The poster-and-copy card that messaging and social apps show for a Title Share link, Short Share link, or Public Profile link before the recipient opens Cinima.
 _Avoid_: OG card, unfurl, link preview, metadata card, physical card
@@ -57,7 +61,7 @@ A TMDB community popularity score for a title. Catalog data; distinct from Ratin
 _Avoid_: favorite count, trending, most liked, vote average
 
 **Catalog data**:
-Title names, posters, synopses, Ratings, and Popularity sourced from TMDB. Cinima does not sell access to this data.
+Title names, posters, synopses, Ratings, Popularity, and for TV the season and episode listings, sourced from TMDB and cached by Cinima. A Favorite of a TV show makes that show's seasons Catalog data for everyone. Cinima does not sell access to this data.
 _Avoid_: OMDb listings, IMDb data
 
 **IMDb link**:
@@ -97,5 +101,5 @@ How many Thanks other users have sent to this Handle. The social reputation sign
 _Avoid_: thank rating, thanks score, tip count
 
 **Landing**:
-The public root page (`/` and `/gate`) that explains what Cinima is. Shows a scrolling strip of title-card posters loaded from the TMDB image CDN (curated `poster_path` list; not vendored in the repo), with TMDB attribution on the page. Outside Nimiq Pay the CTA is Explore (same Enter styling; opens a centered pay-only gate modal with Already Installed? (open) via `nimiqpay://`, Get Nimiq Pay, and Inquiries); inside Pay the CTA is Enter, which connects the wallet while staying on Landing, shows a Welcome / Welcome Back identicon overlay, then enters Discover (Favorites onboarding or For You). Landing never auto-boots auth. Contact is X (https://x.com/cinima_app) and Email (cinima.app@gmail.com). Public Profile / Title Share / Short Share show a floating Explore CINIMA button (no bar chrome; `2.75rem + safe-area-inset-bottom` lift). Outside Pay, title taps open a gate modal that matches Title Share layout (poster, year / media / rating, overview) plus Already Installed / Get Nimiq Pay, X + Telegram, and View on IMDb.
+The public root page (`/` and `/gate`) that explains what Cinima is. Shows a scrolling strip of title-card posters loaded from the TMDB image CDN (curated `poster_path` list; not vendored in the repo), with TMDB attribution on the page. Outside Nimiq Pay the CTA is Explore (same Enter styling; opens a centered pay-only gate modal with Already Installed? (open) in a gold glow via `nimiqpay://`, Get Nimiq Pay, and Inquiries; on a desktop, clicking Already Installed? shows a Full access only on mobile tooltip, then moves the gold glow to Get Nimiq Pay with a Learn about Nimiq Pay tooltip); inside Pay the CTA is Enter, which connects the wallet while staying on Landing, shows a Welcome / Welcome Back identicon overlay, then enters Discover (Favorites onboarding or For You). Landing never auto-boots auth. Contact is X (https://x.com/cinima_app) and Email (cinima.app@gmail.com). Public Profile / Title Share / Short Share show a floating Explore CINIMA button (no bar chrome; `2.75rem + safe-area-inset-bottom` lift). Outside Pay, title taps open a gate modal that matches Title Share layout (poster, year / media / rating, overview) plus Already Installed / Get Nimiq Pay, X + Telegram, and View on IMDb.
 _Avoid_: marketing site, splash, home feed, auto sign-in on open, navigating into the app before wallet connect, vendoring studio posters in git

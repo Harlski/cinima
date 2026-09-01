@@ -87,7 +87,7 @@ if [ ! -f "$APP_DIR/.env" ]; then
 PORT=8787
 DATABASE_URL=file:./data/cinima.db
 SESSION_SECRET=change-me-to-a-long-random-string
-WEB_ORIGIN=https://www.cinima.app
+WEB_ORIGIN=https://cinima.app
 DEMO_MODE=false
 TMDB_API_KEY=
 NIMIQ_RPC_URL=https://rpc.nimiqwatch.com

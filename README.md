@@ -84,9 +84,9 @@ Root `.env` is read by the API. `apps/web/.env` is read by Vite.
 | `DATABASE_AUTH_TOKEN` | API | Remote LibSQL only. |
 | `SESSION_SECRET` | API | Signs the wallet session. Change this before any shared deploy. |
 | `DEMO_MODE` | API | Local demo auth. Keep `false` in production. |
-| `WEB_ORIGIN` | API | Public site origin (CORS, share links, Pay intents). |
+| `WEB_ORIGIN` | API | Public site origin (CORS, share links, Pay intents). Production is `https://cinima.app` (no www). |
 | `NIMIQ_RPC_URL` | API | Nimiq RPC for signature checks. |
-| `VITE_SITE_ORIGIN` | Web | Public site origin used by the client. |
+| `VITE_SITE_ORIGIN` | Web | Public site origin used by the client. Production is `https://cinima.app`. |
 | `VITE_API_BASE` | Web | API origin. Empty in local dev (Vite proxies `/api`). |
 | `VITE_DEMO_MODE` | Web | Must match API demo auth for `?demo=1`. |
 

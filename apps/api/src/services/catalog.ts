@@ -239,6 +239,14 @@ export async function searchCatalog(query: string, limit = 24) {
   return rows.map(toTitleSummary);
 }
 
+async function tvMissingEpisodes(titleId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ c: count() })
+    .from(episodes)
+    .where(eq(episodes.titleId, titleId));
+  return Number(row?.c ?? 0) === 0;
+}
+
 export async function ensureTitleFresh(id: string) {
   const parsed = parseTitleId(id);
   if (!parsed) {
@@ -247,7 +255,11 @@ export async function ensureTitleFresh(id: string) {
   }
 
   const [row] = await db.select().from(titles).where(eq(titles.id, id)).limit(1);
-  if (row && !isStale(row.fetchedAt)) return row;
+  const needsTmdb =
+    !row ||
+    isStale(row.fetchedAt) ||
+    (row.mediaType === "tv" && (await tvMissingEpisodes(row.id)));
+  if (!needsTmdb) return row;
 
   if (config.tmdbApiKey) {
     await upsertFromTmdb(parsed.mediaType, parsed.tmdbId);

@@ -31,6 +31,10 @@ export const payOnlyGateCopy = {
   alreadyInstalledOpen: "open",
   getNimiqPay: "Get Nimiq Pay",
   inquiries: "Inquiries?",
+  /** Tooltip after desktop Already Installed? click. */
+  fullAccessOnlyOnMobile: "Full access only on mobile",
+  /** Tooltip on Get Nimiq Pay after the desktop Already Installed? click. */
+  learnAboutNimiqPay: "Learn about Nimiq Pay",
 } as const;
 
 export type CinimaSocialChannel = {

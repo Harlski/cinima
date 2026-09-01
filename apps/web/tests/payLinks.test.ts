@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canonicalWebOrigin,
   encodeMiniAppUrlQueryValue,
   nimiqPayMiniAppHttpsUrl,
   nimiqPayMiniAppSchemeUrl,
@@ -14,6 +15,29 @@ describe("pay mini app intent links", () => {
     expect(payMiniAppHost("https://cinima.app/")).toBe("cinima.app");
     expect(payMiniAppHost("http://localhost:5174")).toBe("localhost:5174");
     expect(payMiniAppHost("cinima.app")).toBe("cinima.app");
+  });
+
+  it("drops www so Pay intents match the trusted apex host", () => {
+    expect(payMiniAppHost("https://www.cinima.app")).toBe("cinima.app");
+    expect(payMiniAppHost("https://www.cinima.app/alice/t/movie/550")).toBe(
+      "cinima.app/alice/t/movie/550"
+    );
+    expect(nimiqPayMiniAppSchemeUrl("https://www.cinima.app")).toBe(
+      "nimiqpay://miniapp?url=cinima.app"
+    );
+    expect(nimiqPayMiniAppHttpsUrl("https://www.cinima.app")).toBe(
+      "https://nimpay.app/miniapps/open/cinima.app"
+    );
+    expect(nimiqPayMiniAppSchemeUrl("https://www.cinima.app/title/movie/550")).toBe(
+      "nimiqpay://miniapp?url=https://cinima.app/title/movie/550"
+    );
+  });
+
+  it("canonicalizes public origins to the apex host", () => {
+    expect(canonicalWebOrigin("https://www.cinima.app")).toBe("https://cinima.app");
+    expect(canonicalWebOrigin("https://www.cinima.app/")).toBe("https://cinima.app");
+    expect(canonicalWebOrigin("https://cinima.app")).toBe("https://cinima.app");
+    expect(canonicalWebOrigin("http://localhost:5174")).toBe("http://localhost:5174");
   });
 
   it("builds scheme and HTTPS intent URLs for bare origins", () => {

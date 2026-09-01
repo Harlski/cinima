@@ -20,6 +20,7 @@
               class="welcome-identicon"
               :address="walletAddress"
               :size="88"
+              plain
               alt=""
             />
           </button>
@@ -28,6 +29,7 @@
             class="welcome-identicon"
             :address="walletAddress"
             :size="88"
+            plain
             alt=""
           />
           <p class="welcome-message">{{ message }}</p>
@@ -83,7 +85,6 @@ defineEmits<{
   border: 0;
   background: transparent;
   cursor: pointer;
-  border-radius: 50%;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -97,7 +98,6 @@ defineEmits<{
 }
 
 .welcome-identicon {
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
   transition: transform 0.12s ease;
 }
 

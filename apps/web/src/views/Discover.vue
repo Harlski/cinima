@@ -12,7 +12,7 @@
     }"
   >
     <div v-if="loading && !showHandleStep" class="loading">
-      <NqSpinner />
+      <LoadingWait />
     </div>
 
     <HandleOnboarding
@@ -266,7 +266,7 @@ import { useGuidedTourStore } from "@/stores/guidedTour";
 import FollowingStrip from "@/components/FollowingStrip.vue";
 import Identicon from "@/components/Identicon.vue";
 import ForYouPicker from "@/components/ForYouPicker.vue";
-import NqSpinner from "@/components/NqSpinner.vue";
+import LoadingWait from "@/components/LoadingWait.vue";
 import PosterImg from "@/components/PosterImg.vue";
 import {
   loadFollowingStripSeen,

@@ -7,7 +7,7 @@
     }"
   >
     <div v-if="loading && !hasAnyItems" class="loading">
-      <NqSpinner />
+      <LoadingWait />
     </div>
 
     <div v-else-if="!hasAnyItems" class="empty">
@@ -109,7 +109,7 @@ import { useCommunityRecommends } from "@/composables/useCommunityRecommends";
 import TitleDeckPicker, { type DeckItem } from "@/components/TitleDeckPicker.vue";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import CommunityRecommends from "@/components/CommunityRecommends.vue";
-import NqSpinner from "@/components/NqSpinner.vue";
+import LoadingWait from "@/components/LoadingWait.vue";
 import { useTitleActionConfirm } from "@/composables/useTitleActionConfirm";
 import { watchlistButtonLabel } from "@/lib/titleActionLabels";
 import { useGuidedTourStore } from "@/stores/guidedTour";

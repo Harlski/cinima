@@ -1,18 +1,77 @@
 <template>
   <div class="pay-only-actions-root">
     <nav class="pay-only-actions" aria-label="Open Cinima in Nimiq Pay">
-      <a class="pay-only-link" :href="alreadyInstalledUrl">
-        {{ payOnlyGateCopy.alreadyInstalled }}
-        (<span class="pay-only-open">{{ payOnlyGateCopy.alreadyInstalledOpen }}</span>)
-      </a>
-      <a
-        class="pay-only-link"
-        :href="GET_NIMIQ_PAY_URL"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        {{ payOnlyGateCopy.getNimiqPay }}
-      </a>
+      <div class="pay-only-cta">
+        <GoldGlowShell
+          v-if="coach.glow === 'alreadyInstalled' && glowAlreadyInstalled"
+          radius="0.75rem"
+          class="pay-only-cta-glow"
+        >
+          <a
+            class="pay-only-link"
+            :href="alreadyInstalledUrl"
+            :aria-describedby="fullAccessTooltipId"
+            @click="onAlreadyInstalledClick"
+          >
+            {{ payOnlyGateCopy.alreadyInstalled }}
+            (<span class="pay-only-open">{{ payOnlyGateCopy.alreadyInstalledOpen }}</span>)
+          </a>
+        </GoldGlowShell>
+        <a
+          v-else
+          class="pay-only-link"
+          :href="alreadyInstalledUrl"
+          :aria-describedby="fullAccessTooltipId"
+          @click="onAlreadyInstalledClick"
+        >
+          {{ payOnlyGateCopy.alreadyInstalled }}
+          (<span class="pay-only-open">{{ payOnlyGateCopy.alreadyInstalledOpen }}</span>)
+        </a>
+        <span
+          v-if="coach.showFullAccessTooltip"
+          :id="fullAccessTipDomId"
+          class="pay-only-tooltip"
+          role="tooltip"
+        >
+          {{ payOnlyGateCopy.fullAccessOnlyOnMobile }}
+        </span>
+      </div>
+
+      <div class="pay-only-cta">
+        <GoldGlowShell
+          v-if="coach.glow === 'getNimiqPay' && glowAlreadyInstalled"
+          radius="0.75rem"
+          class="pay-only-cta-glow"
+        >
+          <a
+            class="pay-only-link"
+            :href="GET_NIMIQ_PAY_URL"
+            target="_blank"
+            rel="noopener noreferrer"
+            :aria-describedby="learnPayTooltipId"
+          >
+            {{ payOnlyGateCopy.getNimiqPay }}
+          </a>
+        </GoldGlowShell>
+        <a
+          v-else
+          class="pay-only-link"
+          :href="GET_NIMIQ_PAY_URL"
+          target="_blank"
+          rel="noopener noreferrer"
+          :aria-describedby="learnPayTooltipId"
+        >
+          {{ payOnlyGateCopy.getNimiqPay }}
+        </a>
+        <span
+          v-if="coach.showLearnPayTooltip"
+          :id="learnPayTipDomId"
+          class="pay-only-tooltip"
+          role="tooltip"
+        >
+          {{ payOnlyGateCopy.learnAboutNimiqPay }}
+        </span>
+      </div>
     </nav>
 
     <p v-if="showInquiriesLabel" class="pay-only-inquiries-label">
@@ -48,7 +107,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
+import GoldGlowShell from "@/components/GoldGlowShell.vue";
 import NqIcon from "@/components/NqIcon.vue";
 import {
   GET_NIMIQ_PAY_URL,
@@ -58,6 +118,12 @@ import {
   payOnlyGateCopy,
   type CinimaSocialChannel,
 } from "@/lib/contact";
+import { readMobileHintSignals, seemsLikeMobile } from "@/lib/mobileHint";
+import {
+  afterDesktopAlreadyInstalledClick,
+  initialPayOnlyCoachState,
+  shouldInterceptAlreadyInstalledClick,
+} from "@/lib/payOnlyCoach";
 
 const props = withDefaults(
   defineProps<{
@@ -66,10 +132,13 @@ const props = withDefaults(
     socialVariant?: "landing" | "payGate";
     channels?: CinimaSocialChannel[];
     showInquiriesLabel?: boolean;
+    /** Gold rim + desktop click coach on the Sorry! pay-only gate. */
+    glowAlreadyInstalled?: boolean;
   }>(),
   {
     socialVariant: "payGate",
     showInquiriesLabel: true,
+    glowAlreadyInstalled: false,
   }
 );
 
@@ -78,6 +147,33 @@ const channels = computed(
     props.channels ??
     (props.socialVariant === "landing" ? cinimaSocial : payGateSocial)
 );
+
+const isDesktop =
+  typeof window !== "undefined" && !seemsLikeMobile(readMobileHintSignals());
+const coach = ref(initialPayOnlyCoachState());
+
+const fullAccessTipDomId = "pay-only-full-access-tip";
+const learnPayTipDomId = "pay-only-learn-pay-tip";
+
+const fullAccessTooltipId = computed(() =>
+  coach.value.showFullAccessTooltip ? fullAccessTipDomId : undefined
+);
+const learnPayTooltipId = computed(() =>
+  coach.value.showLearnPayTooltip ? learnPayTipDomId : undefined
+);
+
+function onAlreadyInstalledClick(event: MouseEvent): void {
+  if (
+    !shouldInterceptAlreadyInstalledClick({
+      coachEnabled: props.glowAlreadyInstalled,
+      isDesktop,
+    })
+  ) {
+    return;
+  }
+  event.preventDefault();
+  coach.value = afterDesktopAlreadyInstalledClick(coach.value);
+}
 </script>
 
 <style scoped>
@@ -94,6 +190,20 @@ const channels = computed(
   flex-direction: column;
   align-items: stretch;
   gap: 0.55rem;
+  width: 100%;
+}
+
+.pay-only-cta {
+  position: relative;
+  width: 100%;
+}
+
+.pay-only-cta-glow {
+  display: block;
+  width: 100%;
+}
+
+.pay-only-cta-glow :deep(.gold-glow-content) {
   width: 100%;
 }
 
@@ -118,6 +228,47 @@ const channels = computed(
 
 .pay-only-open {
   color: var(--gold);
+}
+
+.pay-only-tooltip {
+  position: absolute;
+  left: calc(100% + 0.7rem);
+  top: 50%;
+  z-index: 3;
+  transform: translateY(-50%);
+  width: max-content;
+  max-width: 11.5rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--gold);
+  border-radius: 0.55rem;
+  background: var(--colors-neutral-50);
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.3;
+  text-align: left;
+  box-shadow: 0 8px 20px color-mix(in oklch, var(--colors-neutral) 40%, transparent);
+  pointer-events: none;
+}
+
+.pay-only-tooltip::before {
+  content: "";
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 6px solid transparent;
+  border-right-color: var(--gold);
+}
+
+.pay-only-tooltip::after {
+  content: "";
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%) translateX(1px);
+  border: 6px solid transparent;
+  border-right-color: var(--colors-neutral-50);
 }
 
 .pay-only-inquiries-label {
@@ -166,5 +317,33 @@ const channels = computed(
 .pay-only-inquiry :deep(.nq-icon) {
   width: 18px;
   height: 18px;
+}
+
+@media (max-width: 42rem) {
+  .pay-only-tooltip {
+    left: 50%;
+    right: auto;
+    top: auto;
+    bottom: calc(100% + 0.45rem);
+    transform: translateX(-50%);
+  }
+
+  .pay-only-tooltip::before {
+    right: auto;
+    left: 50%;
+    top: 100%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--gold);
+  }
+
+  .pay-only-tooltip::after {
+    right: auto;
+    left: 50%;
+    top: 100%;
+    transform: translateX(-50%) translateY(-1px);
+    border: 6px solid transparent;
+    border-top-color: var(--colors-neutral-50);
+  }
 }
 </style>
