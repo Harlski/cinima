@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "typecheck": "pnpm run --dir ../../packages/shared build && vue-tsc --noEmit",
     "test": "vitest run",
-    "compose:x-header": "tsx scripts/compose-x-header.ts"
+    "compose:x-header": "tsx scripts/compose-x-header.ts",
+    "compose:x-pinned-card": "tsx scripts/compose-x-pinned-card.ts"
   },
   "dependencies": {
     "@cinima/shared": "workspace:*",

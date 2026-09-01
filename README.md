@@ -1,32 +1,48 @@
 # Cinima
 
-Social taste discovery for movies and TV — a **Nimiq Pay Mini App**.
+<img src="apps/web/public/social/x-pinned-card.png" alt="Cinima: Your Watchlist, Your Favorites, Your Recommendations" width="100%">
 
-Wallet is the account. Favorites are public. Catalog metadata and ratings come from **TMDB** and are cached in the backend; clients never call upstream APIs. Cinima does not charge NIM for catalog data.
+Social taste discovery for movies and TV. A [Nimiq Pay](https://nimpay.app/) Mini App.
+
+Favorite titles you love, Recommend the ones that stand out, and find what to watch through taste overlap with people like you.
+
+**[Open in Nimiq Pay](https://nimpay.app/miniapps/open/cinima.app)** · **[cinima.app](https://cinima.app)**
+
+Your wallet is the account. Catalog names, posters, synopses, and ratings come from [TMDB](https://www.themoviedb.org/) and are cached by the API. The client never calls TMDB. Cinima does not charge NIM for catalog data.
 
 This application uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.
 
-## Features
+## Use it
 
-- Public Landing at `/` (what Cinima is + Pay-only); Pay-only *identity* for the main app; public `/:username` profiles and Title Share `/:handle/t/{movie|tv}/{tmdbId}` pages stay open on the web
-- Wallet session auth via signed challenge (`nimiq.sign`), plus local `?demo=1` bypass
-- Catalog sync TMDB → LibSQL/SQLite cache (seed catalog when keys missing)
-- Bottom tabs: Discover / Watchlist / Search / Me (+ title stack)
-- Cold start: favorite ≥3 titles, then Discover switches to taste overlap
-- Ratings and TV heat-maps are always visible (TMDB `vote_average`)
-- Free flat comments and thanks (no treasury payments)
-- Soft handle prompt for shareable public URLs
-- In-app TMDB attribution and source terms (Me → Sources & terms)
+The signed-in app runs inside Nimiq Pay. Landing, Public Profiles, and Title Share pages are public on the web.
+
+- HTTPS: [https://nimpay.app/miniapps/open/cinima.app](https://nimpay.app/miniapps/open/cinima.app)
+- Custom scheme: `nimiqpay://miniapp?url=cinima.app`
+- Site: [https://cinima.app](https://cinima.app)
+
+Integration follows [nimiq.dev/mini-apps](https://nimiq.dev/mini-apps): `init()` → `listAccounts()` → `sign()` for a wallet session.
+
+## What it does
+
+- **Favorites** are public taste marks. After you Favorite at least three titles, Discover switches to taste overlap.
+- **Recommends** are a gold-star upgrade on a Favorite (at most six movies and six TV shows).
+- **Watchlist** (My List in the app) is a private save-for-later queue.
+- **Thanks** are a directed signal that someone's Favorite was useful. Comments and Thanks are free.
+- **Handles** make shareable URLs. Public Profile is `/:handle`. Title Share is `/:handle/t/{movie|tv}/{tmdbId}`.
+
+In-app TMDB attribution lives on Me → Sources & terms.
 
 ## Layout
 
 ```
-apps/web         Vue 3 + Vite + TS + Vue Router + Pinia + @nimiq/mini-app-sdk
-apps/api         Hono + Drizzle + LibSQL/SQLite
-packages/shared  Title IDs, payment memo codecs, DTOs
+apps/web         Vue 3, Vite, Vue Router, Pinia, @nimiq/mini-app-sdk
+apps/api         Hono, Drizzle, LibSQL/SQLite
+packages/shared  Title IDs, Pay links, DTOs
 ```
 
-## Quick start
+Node 20+ and [pnpm](https://pnpm.io/) 9.15.0.
+
+## Local development
 
 ```bash
 cp .env.example .env
@@ -36,38 +52,51 @@ pnpm --filter @cinima/shared build
 pnpm dev
 ```
 
-- Web (local): http://localhost:5174/?demo=1
-- API health: http://localhost:8787/health
+- Web: [http://localhost:5174/?demo=1](http://localhost:5174/?demo=1)
+- API: [http://localhost:8787/health](http://localhost:8787/health)
 
-In Nimiq Pay Discover, paste your machine's LAN URL for the Vite app (binds `0.0.0.0` via `server.host`). Do not use `?demo=1` inside Pay; the injected wallet is used instead.
+`DEMO_MODE` / `VITE_DEMO_MODE` is for local desktop only (`?demo=1`). Do not use demo auth inside Pay; Pay injects the wallet.
 
-Share / open links use the [official mini app intents](https://nimiq.dev/mini-apps):
+Vite binds `0.0.0.0`. To try the app from Pay on a phone, paste your machine's LAN URL for the Vite app. Leave `?demo=1` off.
 
-- Custom scheme: `nimiqpay://miniapp?url=cinima.app`
-- HTTPS: `https://nimpay.app/miniapps/open/cinima.app`
-
-Web CTAs and API `openInPayUrl` use the HTTPS form (with the live origin / `WEB_ORIGIN` host).
-
-Integration follows [nimiq.dev/mini-apps](https://nimiq.dev/mini-apps): `init()` → `listAccounts()` → `sign()` for login. The provider is **never** stored in a Vue `ref` (private fields break under Proxy).
-
-With `DEMO_MODE=true` / `VITE_DEMO_MODE=1`, demo auth is used **only outside Pay** (desktop `?demo=1`).
+```bash
+pnpm test
+pnpm typecheck
+```
 
 ### Demo path
 
-1. Open `/?demo=1` — demo wallet session connects
-2. Discover — favorite ≥3 titles
-3. Discover refreshes with overlap suggestions
-4. Open a TV title — ratings and heat-map are visible
-5. Post a comment
-6. Me — set handle — open `/:username` public page, or share a Title from its page
+1. Open `/?demo=1`.
+2. Favorite at least three titles on Discover.
+3. Discover refreshes with overlap suggestions.
+4. Open a TV title for ratings and the episode heat-map.
+5. Post a comment.
+6. On Me, set a Handle, then open `/:handle` or share a title.
 
 ## Environment
 
-| Variable | Purpose |
-|---|---|
-| `TMDB_API_KEY` | Live search / detail / ratings sync (optional) |
-| `DEMO_MODE` / `VITE_DEMO_MODE` | Local demo auth |
+Root `.env` is read by the API. `apps/web/.env` is read by Vite.
+
+| Variable | Where | Purpose |
+| --- | --- | --- |
+| `TMDB_API_KEY` | API | Live search, detail, and ratings sync. Optional; a seed catalog works without it. |
+| `DATABASE_URL` | API | Local file SQLite, or a remote LibSQL URL. |
+| `DATABASE_AUTH_TOKEN` | API | Remote LibSQL only. |
+| `SESSION_SECRET` | API | Signs the wallet session. Change this before any shared deploy. |
+| `DEMO_MODE` | API | Local demo auth. Keep `false` in production. |
+| `WEB_ORIGIN` | API | Public site origin (CORS, share links, Pay intents). |
+| `NIMIQ_RPC_URL` | API | Nimiq RPC for signature checks. |
+| `VITE_SITE_ORIGIN` | Web | Public site origin used by the client. |
+| `VITE_API_BASE` | Web | API origin. Empty in local dev (Vite proxies `/api`). |
+| `VITE_DEMO_MODE` | Web | Must match API demo auth for `?demo=1`. |
+
+See `.env.example` and `apps/web/.env.example`.
 
 ## License
 
-MIT
+[MIT](LICENSE)
+
+## Contact
+
+- X: [cinima_app](https://x.com/cinima_app)
+- Email: [cinima.app@gmail.com](mailto:cinima.app@gmail.com)
