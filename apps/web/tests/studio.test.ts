@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { CREATOR_WALLET, CREATOR_WALLET_DISPLAY } from "@cinima/shared";
-import { formatActiveMs, studioEntryVisible } from "../src/lib/studio";
+import {
+  decideStudioOpen,
+  formatActiveMs,
+  studioEntryVisible,
+} from "../src/lib/studio";
 
 describe("Studio entry", () => {
   it("is visible only for the Creator wallet", () => {
@@ -9,6 +13,23 @@ describe("Studio entry", () => {
     expect(studioEntryVisible("NQ01 OTHER")).toBe(false);
     expect(studioEntryVisible(null)).toBe(false);
     expect(studioEntryVisible("")).toBe(false);
+  });
+});
+
+describe("Studio open", () => {
+  it("keeps the Creator on Studio when the snapshot fetch fails", () => {
+    expect(
+      decideStudioOpen({
+        wallet: CREATOR_WALLET,
+        fetchError: "not_found",
+      })
+    ).toEqual({ kind: "error", message: "not_found" });
+  });
+
+  it("sends a non-Creator Handle back to Me", () => {
+    expect(decideStudioOpen({ wallet: "NQ01 OTHER" })).toEqual({
+      kind: "redirect-me",
+    });
   });
 });
 

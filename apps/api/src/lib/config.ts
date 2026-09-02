@@ -30,6 +30,10 @@ export const config = {
   get studioInline() {
     return process.env.STUDIO_INLINE !== "0";
   },
+  /** Docker DNS to the Studio container. Empty means this process does not forward Studio. */
+  get studioUpstream() {
+    return envString("STUDIO_UPSTREAM");
+  },
   get demoMode() {
     return envBool("DEMO_MODE", true);
   },

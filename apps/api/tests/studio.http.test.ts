@@ -131,11 +131,42 @@ describe("Studio HTTP API", () => {
     expect(body.totals).toBeUndefined();
   });
 
-  it("does not serve Studio from the public API process", async () => {
+  it("does not compute Studio on the public API when upstream is unset", async () => {
     const res = await publicApp.fetch(
       new Request("http://test/api/studio", { headers: creatorHeaders })
     );
     expect(res.status).toBe(404);
+    expect(await res.text()).toMatch(/not found/i);
+  });
+
+  it("returns 502 from the public API when Studio upstream is down", async () => {
+    process.env.STUDIO_UPSTREAM = "http://127.0.0.1:1";
+    try {
+      const res = await publicApp.fetch(
+        new Request("http://test/api/studio", { headers: creatorHeaders })
+      );
+      expect(res.status).toBe(502);
+      expect(await res.json()).toEqual({ error: "studio_unavailable" });
+    } finally {
+      delete process.env.STUDIO_UPSTREAM;
+    }
+  });
+
+  it("forwards public /api/studio to the Studio process", async () => {
+    const { proxyStudio } = await import("../src/lib/studioProxy.js");
+    const res = await proxyStudio(
+      new Request("http://test/api/studio", { headers: creatorHeaders }),
+      {
+        upstream: "http://studio.local",
+        fetchImpl: (input, init) => {
+          const url = typeof input === "string" ? input : input.url;
+          return studioApp.fetch(new Request(url, init));
+        },
+      }
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { totals?: { users: number } };
+    expect(body.totals?.users).toBe(2);
   });
 
   it("returns the Studio snapshot only to the Creator", async () => {

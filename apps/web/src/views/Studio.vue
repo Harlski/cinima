@@ -4,6 +4,14 @@
       <LoadingWait />
     </div>
 
+    <div v-else-if="loadError" class="content">
+      <h1>Studio</h1>
+      <p class="lede">{{ loadError }}</p>
+      <button type="button" class="nq-pill-blue nq-pill-stretch" @click="loadStudio">
+        Retry
+      </button>
+    </div>
+
     <div v-else-if="snapshot" class="content">
       <h1>Studio</h1>
       <p class="lede">How people are using Cinima.</p>
@@ -165,7 +173,7 @@ import { useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
 import { useAuthStore } from "@/stores/auth";
 import LoadingWait from "@/components/LoadingWait.vue";
-import { formatActiveMs, studioEntryVisible } from "@/lib/studio";
+import { decideStudioOpen, formatActiveMs } from "@/lib/studio";
 import { displayName, type StudioPersonRef, type StudioSnapshot } from "@cinima/shared";
 
 const router = useRouter();
@@ -174,6 +182,7 @@ const { request } = useApi();
 
 const loading = ref(true);
 const snapshot = ref<StudioSnapshot | null>(null);
+const loadError = ref<string | null>(null);
 
 function label(row: StudioPersonRef): string {
   return displayName(row.handle, row.walletAddress);
@@ -187,19 +196,36 @@ function when(iso: string): string {
 
 const signupDays = ref<{ date: string; count: number }[]>([]);
 
-onMounted(async () => {
-  if (!studioEntryVisible(auth.user?.walletAddress)) {
+async function loadStudio() {
+  const gate = decideStudioOpen({ wallet: auth.user?.walletAddress });
+  if (gate.kind === "redirect-me") {
     await router.replace({ name: "me" });
     return;
   }
+  loading.value = true;
+  loadError.value = null;
   try {
     snapshot.value = await request<StudioSnapshot>("/studio");
     signupDays.value = (snapshot.value.signupsByDay || []).filter((d) => d.count > 0);
-  } catch {
-    await router.replace({ name: "me" });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Studio is unavailable.";
+    const failed = decideStudioOpen({
+      wallet: auth.user?.walletAddress,
+      fetchError: message,
+    });
+    if (failed.kind === "redirect-me") {
+      await router.replace({ name: "me" });
+      return;
+    }
+    loadError.value = "Could not load Studio. Try again in a moment.";
+    snapshot.value = null;
   } finally {
     loading.value = false;
   }
+}
+
+onMounted(() => {
+  void loadStudio();
 });
 </script>
 

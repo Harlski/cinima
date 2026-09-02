@@ -92,6 +92,7 @@ Root `.env` is read by the API. `apps/web/.env` is read by Vite.
 | `VITE_DEMO_MODE` | Web | Must match API demo auth for `?demo=1`. |
 | `STUDIO_PORT` | API | Studio listen port. Default `8788`. |
 | `STUDIO_INLINE` | API | Local `pnpm dev` binds Studio in-process unless `0`. Docker API sets `0`. |
+| `STUDIO_UPSTREAM` | API | Studio container URL. Docker sets `http://studio:8788` so `api.cinima.app/api/studio` reaches Studio. |
 
 See `.env.example` and `apps/web/.env.example`.
 

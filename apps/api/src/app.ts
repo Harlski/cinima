@@ -96,6 +96,7 @@ import {
   thankAllSuggesters,
 } from "./services/social.js";
 import { recordHeartbeat, recordSearch, recordView } from "./services/usage.js";
+import { proxyStudio } from "./lib/studioProxy.js";
 
 type Vars = {
   user: typeof schema.users.$inferSelect;
@@ -1003,6 +1004,12 @@ app.post("/api/usage/heartbeat", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
   await recordHeartbeat(user.walletAddress);
   return c.json({ ok: true });
+});
+
+app.get("/api/studio", async (c) => {
+  const upstream = config.studioUpstream;
+  if (!upstream) return c.body("404 Not Found", 404);
+  return proxyStudio(c.req.raw, { upstream });
 });
 
 export { app };

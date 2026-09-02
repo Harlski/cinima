@@ -1,10 +1,8 @@
 # Cinima API on Linode (or any VPS). Run from repo root:
 #   docker compose -f deploy/compose.api.yml up -d --build
 #
-# Host reverse proxy for api.cinima.app should split:
-#   /api/studio*  -> 127.0.0.1:8788
-#   everything else -> 127.0.0.1:8787
-# See deploy/Caddyfile.api.example.
+# Host reverse proxy can keep sending api.cinima.app to 127.0.0.1:8787.
+# The API container forwards GET /api/studio to the Studio container.
 name: cinima-api
 
 services:
@@ -19,6 +17,7 @@ services:
       - ../.env
     environment:
       STUDIO_INLINE: "0"
+      STUDIO_UPSTREAM: http://studio:8788
     ports:
       - "127.0.0.1:8787:8787"
     volumes:
