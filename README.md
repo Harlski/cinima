@@ -36,7 +36,7 @@ In-app TMDB attribution lives on Me → Sources & terms.
 
 ```
 apps/web         Vue 3, Vite, Vue Router, Pinia, @nimiq/mini-app-sdk
-apps/api         Hono, Drizzle, LibSQL/SQLite
+apps/api         Hono, Drizzle, LibSQL/SQLite (public API on :8787; Studio on :8788)
 packages/shared  Title IDs, Pay links, DTOs
 ```
 
@@ -54,6 +54,7 @@ pnpm dev
 
 - Web: [http://localhost:5174/?demo=1](http://localhost:5174/?demo=1)
 - API: [http://localhost:8787/health](http://localhost:8787/health)
+- Studio: [http://localhost:8788/health](http://localhost:8788/health) (Creator-gated reads; local `pnpm dev` binds this in-process)
 
 `DEMO_MODE` / `VITE_DEMO_MODE` is for local desktop only (`?demo=1`). Do not use demo auth inside Pay; Pay injects the wallet.
 
@@ -87,8 +88,10 @@ Root `.env` is read by the API. `apps/web/.env` is read by Vite.
 | `WEB_ORIGIN` | API | Public site origin (CORS, share links, Pay intents). Production is `https://cinima.app` (no www). |
 | `NIMIQ_RPC_URL` | API | Nimiq RPC for signature checks. |
 | `VITE_SITE_ORIGIN` | Web | Public site origin used by the client. Production is `https://cinima.app`. |
-| `VITE_API_BASE` | Web | API origin. Empty in local dev (Vite proxies `/api`). |
+| `VITE_API_BASE` | Web | API origin. Empty in local dev (Vite proxies `/api` and `/api/studio`). |
 | `VITE_DEMO_MODE` | Web | Must match API demo auth for `?demo=1`. |
+| `STUDIO_PORT` | API | Studio listen port. Default `8788`. |
+| `STUDIO_INLINE` | API | Local `pnpm dev` binds Studio in-process unless `0`. Docker API sets `0`. |
 
 See `.env.example` and `apps/web/.env.example`.
 

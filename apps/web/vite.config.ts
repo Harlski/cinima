@@ -50,6 +50,7 @@ export default defineConfig(({ mode }) => {
     port: 5174,
     strictPort: true,
     proxy: {
+      "/api/studio": "http://127.0.0.1:8788",
       "/api": "http://127.0.0.1:8787",
       "/health": "http://127.0.0.1:8787",
       // Same-origin proxy so the X-header lab can fetch posters for PNG export (TMDB has no CORS).

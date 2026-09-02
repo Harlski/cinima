@@ -260,3 +260,92 @@ export type PricesResponse = {
   commentLuna: number;
   treasuryAddress: string;
 };
+
+export type StudioTotals = {
+  users: number;
+  signedUpToday: number;
+  signedUp7d: number;
+  activeToday: number;
+  active7d: number;
+  activeMsToday: number;
+  searchesToday: number;
+  viewsToday: number;
+  shares: number;
+  sharesToday: number;
+  follows: number;
+  followsToday: number;
+  favorites: number;
+  recommends: number;
+};
+
+export type StudioDayCount = {
+  date: string;
+  count: number;
+};
+
+export type StudioPersonRef = {
+  walletAddress: string;
+  handle: string | null;
+};
+
+export type StudioSignupRow = StudioPersonRef & {
+  createdAt: string;
+};
+
+export type StudioSearchRow = StudioPersonRef & {
+  query: string;
+  createdAt: string;
+};
+
+export type StudioViewRow = StudioPersonRef & {
+  titleId: string;
+  title: string | null;
+  createdAt: string;
+};
+
+export type StudioShareRow = StudioPersonRef & {
+  kind: ShareLinkKind;
+  titleId: string | null;
+  title: string | null;
+  createdAt: string;
+};
+
+export type StudioFollowRow = {
+  follower: StudioPersonRef;
+  followee: StudioPersonRef;
+  createdAt: string;
+};
+
+export type StudioQueryCount = {
+  query: string;
+  count: number;
+};
+
+export type StudioTitleCount = {
+  titleId: string;
+  title: string | null;
+  count: number;
+};
+
+export type StudioPersonRow = StudioPersonRef & {
+  createdAt: string;
+  lastActiveAt: string | null;
+  activeMs7d: number;
+  favoriteCount: number;
+  followingCount: number;
+  followerCount: number;
+};
+
+export type StudioSnapshot = {
+  totals: StudioTotals;
+  signupsByDay: StudioDayCount[];
+  recentSignups: StudioSignupRow[];
+  recentSearches: StudioSearchRow[];
+  recentViews: StudioViewRow[];
+  recentShares: StudioShareRow[];
+  recentFollows: StudioFollowRow[];
+  topSearches: StudioQueryCount[];
+  topViews: StudioTitleCount[];
+  topShares: StudioTitleCount[];
+  people: StudioPersonRow[];
+};

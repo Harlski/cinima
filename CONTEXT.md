@@ -100,6 +100,18 @@ _Avoid_: user search, directory as a top-level tab, invite sheet
 How many Thanks other users have sent to this Handle. The social reputation signal shown in Find people.
 _Avoid_: thank rating, thanks score, tip count
 
+**Creator**:
+The wallet that operates Cinima. The guided tour introduces this Handle; Studio is visible only to this wallet when signed in.
+_Avoid_: admin, owner, superuser, operator as a product term
+
+**Studio**:
+The Creator-only read of how people use Cinima: signups, Presence, searches, title views, shares, and follows. Not part of the public product. Entry is at the bottom of Me.
+_Avoid_: admin dashboard, analytics, backoffice, CMS
+
+**Presence**:
+Time a signed-in Handle spent with Cinima in the foreground, counted in Studio. Distinct from a wallet session token.
+_Avoid_: session duration, screen time, DAU as a product term
+
 **Landing**:
 The public root page (`/` and `/gate`) that explains what Cinima is. Shows a scrolling strip of title-card posters loaded from the TMDB image CDN (curated `poster_path` list; not vendored in the repo), with TMDB attribution on the page. Outside Nimiq Pay the CTA is Explore (same Enter styling; opens a centered pay-only gate modal with Already Installed? (open) in a gold glow via `nimiqpay://`, Get Nimiq Pay, and Inquiries; on a desktop, clicking Already Installed? shows a Full access only on mobile tooltip, then moves the gold glow to Get Nimiq Pay with a Learn about Nimiq Pay tooltip); inside Pay the CTA is Enter, which connects the wallet while staying on Landing, shows a Welcome / Welcome Back identicon overlay, then enters Discover (Favorites onboarding or For You). Landing never auto-boots auth. Contact is X (https://x.com/cinima_app) and Email (cinima.app@gmail.com). Public Profile / Title Share / Short Share show a floating Explore CINIMA button (no bar chrome; `2.75rem + safe-area-inset-bottom` lift). Outside Pay, title taps open a gate modal that matches Title Share layout (poster, year / media / rating, overview) plus Already Installed / Get Nimiq Pay, X + Telegram, and View on IMDb.
 _Avoid_: marketing site, splash, home feed, auto sign-in on open, navigating into the app before wallet connect, vendoring studio posters in git

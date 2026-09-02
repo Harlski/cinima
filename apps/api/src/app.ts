@@ -95,6 +95,7 @@ import {
   listSuggesters,
   thankAllSuggesters,
 } from "./services/social.js";
+import { recordHeartbeat, recordSearch, recordView } from "./services/usage.js";
 
 type Vars = {
   user: typeof schema.users.$inferSelect;
@@ -981,6 +982,27 @@ app.get("/api/s/:code", async (c) => {
   }
 
   return c.json(resolved);
+});
+
+app.post("/api/usage/search", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  const body = (await c.req.json().catch(() => ({}))) as { query?: string };
+  await recordSearch(user.walletAddress, String(body.query ?? ""));
+  return c.json({ ok: true });
+});
+
+app.post("/api/usage/view", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  const body = (await c.req.json().catch(() => ({}))) as { titleId?: string };
+  const result = await recordView(user.walletAddress, String(body.titleId ?? ""));
+  if ("error" in result) return c.json({ error: result.error }, 400);
+  return c.json({ ok: true });
+});
+
+app.post("/api/usage/heartbeat", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  await recordHeartbeat(user.walletAddress);
+  return c.json({ ok: true });
 });
 
 export { app };

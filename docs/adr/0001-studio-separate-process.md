@@ -1,0 +1,3 @@
+# Studio is a separate process that reads the same database
+
+Studio must not live on the public API process: a bug or overload on catalog/social routes should not be the same process that holds Creator-only reads, and Studio must stay off the main Docker container's command. The Mini App still writes search, view, and heartbeat records through the public API (the client already talks there); Studio is a second container that mounts the same SQLite volume and serves only Creator-gated GETs. Unsigned or non-Creator callers get no snapshot body (401 without a session, 404 otherwise).

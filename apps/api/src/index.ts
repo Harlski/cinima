@@ -3,6 +3,7 @@ import "./load-env.js";
 import { serve } from "@hono/node-server";
 import { sql } from "drizzle-orm";
 import { app } from "./app.js";
+import { studioApp } from "./studio.js";
 import { db } from "./db/index.js";
 import { migrate } from "./db/migrate.js";
 import * as schema from "./db/schema.js";
@@ -48,6 +49,10 @@ async function main() {
     `[cinima-api] http://${hostname}:${config.port} demo=${config.demoMode} tmdb=${config.tmdbApiKey ? "on" : "off"}`
   );
   serve({ fetch: app.fetch, port: config.port, hostname });
+  if (config.studioInline) {
+    serve({ fetch: studioApp.fetch, port: config.studioPort, hostname });
+    console.log(`[cinima-studio] http://${hostname}:${config.studioPort} (inline)`);
+  }
 }
 
 if (!process.env.VITEST) {

@@ -110,6 +110,23 @@ const statements = [
     wallet_address TEXT NOT NULL,
     created_at INTEGER NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS usage_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wallet_address TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    query TEXT,
+    title_id TEXT,
+    created_at INTEGER NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS usage_events_kind_created ON usage_events(kind, created_at)`,
+  `CREATE INDEX IF NOT EXISTS usage_events_wallet_kind ON usage_events(wallet_address, kind)`,
+  `CREATE TABLE IF NOT EXISTS presence_days (
+    wallet_address TEXT NOT NULL,
+    day TEXT NOT NULL,
+    active_ms INTEGER NOT NULL DEFAULT 0,
+    last_heartbeat_at INTEGER NOT NULL,
+    PRIMARY KEY (wallet_address, day)
+  )`,
 ];
 
 export async function migrate() {

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "dev:studio": "tsx watch src/studio-index.ts",
     "build": "pnpm run --dir ../../packages/shared build && tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "typecheck": "pnpm run --dir ../../packages/shared build && tsc -p tsconfig.json --noEmit",

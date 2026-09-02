@@ -64,19 +64,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, watch } from "vue";
+import { computed, onMounted, onUnmounted, watch } from "vue";
 import { RouterView, RouterLink, useRoute } from "vue-router";
 import { ACTIVITY_UI_VISIBLE } from "@cinima/shared";
 import { useViewportChromeLock } from "@/composables/useViewportChromeLock";
 import { useFavoritesStore } from "@/stores/favorites";
 import { useWatchlistStore } from "@/stores/watchlist";
 import { useAuthStore } from "@/stores/auth";
+import { useApi } from "@/composables/useApi";
 import AppBrandHeader from "@/components/AppBrandHeader.vue";
 import GuidedTourHost from "@/components/GuidedTourHost.vue";
 import Identicon from "@/components/Identicon.vue";
 import NqIcon from "@/components/NqIcon.vue";
 import TourSpotlight from "@/components/TourSpotlight.vue";
 import { TOUR_SPOTLIGHT } from "@/lib/guidedTour";
+import { USAGE_HEARTBEAT_MS } from "@/lib/studio";
 
 useViewportChromeLock();
 
@@ -84,7 +86,29 @@ const route = useRoute();
 const favoritesStore = useFavoritesStore();
 const watchlistStore = useWatchlistStore();
 const authStore = useAuthStore();
+const { request } = useApi();
 const walletAddress = computed(() => authStore.user?.walletAddress || "");
+
+function sendHeartbeat() {
+  if (!authStore.token || !authStore.user) return;
+  if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+  void request("/usage/heartbeat", { method: "POST" }).catch(() => {});
+}
+
+let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+
+function startHeartbeat() {
+  stopHeartbeat();
+  sendHeartbeat();
+  heartbeatTimer = window.setInterval(sendHeartbeat, USAGE_HEARTBEAT_MS);
+}
+
+function stopHeartbeat() {
+  if (heartbeatTimer != null) {
+    window.clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
+}
 
 function resetAppContentScroll() {
   const el = document.querySelector(".app-content");
@@ -103,6 +127,13 @@ watch(
 onMounted(() => {
   favoritesStore.load();
   watchlistStore.load();
+  startHeartbeat();
+  document.addEventListener("visibilitychange", sendHeartbeat);
+});
+
+onUnmounted(() => {
+  stopHeartbeat();
+  document.removeEventListener("visibilitychange", sendHeartbeat);
 });
 </script>
 

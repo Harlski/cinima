@@ -28,7 +28,7 @@ WORKDIR /app/apps/api
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 
-EXPOSE 8787
+EXPOSE 8787 8788
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD wget -qO- "http://127.0.0.1:${PORT:-8787}/health" >/dev/null || exit 1

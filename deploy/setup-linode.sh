@@ -91,6 +91,8 @@ WEB_ORIGIN=https://cinima.app
 DEMO_MODE=false
 TMDB_API_KEY=
 NIMIQ_RPC_URL=https://rpc.nimiqwatch.com
+STUDIO_PORT=8788
+STUDIO_INLINE=0
 EOF
   chown "$DEPLOY_USER:$DEPLOY_USER" "$APP_DIR/.env"
   chmod 600 "$APP_DIR/.env"

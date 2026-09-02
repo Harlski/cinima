@@ -11,12 +11,22 @@ export const useCatalogStore = defineStore("catalog", () => {
     const data = await request<{ results: TitleSummary[] }>(
       `/search?q=${encodeURIComponent(query)}`
     );
+    if (query.trim().length >= 3) {
+      void request("/usage/search", {
+        method: "POST",
+        body: JSON.stringify({ query }),
+      }).catch(() => {});
+    }
     return data.results;
   };
 
   const fetchDetail = async (id: string): Promise<TitleDetail> => {
     const data = await request<TitleDetail>(`/titles/${encodeURIComponent(id)}`);
     cache.value.set(id, data);
+    void request("/usage/view", {
+      method: "POST",
+      body: JSON.stringify({ titleId: id }),
+    }).catch(() => {});
     return data;
   };
 

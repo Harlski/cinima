@@ -1,4 +1,10 @@
-import { formatWallet, MAX_RECOMMENDS, normalizeWallet } from "@cinima/shared";
+import {
+  CREATOR_WALLET,
+  CREATOR_WALLET_DISPLAY,
+  isCreatorWallet,
+  MAX_RECOMMENDS,
+  normalizeWallet,
+} from "@cinima/shared";
 
 /** Spotlight target ids — every step spotlight must appear as data-tour in templates. */
 export const TOUR_SPOTLIGHT = {
@@ -26,12 +32,13 @@ export const ALL_TOUR_SPOTLIGHT_IDS: readonly TourSpotlightId[] =
   Object.values(TOUR_SPOTLIGHT);
 
 /** Cinima Creator wallet shown during the Find people tour step. */
-export const TOUR_CREATOR_WALLET_RAW =
-  "NQ63 XN7E 020H H0RN RD6G 7QT1 Y7AM H1P5 H84B";
+export const TOUR_CREATOR_WALLET_RAW = CREATOR_WALLET_DISPLAY;
 
-export const TOUR_CREATOR_WALLET = normalizeWallet(TOUR_CREATOR_WALLET_RAW);
+export const TOUR_CREATOR_WALLET = CREATOR_WALLET;
 
-export const TOUR_CREATOR_WALLET_DISPLAY = formatWallet(TOUR_CREATOR_WALLET_RAW);
+export const TOUR_CREATOR_WALLET_DISPLAY = CREATOR_WALLET_DISPLAY;
+
+export const isTourCreatorWallet = isCreatorWallet;
 
 export type TourAction =
   | "open-title"
@@ -433,7 +440,3 @@ export function saveTourPersistedStatus(
   }
 }
 
-/** Same Creator check used by Find people filtering. */
-export function isTourCreatorWallet(wallet: string): boolean {
-  return normalizeWallet(wallet) === TOUR_CREATOR_WALLET;
-}

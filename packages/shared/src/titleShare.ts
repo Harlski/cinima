@@ -8,6 +8,7 @@ export const RESERVED_PUBLIC_HANDLES = new Set([
   "search",
   "activity",
   "me",
+  "studio",
   "title",
   "user",
   "api",

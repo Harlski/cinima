@@ -23,6 +23,13 @@ export const config = {
   get port() {
     return Number(process.env.PORT || 8787);
   },
+  get studioPort() {
+    return Number(process.env.STUDIO_PORT || 8788);
+  },
+  /** Local `pnpm dev` binds Studio in-process. Docker API sets this to 0. */
+  get studioInline() {
+    return process.env.STUDIO_INLINE !== "0";
+  },
   get demoMode() {
     return envBool("DEMO_MODE", true);
   },

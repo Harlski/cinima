@@ -155,3 +155,32 @@ export const shareLinks = sqliteTable("share_links", {
   walletAddress: text("wallet_address").notNull(),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
+
+/** Signed-in search and title view records for Studio. */
+export const usageEvents = sqliteTable(
+  "usage_events",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    walletAddress: text("wallet_address").notNull(),
+    kind: text("kind").notNull(),
+    query: text("query"),
+    titleId: text("title_id"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [
+    index("usage_events_kind_created").on(t.kind, t.createdAt),
+    index("usage_events_wallet_kind").on(t.walletAddress, t.kind),
+  ]
+);
+
+/** Presence per UTC day, accumulated from heartbeats. */
+export const presenceDays = sqliteTable(
+  "presence_days",
+  {
+    walletAddress: text("wallet_address").notNull(),
+    day: text("day").notNull(),
+    activeMs: integer("active_ms").notNull().default(0),
+    lastHeartbeatAt: integer("last_heartbeat_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [uniqueIndex("presence_days_unique").on(t.walletAddress, t.day)]
+);

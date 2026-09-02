@@ -72,6 +72,16 @@
         </button>
       </div>
 
+      <div v-if="showStudio" class="studio-entry">
+        <button
+          type="button"
+          class="nq-pill-secondary nq-pill-stretch"
+          @click="router.push({ name: 'studio' })"
+        >
+          Studio
+        </button>
+      </div>
+
       <TmdbAttribution variant="legal" />
     </div>
 
@@ -137,6 +147,7 @@ import ProfileTaste from "@/components/ProfileTaste.vue";
 import UserCard from "@/components/UserCard.vue";
 import ShareLinkSheet from "@/components/ShareLinkSheet.vue";
 import { useGuidedTourStore } from "@/stores/guidedTour";
+import { studioEntryVisible } from "@/lib/studio";
 import {
   ACTIVITY_UI_VISIBLE,
   displayName,
@@ -163,6 +174,8 @@ const heatmap = ref<HeatmapDay[]>([]);
 const heatmapMeta = ref<{ followerCount: number; followingCount: number } | null>(null);
 const xEditorOpen = ref(false);
 const shareOpen = ref(false);
+
+const showStudio = computed(() => studioEntryVisible(user.value?.walletAddress));
 
 const sharePreview = computed(() => {
   if (!shareUrl.value || !user.value?.handle) return null;
@@ -325,7 +338,8 @@ onUnmounted(() => {
   margin: 0 0 0.75rem;
 }
 
-.tour-replay {
+.tour-replay,
+.studio-entry {
   padding: 0 1rem;
 }
 

@@ -55,6 +55,7 @@ export const router = createRouter({
           beforeEnter: () => (ACTIVITY_UI_VISIBLE ? true : { name: "discover" }),
         },
         { path: "me", name: "me", component: Me },
+        { path: "studio", name: "studio", component: () => import("../views/Studio.vue") },
         {
           path: "title/:mediaType(movie|tv)/:tmdbId(\\d+)",
           name: "title-tmdb",

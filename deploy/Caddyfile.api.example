@@ -1,0 +1,14 @@
+# Example host reverse proxy in front of deploy/compose.api.yml.
+# Point api.cinima.app here so Studio stays off the public API process.
+#
+#   api.cinima.app /api/studio* -> 127.0.0.1:8788
+#   api.cinima.app *            -> 127.0.0.1:8787
+
+{$CINIMA_API_HOST:api.cinima.app} {
+	handle /api/studio* {
+		reverse_proxy 127.0.0.1:8788
+	}
+	handle {
+		reverse_proxy 127.0.0.1:8787
+	}
+}
