@@ -1,4 +1,5 @@
 import { mkdtempSync } from "node:fs";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -152,6 +153,32 @@ describe("Studio HTTP API", () => {
     }
   });
 
+  it("lets CORS write headers after a Studio upstream fetch", async () => {
+    const server = createServer((_req, res) => {
+      res.writeHead(401, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "unauthorized" }));
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const addr = server.address();
+    const port = typeof addr === "object" && addr ? addr.port : 0;
+    process.env.STUDIO_UPSTREAM = `http://127.0.0.1:${port}`;
+    try {
+      const res = await publicApp.fetch(
+        new Request("http://test/api/studio", {
+          headers: { Origin: "https://cinima.app" },
+        })
+      );
+      expect(res.status).toBe(401);
+      expect(await res.json()).toEqual({ error: "unauthorized" });
+      expect(res.headers.get("access-control-allow-origin")).toBe("https://cinima.app");
+    } finally {
+      delete process.env.STUDIO_UPSTREAM;
+      await new Promise<void>((resolve, reject) =>
+        server.close((err) => (err ? reject(err) : resolve()))
+      );
+    }
+  });
+
   it("forwards public /api/studio to the Studio process", async () => {
     const { proxyStudio } = await import("../src/lib/studioProxy.js");
     const res = await proxyStudio(
@@ -165,8 +192,27 @@ describe("Studio HTTP API", () => {
       }
     );
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { totals?: { users: number } };
-    expect(body.totals?.users).toBe(2);
+    expect((res.body.totals as { users: number } | undefined)?.users).toBe(2);
+  });
+
+  it("logs when Studio upstream cannot be reached", async () => {
+    const { proxyStudio } = await import("../src/lib/studioProxy.js");
+    const lines: unknown[][] = [];
+    const res = await proxyStudio(
+      new Request("http://test/api/studio", { headers: creatorHeaders }),
+      {
+        upstream: "http://studio.local",
+        fetchImpl: async () => {
+          throw new Error("connect ECONNREFUSED 127.0.0.1:8788");
+        },
+        log: (...args: unknown[]) => {
+          lines.push(args);
+        },
+      }
+    );
+    expect(res.status).toBe(502);
+    expect(lines[0]?.[0]).toBe("[studio-proxy]");
+    expect(String(lines[0]?.[1])).toMatch(/ECONNREFUSED/);
   });
 
   it("returns the Studio snapshot only to the Creator", async () => {

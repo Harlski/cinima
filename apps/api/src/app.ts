@@ -1008,8 +1008,17 @@ app.post("/api/usage/heartbeat", requirePay, requireAuth, async (c) => {
 
 app.get("/api/studio", async (c) => {
   const upstream = config.studioUpstream;
-  if (!upstream) return c.body("404 Not Found", 404);
-  return proxyStudio(c.req.raw, { upstream });
+  if (!upstream) {
+    console.warn("[studio-proxy] STUDIO_UPSTREAM unset");
+    return c.body("404 Not Found", 404);
+  }
+  try {
+    const { status, body } = await proxyStudio(c.req.raw, { upstream });
+    return c.json(body, status as 200);
+  } catch (err) {
+    console.warn("[studio-proxy] handler failed", err);
+    return c.json({ error: "studio_unavailable" }, 502);
+  }
 });
 
 export { app };

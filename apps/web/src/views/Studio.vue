@@ -7,6 +7,7 @@
     <div v-else-if="loadError" class="content">
       <h1>Studio</h1>
       <p class="lede">{{ loadError }}</p>
+      <p v-if="loadDetail" class="detail">{{ loadDetail }}</p>
       <button type="button" class="nq-pill-blue nq-pill-stretch" @click="loadStudio">
         Retry
       </button>
@@ -230,6 +231,7 @@ const { request } = useApi();
 const loading = ref(true);
 const snapshot = ref<StudioSnapshot | null>(null);
 const loadError = ref<string | null>(null);
+const loadDetail = ref<string | null>(null);
 
 function label(row: StudioPersonRef): string {
   return displayName(row.handle, row.walletAddress);
@@ -255,6 +257,7 @@ async function loadStudio() {
   }
   loading.value = true;
   loadError.value = null;
+  loadDetail.value = null;
   try {
     snapshot.value = await request<StudioSnapshot>("/studio");
     signupDays.value = (snapshot.value.signupsByDay || []).filter((d) => d.count > 0);
@@ -269,6 +272,7 @@ async function loadStudio() {
       return;
     }
     loadError.value = "Could not load Studio. Try again in a moment.";
+    loadDetail.value = message;
     snapshot.value = null;
   } finally {
     loading.value = false;
@@ -308,6 +312,14 @@ h1 {
   margin: 0;
   color: var(--text-secondary);
   font-size: 0.95rem;
+}
+
+.detail {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  word-break: break-word;
 }
 
 .stats {

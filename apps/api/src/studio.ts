@@ -26,7 +26,12 @@ studioApp.get("/api/studio", async (c) => {
   if (!isCreatorWallet(session.walletAddress)) {
     return c.json({ error: "not_found" }, 404);
   }
-  return c.json(await getStudioSnapshot());
+  try {
+    return c.json(await getStudioSnapshot());
+  } catch (err) {
+    console.warn("[studio] snapshot failed", err);
+    return c.json({ error: "studio_unavailable" }, 500);
+  }
 });
 
 export { studioApp };
