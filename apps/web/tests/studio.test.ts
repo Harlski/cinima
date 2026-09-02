@@ -4,6 +4,7 @@ import {
   decideStudioOpen,
   formatActiveMs,
   studioEntryVisible,
+  studioProfileLocation,
 } from "../src/lib/studio";
 
 describe("Studio entry", () => {
@@ -30,6 +31,17 @@ describe("Studio open", () => {
     expect(decideStudioOpen({ wallet: "NQ01 OTHER" })).toEqual({
       kind: "redirect-me",
     });
+  });
+});
+
+describe("Studio profile links", () => {
+  it("opens the in-app profile for a wallet", () => {
+    expect(studioProfileLocation(CREATOR_WALLET)).toEqual({
+      name: "user",
+      params: { wallet: CREATOR_WALLET },
+    });
+    expect(studioProfileLocation("  ")).toBeNull();
+    expect(studioProfileLocation(null)).toBeNull();
   });
 });
 

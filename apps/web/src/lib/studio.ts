@@ -30,3 +30,12 @@ export function formatActiveMs(ms: number): string {
 }
 
 export const USAGE_HEARTBEAT_MS = 30_000;
+
+/** In-app profile for a Studio Handle row. */
+export function studioProfileLocation(
+  wallet: string | null | undefined
+): { name: "user"; params: { wallet: string } } | null {
+  const w = String(wallet ?? "").trim();
+  if (!w) return null;
+  return { name: "user", params: { wallet: w } };
+}

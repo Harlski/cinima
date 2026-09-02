@@ -69,8 +69,15 @@
         </ul>
         <ul v-if="snapshot.recentSignups.length" class="rows rows--people">
           <li v-for="row in snapshot.recentSignups" :key="row.walletAddress">
-            <span>{{ label(row) }}</span>
-            <span>{{ when(row.createdAt) }}</span>
+            <span class="row-main">
+              <RouterLink
+                v-if="profileTo(row.walletAddress)"
+                class="handle-link"
+                :to="{ name: 'user', params: { wallet: row.walletAddress } }"
+              >{{ label(row) }}</RouterLink>
+              <span v-else>{{ label(row) }}</span>
+            </span>
+            <span class="row-meta">{{ when(row.createdAt) }}</span>
           </li>
         </ul>
         <p v-if="!signupDays.length && !snapshot.recentSignups.length" class="empty">
@@ -91,8 +98,16 @@
         </ul>
         <ul v-if="snapshot.recentSearches.length" class="rows rows--people">
           <li v-for="(row, i) in snapshot.recentSearches" :key="`${row.walletAddress}-${i}`">
-            <span>{{ label(row) }} · {{ row.query }}</span>
-            <span>{{ when(row.createdAt) }}</span>
+            <span class="row-main">
+              <RouterLink
+                v-if="profileTo(row.walletAddress)"
+                class="handle-link"
+                :to="{ name: 'user', params: { wallet: row.walletAddress } }"
+              >{{ label(row) }}</RouterLink>
+              <span v-else>{{ label(row) }}</span>
+              · {{ row.query }}
+            </span>
+            <span class="row-meta">{{ when(row.createdAt) }}</span>
           </li>
         </ul>
       </section>
@@ -110,8 +125,16 @@
         </ul>
         <ul v-if="snapshot.recentViews.length" class="rows rows--people">
           <li v-for="(row, i) in snapshot.recentViews" :key="`${row.walletAddress}-${i}`">
-            <span>{{ label(row) }} · {{ row.title || row.titleId }}</span>
-            <span>{{ when(row.createdAt) }}</span>
+            <span class="row-main">
+              <RouterLink
+                v-if="profileTo(row.walletAddress)"
+                class="handle-link"
+                :to="{ name: 'user', params: { wallet: row.walletAddress } }"
+              >{{ label(row) }}</RouterLink>
+              <span v-else>{{ label(row) }}</span>
+              · {{ row.title || row.titleId }}
+            </span>
+            <span class="row-meta">{{ when(row.createdAt) }}</span>
           </li>
         </ul>
       </section>
@@ -129,11 +152,16 @@
         </ul>
         <ul v-if="snapshot.recentShares.length" class="rows rows--people">
           <li v-for="(row, i) in snapshot.recentShares" :key="`${row.walletAddress}-${i}`">
-            <span>
-              {{ label(row) }} ·
-              {{ row.kind === "profile" ? "profile" : row.title || "title" }}
+            <span class="row-main">
+              <RouterLink
+                v-if="profileTo(row.walletAddress)"
+                class="handle-link"
+                :to="{ name: 'user', params: { wallet: row.walletAddress } }"
+              >{{ label(row) }}</RouterLink>
+              <span v-else>{{ label(row) }}</span>
+              · {{ row.kind === "profile" ? "profile" : row.title || "title" }}
             </span>
-            <span>{{ when(row.createdAt) }}</span>
+            <span class="row-meta">{{ when(row.createdAt) }}</span>
           </li>
         </ul>
       </section>
@@ -143,8 +171,22 @@
         <p v-if="!snapshot.recentFollows.length" class="empty">No follows yet.</p>
         <ul v-else class="rows rows--people">
           <li v-for="(row, i) in snapshot.recentFollows" :key="i">
-            <span>{{ label(row.follower) }} → {{ label(row.followee) }}</span>
-            <span>{{ when(row.createdAt) }}</span>
+            <span class="row-main">
+              <RouterLink
+                v-if="profileTo(row.follower.walletAddress)"
+                class="handle-link"
+                :to="{ name: 'user', params: { wallet: row.follower.walletAddress } }"
+              >{{ label(row.follower) }}</RouterLink>
+              <span v-else>{{ label(row.follower) }}</span>
+              →
+              <RouterLink
+                v-if="profileTo(row.followee.walletAddress)"
+                class="handle-link"
+                :to="{ name: 'user', params: { wallet: row.followee.walletAddress } }"
+              >{{ label(row.followee) }}</RouterLink>
+              <span v-else>{{ label(row.followee) }}</span>
+            </span>
+            <span class="row-meta">{{ when(row.createdAt) }}</span>
           </li>
         </ul>
       </section>
@@ -154,12 +196,17 @@
         <p v-if="!snapshot.people.length" class="empty">No Handles yet.</p>
         <ul v-else class="rows rows--people">
           <li v-for="row in snapshot.people" :key="row.walletAddress">
-            <span>
-              {{ label(row) }}
+            <span class="row-main">
+              <RouterLink
+                v-if="profileTo(row.walletAddress)"
+                class="handle-link"
+                :to="{ name: 'user', params: { wallet: row.walletAddress } }"
+              >{{ label(row) }}</RouterLink>
+              <span v-else>{{ label(row) }}</span>
               · {{ row.favoriteCount }} fav
               · {{ row.followerCount }} followers
             </span>
-            <span>{{ formatActiveMs(row.activeMs7d) }}</span>
+            <span class="row-meta">{{ formatActiveMs(row.activeMs7d) }}</span>
           </li>
         </ul>
       </section>
@@ -169,11 +216,11 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import { useRouter } from "vue-router";
+import { RouterLink, useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
 import { useAuthStore } from "@/stores/auth";
 import LoadingWait from "@/components/LoadingWait.vue";
-import { decideStudioOpen, formatActiveMs } from "@/lib/studio";
+import { decideStudioOpen, formatActiveMs, studioProfileLocation } from "@/lib/studio";
 import { displayName, type StudioPersonRef, type StudioSnapshot } from "@cinima/shared";
 
 const router = useRouter();
@@ -186,6 +233,10 @@ const loadError = ref<string | null>(null);
 
 function label(row: StudioPersonRef): string {
   return displayName(row.handle, row.walletAddress);
+}
+
+function profileTo(wallet: string) {
+  return studioProfileLocation(wallet);
 }
 
 function when(iso: string): string {
@@ -315,14 +366,24 @@ h1 {
   font-size: 0.9rem;
 }
 
-.rows li span:last-child {
+.row-meta {
   color: var(--text-secondary);
   flex-shrink: 0;
 }
 
-.rows--people li span:first-child {
+.row-main {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.handle-link {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.handle-link:hover {
+  text-decoration: underline;
 }
 </style>
