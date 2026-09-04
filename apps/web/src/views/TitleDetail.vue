@@ -299,7 +299,6 @@
       :title-name="title.title"
       :media-type="title.mediaType"
       :tmdb-id="title.tmdbId"
-      :poster-url="title.posterUrl"
       @close="closeTitleShare"
       @claim="goClaimHandle"
     />

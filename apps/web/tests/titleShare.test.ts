@@ -17,6 +17,7 @@ import {
   watchlistSharePath,
   watchlistShareUrl,
 } from "@cinima/shared";
+import { titleShareSheetPreview } from "../src/lib/titleShare";
 
 describe("Share link helpers", () => {
   it("groups handle and title as /{handle}/t/{mediaType}/{tmdbId}", () => {
@@ -72,5 +73,24 @@ describe("Share link helpers", () => {
   it("builds compact short share links", () => {
     expect(shortSharePath("AbC123xy")).toBe("/s/abc123xy");
     expect(shortShareUrl("https://cinima.app", "abc123xy")).toBe("https://cinima.app/s/abc123xy");
+  });
+});
+
+describe("title share sheet", () => {
+  it("uses the Title Share preview PNG URL, not a TMDB poster", () => {
+    const preview = titleShareSheetPreview({
+      origin: "https://cinima.app",
+      handle: "alice",
+      titleName: "Fight Club",
+      mediaType: "movie",
+      tmdbId: 550,
+      shareUrl: "https://cinima.app/s/abc123xy",
+    });
+    expect(preview.imageUrl).toBe(
+      "https://cinima.app/api/og/title/alice/movie/550.png"
+    );
+    expect(preview.headline).toBe("alice wants you to check out Fight Club");
+    expect(preview.description).toBe("Fight Club");
+    expect(preview.url).toBe("https://cinima.app/s/abc123xy");
   });
 });

@@ -14,41 +14,31 @@
 
       <p v-if="hint" class="hint">{{ hint }}</p>
 
-      <div class="preview-card nq-card">
+      <div class="preview-card" :style="previewStyle">
         <div v-if="imageUrl" class="preview-image">
           <PosterImg :src="imageUrl" :alt="headline" />
         </div>
         <div v-else class="preview-image preview-fallback">
           <NqIcon name="duotone-paper-plane" :size="28" />
         </div>
-        <div class="preview-copy">
-          <p class="preview-headline">{{ headline }}</p>
-          <p class="preview-description">{{ description }}</p>
-          <p class="preview-url">{{ displayUrl }}</p>
-        </div>
       </div>
 
       <label class="url-field">
         <span class="url-label">Link</span>
-        <input
-          ref="urlInput"
-          class="nq-input-box url-input"
-          :value="url"
-          readonly
-          @focus="selectUrl"
-          @click="selectUrl"
-        />
+        <input class="url-input" :value="url" readonly tabindex="0" />
       </label>
 
       <div class="share-actions">
-        <button type="button" class="nq-pill-blue nq-pill-stretch" @click="copyLink">
-          <NqIcon :name="copied ? 'check' : 'copy'" :size="18" />
-          {{ copied ? "Copied" : "Copy link" }}
-        </button>
+        <GoldGlowShell radius="0.9rem" class="share-copy-glow">
+          <button type="button" class="share-copy" @click="copyLink">
+            <NqIcon :name="copied ? 'check' : 'copy'" :size="18" />
+            {{ copied ? "Copied" : "Copy link" }}
+          </button>
+        </GoldGlowShell>
         <button
           v-if="canNativeShare"
           type="button"
-          class="nq-pill-secondary nq-pill-stretch"
+          class="nq-pill-secondary nq-pill-stretch share-native"
           @click="nativeShare"
         >
           <NqIcon name="duotone-paper-plane" :size="18" />
@@ -61,8 +51,15 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import {
+  SHARE_OG_IMAGE_HEIGHT,
+  SHARE_OG_IMAGE_WIDTH,
+  SITE_THEME_COLOR,
+} from "@cinima/shared";
+import GoldGlowShell from "@/components/GoldGlowShell.vue";
 import NqIcon from "@/components/NqIcon.vue";
 import PosterImg from "@/components/PosterImg.vue";
+import { copyShareLink } from "@/lib/shareLinkCopy";
 
 const props = defineProps<{
   title?: string;
@@ -78,40 +75,24 @@ defineEmits<{
 }>();
 
 const copied = ref(false);
-const urlInput = ref<HTMLInputElement | null>(null);
 
 const canNativeShare = computed(
   () => typeof navigator !== "undefined" && typeof navigator.share === "function"
 );
 
-const displayUrl = computed(() => {
-  try {
-    return new URL(props.url).host;
-  } catch {
-    return props.url;
-  }
-});
-
-const selectUrl = () => {
-  urlInput.value?.select();
-};
+const previewStyle = computed(() => ({
+  aspectRatio: `${SHARE_OG_IMAGE_WIDTH} / ${SHARE_OG_IMAGE_HEIGHT}`,
+  background: SITE_THEME_COLOR,
+}));
 
 const copyLink = async () => {
   if (!props.url) return;
-  try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(props.url);
-    } else {
-      selectUrl();
-      document.execCommand("copy");
-    }
-    copied.value = true;
-    window.setTimeout(() => {
-      copied.value = false;
-    }, 1600);
-  } catch {
-    selectUrl();
-  }
+  const ok = await copyShareLink(props.url);
+  if (!ok) return;
+  copied.value = true;
+  window.setTimeout(() => {
+    copied.value = false;
+  }, 1600);
 };
 
 const nativeShare = async () => {
@@ -141,7 +122,7 @@ const nativeShare = async () => {
 
 .share-dialog {
   position: relative;
-  width: min(100%, 24rem);
+  width: min(100%, 26rem);
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
@@ -176,71 +157,31 @@ const nativeShare = async () => {
 }
 
 .preview-card {
-  display: grid;
-  grid-template-columns: 5.5rem minmax(0, 1fr);
-  gap: 0.75rem;
-  padding: 0.75rem;
+  position: relative;
+  width: 100%;
+  border-radius: 12px;
   overflow: hidden;
-  text-align: left;
 }
 
 .preview-image {
-  width: 5.5rem;
-  aspect-ratio: 2 / 3;
-  border-radius: 12px;
+  position: absolute;
+  inset: 0;
   overflow: hidden;
-  background: var(--bg-primary);
-  flex-shrink: 0;
+  background: inherit;
 }
 
 .preview-image :deep(.poster-img),
-.preview-image img {
+.preview-image :deep(img) {
   width: 100%;
   height: 100%;
   display: block;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .preview-fallback {
   display: grid;
   place-items: center;
   color: var(--text-secondary);
-}
-
-.preview-copy {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.preview-headline {
-  margin: 0;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.preview-description {
-  margin: 0;
-  font-size: 0.82rem;
-  line-height: 1.35;
-  color: var(--text-secondary);
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  overflow: hidden;
-}
-
-.preview-url {
-  margin: 0;
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  opacity: 0.85;
 }
 
 .url-field {
@@ -256,9 +197,21 @@ const nativeShare = async () => {
 
 .url-input {
   width: 100%;
-  font-size: 0.82rem;
+  padding: 0.8rem 0.95rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: #fff;
+  color: #1a1a1a;
+  font: inherit;
+  font-size: 0.88rem;
+  line-height: 1.35;
   -webkit-user-select: text;
   user-select: text;
+}
+
+.url-input:focus {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
 }
 
 .share-actions {
@@ -267,7 +220,39 @@ const nativeShare = async () => {
   gap: 0.55rem;
 }
 
-.share-actions .nq-pill-stretch {
+.share-copy-glow {
+  display: block;
+  width: 100%;
+}
+
+.share-copy-glow :deep(.gold-glow-content) {
+  width: 100%;
+}
+
+.share-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 1.2rem 1.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 0.9rem;
+  background: var(--colors-neutral-200);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.share-copy:hover {
+  background: var(--colors-neutral-300, var(--colors-neutral-200));
+}
+
+.share-native {
   display: inline-flex;
   align-items: center;
   justify-content: center;

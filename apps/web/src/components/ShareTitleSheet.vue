@@ -1,12 +1,12 @@
 <template>
   <ShareLinkSheet
-    v-if="handle && !loading && shareUrl"
+    v-if="handle && !loading && shareUrl && preview"
     title="Share"
-    :hint="copy"
-    :headline="copy"
-    :description="titleName"
-    :url="shareUrl"
-    :image-url="posterUrl"
+    :hint="preview.headline"
+    :headline="preview.headline"
+    :description="preview.description"
+    :url="preview.url"
+    :image-url="preview.imageUrl"
     @close="$emit('close')"
   />
 
@@ -38,17 +38,14 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import {
-  shortShareUrl,
-  titleShareCopy,
-  type MediaType,
-  type ShareLinkCreated,
-} from "@cinima/shared";
+import { shortShareUrl, type MediaType, type ShareLinkCreated } from "@cinima/shared";
 import NqIcon from "@/components/NqIcon.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
 import ShareLinkSheet from "@/components/ShareLinkSheet.vue";
 import { useApi } from "@/composables/useApi";
 import { payAppOrigin } from "@/lib/payLinks";
+import { siteOrigin } from "@/lib/siteMeta";
+import { titleShareSheetPreview } from "@/lib/titleShare";
 import { useMarqueeStore } from "@/stores/marquee";
 
 const props = defineProps<{
@@ -56,7 +53,6 @@ const props = defineProps<{
   titleName: string;
   mediaType: MediaType;
   tmdbId: number;
-  posterUrl?: string | null;
 }>();
 
 defineEmits<{
@@ -68,9 +64,17 @@ const { request } = useApi();
 const loading = ref(true);
 const shareUrl = ref("");
 
-const copy = computed(() =>
-  props.handle ? titleShareCopy(props.handle, props.titleName) : ""
-);
+const preview = computed(() => {
+  if (!props.handle || !shareUrl.value) return null;
+  return titleShareSheetPreview({
+    origin: siteOrigin,
+    handle: props.handle,
+    titleName: props.titleName,
+    mediaType: props.mediaType,
+    tmdbId: props.tmdbId,
+    shareUrl: shareUrl.value,
+  });
+});
 
 onMounted(async () => {
   if (!props.handle) {

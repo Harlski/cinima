@@ -36,6 +36,10 @@ _Avoid_: www.cinima.app
 The poster-and-copy card that messaging and social apps show for a Title Share link, Short Share link, Public Profile link, or Watchlist Share link before the recipient opens Cinima. A Public Profile Share preview shows the Handle's Identicon plus Recommend title cards (Favorites only when there are no Recommends). A Watchlist Share preview shows the Identicon plus Watchlist title cards.
 _Avoid_: OG card, unfurl, link preview, metadata card, physical card
 
+**Share sheet**:
+The in-app dialog for copying a Title Share, Public Profile, or Watchlist Share link. It shows the Share preview so the sender sees the same card a recipient's app will display.
+_Avoid_: share modal, OG preview, share popup
+
 **X Handle**:
 An optional public link to the user’s X profile. Not their Cinima Handle.
 _Avoid_: twitter username as Cinima identity
