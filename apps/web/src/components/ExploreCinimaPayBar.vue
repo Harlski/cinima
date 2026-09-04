@@ -5,7 +5,7 @@
         type="button"
         class="explore-pay-btn"
         :aria-label="landingCopy.ctaExplore"
-        @click="open = true"
+        @click="onExplore"
       >
         <span class="explore-pay-prefix" aria-hidden="true">Explore</span>
         <BrandWordmark size="sm" accent aria-hidden="true" />
@@ -22,10 +22,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { inject, ref } from "vue";
 import BrandWordmark from "@/components/BrandWordmark.vue";
 import PayOnlyGateModal from "@/components/PayOnlyGateModal.vue";
 import { landingCopy } from "@/lib/contact";
+import { shareVisitPayIntentKey } from "@/lib/shareVisit";
 
 withDefaults(
   defineProps<{
@@ -38,6 +39,12 @@ withDefaults(
 );
 
 const open = ref(false);
+const reportPayIntent = inject(shareVisitPayIntentKey, undefined);
+
+function onExplore() {
+  reportPayIntent?.();
+  open.value = true;
+}
 </script>
 
 <style scoped>

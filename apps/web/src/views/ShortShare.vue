@@ -84,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import {
   titleShareCopy,
@@ -102,6 +102,11 @@ import PosterImg from "@/components/PosterImg.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";
 import { isNimiqPay } from "@/lib/nimiqPay";
 import { payOpenSchemeUrl, payOpenTitleUrl } from "@/lib/payLinks";
+import {
+  recordShareVisit,
+  shareVisitPayIntentKey,
+  type ShareVisitBeacon,
+} from "@/lib/shareVisit";
 import { formatTitleRating } from "@/lib/titleRating";
 
 const route = useRoute();
@@ -128,6 +133,15 @@ const payUrl = computed(() => {
   return payOpenTitleUrl(payload.value.title.id);
 });
 
+const lastVisit = ref<ShareVisitBeacon | null>(null);
+
+function beaconPayIntent() {
+  if (!lastVisit.value) return;
+  recordShareVisit({ ...lastVisit.value, intent: "pay_cta" });
+}
+
+provide(shareVisitPayIntentKey, beaconPayIntent);
+
 const onSelectTitle = () => {
   if (!payload.value || isNimiqPay()) return;
   gateTitle.value = payload.value.title;
@@ -145,8 +159,18 @@ const loadShare = async () => {
     const response = await fetch(`${apiBase}/api/s/${encodeURIComponent(code.value)}`);
     if (!response.ok) return;
     const body = (await response.json()) as ResolvedShareLink;
+    lastVisit.value = {
+      kind: body.kind,
+      code: code.value,
+      handle: body.handle,
+    };
+    recordShareVisit(lastVisit.value);
     if (body.kind === "profile") {
       await router.replace({ name: "public", params: { username: body.handle } });
+      return;
+    }
+    if (body.kind === "watchlist") {
+      await router.replace({ name: "watchlist-share", params: { handle: body.handle } });
       return;
     }
     payload.value = body;

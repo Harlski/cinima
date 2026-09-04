@@ -8,6 +8,7 @@ import {
   SHARE_OG_IMAGE_WIDTH,
   SITE_THEME_COLOR,
 } from "@cinima/shared";
+import { identiconPng } from "./identicon.js";
 
 export { SHARE_OG_IMAGE_HEIGHT, SHARE_OG_IMAGE_WIDTH };
 
@@ -98,6 +99,46 @@ export function shareOgPosterSlot(
     left: Math.round((SHARE_OG_IMAGE_WIDTH - width) / 2),
     top: POSTER_TOP_PAD,
   };
+}
+
+const IDENTICON_SIZE = 128;
+const IDENTICON_LEFT = 48;
+const IDENTICON_TOP = 80;
+const GRID_LEFT = 220;
+const GRID_TOP = 40;
+const GRID_GAP = 14;
+const GRID_POSTER_WIDTH = 152;
+const GRID_POSTER_HEIGHT = 228;
+const GRID_COLS = 4;
+const GRID_MAX_POSTERS = 8;
+
+/** Identicon in the left identity column of the profile / Watchlist Share preview. */
+export function shareOgIdenticonSlot(): { width: number; height: number; left: number; top: number } {
+  return {
+    width: IDENTICON_SIZE,
+    height: IDENTICON_SIZE,
+    left: IDENTICON_LEFT,
+    top: IDENTICON_TOP,
+  };
+}
+
+/** Up to eight 2:3 posters in two rows of four, to the right of the Identicon. */
+export function shareOgPosterGridSlots(
+  count: number
+): Array<{ width: number; height: number; left: number; top: number }> {
+  const n = Math.min(GRID_MAX_POSTERS, Math.max(0, Math.floor(count)));
+  const slots: Array<{ width: number; height: number; left: number; top: number }> = [];
+  for (let i = 0; i < n; i += 1) {
+    const col = i % GRID_COLS;
+    const row = Math.floor(i / GRID_COLS);
+    slots.push({
+      width: GRID_POSTER_WIDTH,
+      height: GRID_POSTER_HEIGHT,
+      left: GRID_LEFT + col * (GRID_POSTER_WIDTH + GRID_GAP),
+      top: GRID_TOP + row * (GRID_POSTER_HEIGHT + GRID_GAP),
+    });
+  }
+  return slots;
 }
 
 /** Title Share card: poster on the left, title copy on the right. */
@@ -284,6 +325,63 @@ async function roundedPosterPng(
     .composite([{ input: await sharp(mask).png().toBuffer(), blend: "dest-in" }])
     .png()
     .toBuffer();
+}
+
+async function circularPng(input: Buffer, size: number): Promise<Buffer> {
+  const resized = await sharp(input)
+    .resize(size, size, { fit: "cover" })
+    .ensureAlpha()
+    .png()
+    .toBuffer();
+  const mask = Buffer.from(
+    `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="#ffffff"/>
+</svg>`
+  );
+  return sharp(resized)
+    .composite([{ input: await sharp(mask).png().toBuffer(), blend: "dest-in" }])
+    .png()
+    .toBuffer();
+}
+
+function identityOverlaySvg(opts: {
+  headline: string;
+  subline?: string;
+  textX: number;
+  headlineY: number;
+  headlineSize: number;
+  maxChars: number;
+  maxLines: number;
+  sublineSize: number;
+}): Buffer {
+  const headlineLines = wrapTextLines(opts.headline, opts.maxChars, opts.maxLines);
+  const lineHeight = Math.round(opts.headlineSize * 1.2);
+  const headlineSpans = headlineLines
+    .map((line, index) => {
+      const dy = index === 0 ? 0 : lineHeight;
+      return `<tspan x="${opts.textX}" dy="${dy}">${escapeXml(line)}</tspan>`;
+    })
+    .join("");
+  const sublineY =
+    opts.headlineY + Math.max(headlineLines.length, 1) * lineHeight + Math.round(opts.sublineSize * 0.4);
+  const subline = opts.subline
+    ? wrapTextLines(opts.subline, opts.maxChars + 4, 3)
+        .map((line, index) => {
+          const dy = index === 0 ? 0 : Math.round(opts.sublineSize * 1.25);
+          return `<tspan x="${opts.textX}" dy="${dy}">${escapeXml(line)}</tspan>`;
+        })
+        .join("")
+    : "";
+
+  const svg = `<svg width="${SHARE_OG_IMAGE_WIDTH}" height="${SHARE_OG_IMAGE_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
+  <text x="${opts.textX}" y="${opts.headlineY}" text-anchor="start" fill="${WHITE}" font-family="${FONT_FAMILY}" font-size="${opts.headlineSize}" font-weight="700">${headlineSpans}</text>
+  ${
+    subline
+      ? `<text x="${opts.textX}" y="${sublineY}" text-anchor="start" fill="${MUTED}" font-family="${FONT_FAMILY}" font-size="${opts.sublineSize}" font-weight="400">${subline}</text>`
+      : ""
+  }
+</svg>`;
+  return renderSvgWithMulish(svg);
 }
 
 /** Far-right brand cluster: Nimiq hex + CI/NIM/A wordmark + cinima.app. */
@@ -525,16 +623,121 @@ async function composeTitleShareOgImage(opts: {
   return canvas.composite(layers).png().toBuffer();
 }
 
+/** Identicon + Handle + poster grid. Reused by profile and Watchlist Share previews. */
+export async function composeIdenticonPosterGridOg(opts: {
+  identicon: Buffer;
+  headline: string;
+  subline?: string;
+  posters: Buffer[];
+}): Promise<Buffer> {
+  const posters = opts.posters.slice(0, GRID_MAX_POSTERS);
+  const identiconSlot = shareOgIdenticonSlot();
+  const posterSlots = shareOgPosterGridSlots(posters.length);
+
+  const canvas = sharp({
+    create: {
+      width: SHARE_OG_IMAGE_WIDTH,
+      height: SHARE_OG_IMAGE_HEIGHT,
+      channels: 3,
+      background: SITE_THEME_COLOR,
+    },
+  });
+
+  const layers: { input: Buffer; top: number; left: number }[] = [];
+  layers.push({
+    input: await sharp(hexPatternBackgroundSvg()).png().toBuffer(),
+    top: 0,
+    left: 0,
+  });
+
+  const identiconLayer = await circularPng(opts.identicon, identiconSlot.width);
+  layers.push({
+    input: identiconLayer,
+    top: identiconSlot.top,
+    left: identiconSlot.left,
+  });
+
+  for (let i = 0; i < posters.length; i += 1) {
+    const slot = posterSlots[i]!;
+    const posterLayer = await roundedPosterPng(posters[i]!, slot.width, slot.height);
+    layers.push({ input: posterLayer, top: slot.top, left: slot.left });
+  }
+
+  const hasPosters = posters.length > 0;
+  const textX = hasPosters ? identiconSlot.left : identiconSlot.left + identiconSlot.width + 28;
+  const headlineY = hasPosters
+    ? identiconSlot.top + identiconSlot.height + 44
+    : identiconSlot.top + Math.round(identiconSlot.height * 0.42);
+  layers.push({
+    input: identityOverlaySvg({
+      headline: opts.headline,
+      subline: opts.subline,
+      textX,
+      headlineY,
+      headlineSize: hasPosters ? 26 : 40,
+      maxChars: hasPosters ? 12 : 28,
+      maxLines: hasPosters ? 2 : 1,
+      sublineSize: hasPosters ? 16 : 22,
+    }),
+    top: 0,
+    left: 0,
+  });
+  layers.push({
+    input: brandBarSvg(),
+    top: SHARE_OG_IMAGE_HEIGHT - BAR_HEIGHT,
+    left: 0,
+  });
+
+  return canvas.composite(layers).png().toBuffer();
+}
+
 export async function renderProfileShareOgImage(opts: {
   handle: string;
-  posterUrl?: string | null;
-  posterBuffer?: Buffer | null;
+  walletAddress: string;
+  posterUrls?: Array<string | null | undefined>;
+  posterBuffers?: Array<Buffer | null | undefined>;
 }): Promise<Buffer> {
-  return composeShareOgImage({
-    posterUrl: opts.posterUrl,
-    posterBuffer: opts.posterBuffer,
+  const fromBuffers = (opts.posterBuffers ?? []).filter((b): b is Buffer => Boolean(b && b.length > 0));
+  const posters =
+    fromBuffers.length > 0
+      ? fromBuffers.slice(0, GRID_MAX_POSTERS)
+      : (
+          await Promise.all(
+            (opts.posterUrls ?? []).slice(0, GRID_MAX_POSTERS).map((url) => fetchPosterBuffer(url))
+          )
+        ).filter((b): b is Buffer => Boolean(b));
+
+  const identicon = await identiconPng(opts.walletAddress, IDENTICON_SIZE);
+  return composeIdenticonPosterGridOg({
+    identicon,
     headline: opts.handle,
     subline: "Favorite movies & TV on Cinima",
+    posters,
+  });
+}
+
+export async function renderWatchlistShareOgImage(opts: {
+  handle: string;
+  walletAddress: string;
+  posterUrls?: Array<string | null | undefined>;
+  posterBuffers?: Array<Buffer | null | undefined>;
+}): Promise<Buffer> {
+  const fromBuffers = (opts.posterBuffers ?? []).filter((b): b is Buffer => Boolean(b && b.length > 0));
+  const posters =
+    fromBuffers.length > 0
+      ? fromBuffers.slice(0, GRID_MAX_POSTERS)
+      : (
+          await Promise.all(
+            (opts.posterUrls ?? []).slice(0, GRID_MAX_POSTERS).map((url) => fetchPosterBuffer(url))
+          )
+        ).filter((b): b is Buffer => Boolean(b));
+
+  const identicon = await identiconPng(opts.walletAddress, IDENTICON_SIZE);
+  return composeIdenticonPosterGridOg({
+    identicon,
+    headline: opts.handle,
+    subline: "needs a pick - what's next?",
+    posters,
   });
 }
 

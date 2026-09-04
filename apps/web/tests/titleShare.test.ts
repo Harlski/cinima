@@ -11,6 +11,11 @@ import {
   titleShareOgImageUrl,
   titleSharePath,
   titleShareUrl,
+  watchlistShareCopy,
+  watchlistShareDescription,
+  watchlistShareOgImageUrl,
+  watchlistSharePath,
+  watchlistShareUrl,
 } from "@cinima/shared";
 
 describe("Share link helpers", () => {
@@ -45,6 +50,22 @@ describe("Share link helpers", () => {
     );
     expect(titleShareOgImageUrl("https://cinima.app", "alice", "movie", 550)).toBe(
       "https://cinima.app/api/og/title/alice/movie/550.png"
+    );
+    expect(watchlistShareOgImageUrl("https://cinima.app", "alice")).toBe(
+      "https://cinima.app/api/og/watchlist/alice.png"
+    );
+  });
+
+  it("builds Watchlist Share path and pick copy", () => {
+    expect(watchlistSharePath("Alice")).toBe("/alice/list");
+    expect(watchlistShareUrl("https://cinima.app", "alice")).toBe(
+      "https://cinima.app/alice/list"
+    );
+    expect(watchlistShareCopy("alice")).toBe(
+      "alice needs a pick - what's next on their Watchlist?"
+    );
+    expect(watchlistShareDescription("alice")).toBe(
+      "Help alice choose what to watch next on Cinima.app"
     );
   });
 

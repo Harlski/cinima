@@ -173,6 +173,37 @@ export const usageEvents = sqliteTable(
   ]
 );
 
+/** Human opens of a share page, from a client beacon. */
+export const shareVisits = sqliteTable(
+  "share_visits",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    kind: text("kind").notNull(),
+    code: text("code"),
+    handle: text("handle"),
+    channel: text("channel").notNull(),
+    intent: text("intent").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [
+    index("share_visits_created").on(t.createdAt),
+    index("share_visits_code").on(t.code),
+    index("share_visits_handle_kind").on(t.handle, t.kind),
+  ]
+);
+
+/** Once-earned Achievements per wallet. */
+export const achievements = sqliteTable(
+  "achievements",
+  {
+    walletAddress: text("wallet_address").notNull(),
+    kind: text("kind").notNull(),
+    earnedAt: integer("earned_at", { mode: "timestamp_ms" }).notNull(),
+    seenAt: integer("seen_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [uniqueIndex("achievements_unique").on(t.walletAddress, t.kind)]
+);
+
 /** Presence per UTC day, accumulated from heartbeats. */
 export const presenceDays = sqliteTable(
   "presence_days",

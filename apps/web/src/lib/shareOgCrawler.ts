@@ -14,11 +14,14 @@ export const SHORT_SHARE_PATH = /^\/s\/([a-z0-9]{6,12})\/?$/;
 
 export const TITLE_SHARE_PATH = /^\/([^/]+)\/t\/(movie|tv)\/(\d+)\/?$/;
 
+export const WATCHLIST_SHARE_PATH = /^\/([^/]+)\/list\/?$/;
+
 export const PROFILE_SHARE_PATH = /^\/([^/]+)\/?$/;
 
 export type ShareOgTarget =
   | { type: "short"; code: string }
   | { type: "title"; handle: string; mediaType: "movie" | "tv"; tmdbId: string }
+  | { type: "watchlist"; handle: string }
   | { type: "profile"; handle: string };
 
 export function parseShareOgPath(path: string): ShareOgTarget | null {
@@ -33,6 +36,13 @@ export function parseShareOgPath(path: string): ShareOgTarget | null {
     if (!handle || RESERVED_PUBLIC_HANDLES.has(handle.toLowerCase())) return null;
     if (mediaType !== "movie" && mediaType !== "tv") return null;
     return { type: "title", handle, mediaType, tmdbId: tmdbId! };
+  }
+
+  const watchlistMatch = WATCHLIST_SHARE_PATH.exec(path);
+  if (watchlistMatch?.[1]) {
+    const handle = watchlistMatch[1];
+    if (RESERVED_PUBLIC_HANDLES.has(handle.toLowerCase())) return null;
+    return { type: "watchlist", handle };
   }
 
   const profileMatch = PROFILE_SHARE_PATH.exec(path);
@@ -50,6 +60,9 @@ export function shareOgApiPath(target: ShareOgTarget): string {
   if (target.type === "title") {
     return `/api/public/${encodeURIComponent(target.handle)}/t/${target.mediaType}/${target.tmdbId}`;
   }
+  if (target.type === "watchlist") {
+    return `/api/public/${encodeURIComponent(target.handle)}/list`;
+  }
   return `/api/public/${encodeURIComponent(target.handle)}`;
 }
 
@@ -57,5 +70,6 @@ export function shareOgApiPath(target: ShareOgTarget): string {
 export const SHARE_OG_MATCHER = [
   "/s/:code",
   "/:handle",
+  "/:handle/list",
   "/:handle/t/:mediaType/:tmdbId",
 ] as const;

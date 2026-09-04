@@ -47,6 +47,14 @@
           <span>Shares today</span>
         </div>
         <div class="stat nq-card">
+          <strong>{{ snapshot.totals.visitsToday }}</strong>
+          <span>Share visits today</span>
+        </div>
+        <div class="stat nq-card">
+          <strong>{{ snapshot.totals.visits }}</strong>
+          <span>Share visits</span>
+        </div>
+        <div class="stat nq-card">
           <strong>{{ snapshot.totals.followsToday }}</strong>
           <span>Follows today</span>
         </div>
@@ -160,9 +168,9 @@
                 :to="{ name: 'user', params: { wallet: row.walletAddress } }"
               >{{ label(row) }}</RouterLink>
               <span v-else>{{ label(row) }}</span>
-              · {{ row.kind === "profile" ? "profile" : row.title || "title" }}
+              · {{ row.kind === "profile" ? "profile" : row.kind === "watchlist" ? "watchlist" : row.title || "title" }}
             </span>
-            <span class="row-meta">{{ when(row.createdAt) }}</span>
+            <span class="row-meta">{{ formatShareVisitCounts(row) }}</span>
           </li>
         </ul>
       </section>
@@ -221,7 +229,12 @@ import { RouterLink, useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
 import { useAuthStore } from "@/stores/auth";
 import LoadingWait from "@/components/LoadingWait.vue";
-import { decideStudioOpen, formatActiveMs, studioProfileLocation } from "@/lib/studio";
+import {
+  decideStudioOpen,
+  formatActiveMs,
+  formatShareVisitCounts,
+  studioProfileLocation,
+} from "@/lib/studio";
 import { displayName, type StudioPersonRef, type StudioSnapshot } from "@cinima/shared";
 
 const router = useRouter();

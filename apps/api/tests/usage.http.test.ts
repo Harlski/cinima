@@ -95,7 +95,7 @@ describe("Usage write HTTP API", () => {
       })
     );
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true });
+    expect(await res.json()).toEqual({ ok: true, earnedAchievements: [] });
   });
 
   it("rejects an invalid title view", async () => {
@@ -134,6 +134,6 @@ describe("Usage write HTTP API", () => {
       })
     );
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true });
+    expect(await res.json()).toEqual({ ok: true, earnedAchievements: [] });
   });
 });

@@ -2,11 +2,13 @@ import {
   CREATOR_WALLET,
   CREATOR_WALLET_DISPLAY,
   isCreatorWallet,
+  makeTitleId,
   MAX_RECOMMENDS,
   normalizeWallet,
+  type TitleSummary,
 } from "@cinima/shared";
 
-/** Spotlight target ids — every step spotlight must appear as data-tour in templates. */
+/** Spotlight target ids - every step spotlight must appear as data-tour in templates. */
 export const TOUR_SPOTLIGHT = {
   tabWatchlist: "tab-watchlist",
   tabSearch: "tab-search",
@@ -16,6 +18,8 @@ export const TOUR_SPOTLIGHT = {
   discoverTabFollowing: "discover-tab-following",
   communityRecommendPoster: "community-recommend-poster",
   titleWatchlist: "title-watchlist",
+  titleFavorite: "title-favorite",
+  titleRecommend: "title-recommend",
   deckWatchlist: "deck-watchlist",
   deckFavorite: "deck-favorite",
   findPeople: "find-people",
@@ -44,6 +48,10 @@ export type TourAction =
   | "open-title"
   | "watchlist-add"
   | "watchlist-remove"
+  | "favorite"
+  | "unfavorite"
+  | "recommend"
+  | "share-title"
   | "open-find-people"
   | "open-creator-profile";
 
@@ -177,13 +185,25 @@ export const GUIDED_TOUR_STEPS: readonly TourStepDef[] = [
     primaryLabel: "Next",
   },
   {
-    id: "favorite-optional",
-    title: "Favorite it?",
-    body: "If you like it, add it to Favorites. Totally optional - skip if you want.",
+    id: "favorite-required",
+    title: "Favorite it",
+    body: "Add it to Favorites so it shows on your profile.",
+    actionText: "Tap Add to Favorites.",
     spotlights: [TOUR_SPOTLIGHT.deckFavorite],
     routeName: "my-list",
-    advance: "next",
-    primaryLabel: "Continue",
+    advance: "action",
+    action: "favorite",
+  },
+  {
+    id: "recommend-required",
+    title: "Recommend it",
+    body: `Favorite means you like it. Recommend is the gold-star you'd tell a friend. You can hold ${MAX_RECOMMENDS} movie Recommends and ${MAX_RECOMMENDS} TV Recommends at a time.`,
+    actionText: "Tap Recommend.",
+    spotlights: [TOUR_SPOTLIGHT.titleRecommend],
+    routeName: "title",
+    useTourTitle: true,
+    advance: "action",
+    action: "recommend",
   },
   {
     id: "remove-watchlist",
@@ -243,14 +263,15 @@ export const GUIDED_TOUR_STEPS: readonly TourStepDef[] = [
     primaryLabel: "Next",
   },
   {
-    id: "you-can-recommend",
-    title: "Recommend a title",
-    body: `If you love a title and would tell someone to watch it, Recommend it from the title. You can hold ${MAX_RECOMMENDS} movie Recommends and ${MAX_RECOMMENDS} TV Recommends at a time.`,
-    spotlights: [TOUR_SPOTLIGHT.userRecommends],
-    routeName: "user",
-    useCreatorWallet: true,
-    advance: "next",
-    primaryLabel: "Next",
+    id: "clear-profile",
+    title: "Take it off your profile",
+    body: "Favorites live on your profile. Remove this one so you know how to add and remove titles.",
+    actionText: "Tap Favorited, then confirm.",
+    spotlights: [TOUR_SPOTLIGHT.titleFavorite],
+    routeName: "title",
+    useTourTitle: true,
+    advance: "action",
+    action: "unfavorite",
   },
   {
     id: "tour-done",
@@ -276,10 +297,20 @@ export type TourRuntimeState = {
   stepIndex: number;
   /** Title opened during the Recommends step (for add / watchlist follow-up). */
   tourTitleId: string | null;
+  /** True when the tour title is Favorited. */
+  tourTitleFavorited: boolean;
+  /** True when the tour title is Recommended. */
+  tourTitleRecommended: boolean;
 };
 
 export function initialTourRuntime(): TourRuntimeState {
-  return { phase: "idle", stepIndex: 0, tourTitleId: null };
+  return {
+    phase: "idle",
+    stepIndex: 0,
+    tourTitleId: null,
+    tourTitleFavorited: false,
+    tourTitleRecommended: false,
+  };
 }
 
 export function tourStepAt(index: number): TourStepDef | null {
@@ -308,7 +339,14 @@ export function stepDiscoverTab(
 }
 
 export function startTour(state: TourRuntimeState): TourRuntimeState {
-  return { ...state, phase: "active", stepIndex: 0, tourTitleId: null };
+  return {
+    ...state,
+    phase: "active",
+    stepIndex: 0,
+    tourTitleId: null,
+    tourTitleFavorited: false,
+    tourTitleRecommended: false,
+  };
 }
 
 export function offerTour(state: TourRuntimeState): TourRuntimeState {
@@ -320,18 +358,34 @@ export function dismissOffer(state: TourRuntimeState): TourRuntimeState {
 }
 
 export function skipTour(state: TourRuntimeState): TourRuntimeState {
-  return { ...state, phase: "idle", stepIndex: 0, tourTitleId: null };
+  return {
+    ...state,
+    phase: "idle",
+    stepIndex: 0,
+    tourTitleId: null,
+    tourTitleFavorited: false,
+    tourTitleRecommended: false,
+  };
 }
 
 export function completeTour(state: TourRuntimeState): TourRuntimeState {
-  return { ...state, phase: "completed", stepIndex: 0, tourTitleId: null };
+  return {
+    ...state,
+    phase: "completed",
+    stepIndex: 0,
+    tourTitleId: null,
+    tourTitleFavorited: false,
+    tourTitleRecommended: false,
+  };
 }
 
 const TITLE_DEPENDENT_STEP_IDS = new Set([
   "add-watchlist",
   "watchlist-added",
-  "favorite-optional",
+  "favorite-required",
+  "recommend-required",
   "remove-watchlist",
+  "clear-profile",
 ]);
 
 export function advanceTourNext(state: TourRuntimeState): TourRuntimeState {
@@ -343,12 +397,35 @@ export function advanceTourNext(state: TourRuntimeState): TourRuntimeState {
 
 /** If the user skipped opening a title, jump past Watchlist action steps. */
 export function skipTitleStepsIfNeeded(state: TourRuntimeState): TourRuntimeState {
-  if (state.phase !== "active" || state.tourTitleId) return state;
+  if (state.phase !== "active") return state;
   const step = tourStepAt(state.stepIndex);
-  if (!step || !TITLE_DEPENDENT_STEP_IDS.has(step.id)) return state;
-  const forYou = GUIDED_TOUR_STEPS.findIndex((s) => s.id === "for-you");
-  if (forYou < 0) return state;
-  return { ...state, stepIndex: forYou };
+  if (!step) return state;
+
+  if (!state.tourTitleId && TITLE_DEPENDENT_STEP_IDS.has(step.id)) {
+    const forYou = GUIDED_TOUR_STEPS.findIndex((s) => s.id === "for-you");
+    if (forYou < 0) return state;
+    return { ...state, stepIndex: forYou };
+  }
+
+  if (step.id === "favorite-required" && state.tourTitleFavorited) {
+    const rec = GUIDED_TOUR_STEPS.findIndex((s) => s.id === "recommend-required");
+    if (rec < 0) return state;
+    return skipTitleStepsIfNeeded({ ...state, stepIndex: rec });
+  }
+
+  if (step.id === "recommend-required" && state.tourTitleRecommended) {
+    const remove = GUIDED_TOUR_STEPS.findIndex((s) => s.id === "remove-watchlist");
+    if (remove < 0) return state;
+    return skipTitleStepsIfNeeded({ ...state, stepIndex: remove });
+  }
+
+  if (step.id === "clear-profile" && !state.tourTitleFavorited) {
+    const done = GUIDED_TOUR_STEPS.findIndex((s) => s.id === "tour-done");
+    if (done < 0) return state;
+    return { ...state, stepIndex: done };
+  }
+
+  return state;
 }
 
 export function reportTourAction(
@@ -374,7 +451,62 @@ export function reportTourAction(
   }
 
   if (step.action !== action) return state;
-  return advanceTourNext(state);
+
+  let next = state;
+  if (action === "favorite") next = { ...state, tourTitleFavorited: true };
+  if (action === "recommend") next = { ...state, tourTitleRecommended: true };
+  if (action === "unfavorite") {
+    next = { ...state, tourTitleFavorited: false, tourTitleRecommended: false };
+  }
+  return advanceTourNext(next);
+}
+
+/** After a successful new Recommend outside the tour, show the Recommend cue. */
+export function shouldOfferRecommendCue(opts: {
+  tourActive: boolean;
+  wasRecommended: boolean;
+}): boolean {
+  return !opts.tourActive && !opts.wasRecommended;
+}
+
+export const TOUR_SKIP_NOTICE_TITLE = "Tour skipped";
+export const TOUR_SKIP_NOTICE_BODY =
+  "You can take the tour and complete it anytime from Me.";
+
+/** Fight Club - always available so Community Recommends is never empty during the tour. */
+export const TOUR_COMMUNITY_FALLBACK_TITLE_ID = makeTitleId("movie", 550);
+
+export const TOUR_COMMUNITY_FALLBACK_TITLE: TitleSummary = {
+  id: TOUR_COMMUNITY_FALLBACK_TITLE_ID,
+  mediaType: "movie",
+  kind: "movie",
+  tmdbId: 550,
+  title: "Fight Club",
+  year: 1999,
+  posterUrl: "https://image.tmdb.org/t/p/w342/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+  overview: null,
+  rating: 8.4,
+  popularity: null,
+  imdbId: "tt0137523",
+};
+
+export function withTourCommunityFallback(input: {
+  movies: TitleSummary[];
+  tv: TitleSummary[];
+}): { movies: TitleSummary[]; tv: TitleSummary[] } {
+  if (input.movies.length || input.tv.length) {
+    return { movies: input.movies, tv: input.tv };
+  }
+  return { movies: [TOUR_COMMUNITY_FALLBACK_TITLE], tv: [] };
+}
+
+export function communityRecommendsForTour(opts: {
+  tourActive: boolean;
+  movies: TitleSummary[];
+  tv: TitleSummary[];
+}): { movies: TitleSummary[]; tv: TitleSummary[] } {
+  if (!opts.tourActive) return { movies: opts.movies, tv: opts.tv };
+  return withTourCommunityFallback({ movies: opts.movies, tv: opts.tv });
 }
 
 export function shouldAutoOfferTour(opts: {

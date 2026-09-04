@@ -55,6 +55,12 @@ export const config = {
   get apiOrigin() {
     return envString("API_ORIGIN", envString("VITE_API_BASE", "https://api.cinima.app"));
   },
+  get telegramBotToken() {
+    return envString("TELEGRAM_BOT_TOKEN");
+  },
+  get telegramChatId() {
+    return envString("TELEGRAM_CHAT_ID");
+  },
   prices: {
     unlockNim: UNLOCK_NIM,
     lifetimeNim: LIFETIME_UNLOCK_NIM,

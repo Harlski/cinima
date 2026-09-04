@@ -12,6 +12,7 @@
           :wallet-address="profile.walletAddress"
           :handle="profile.handle"
           :x-handle="profile.xHandle"
+          :achievement-count="profile.achievementCount ?? 0"
           wallet-display="copy"
         />
 
@@ -41,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, provide, watch } from "vue";
 import { useRoute } from "vue-router";
 import type { PublicProfile, TitleSummary } from "@cinima/shared";
 import { profileShareCopy, profileShareUrl } from "@cinima/shared";
@@ -54,6 +55,7 @@ import ProfileTaste from "@/components/ProfileTaste.vue";
 import UserCard from "@/components/UserCard.vue";
 import { isNimiqPay } from "@/lib/nimiqPay";
 import { payAppOrigin, payOpenSchemeUrl } from "@/lib/payLinks";
+import { recordShareVisit, shareVisitPayIntentKey } from "@/lib/shareVisit";
 
 const route = useRoute();
 
@@ -66,6 +68,18 @@ const payUrl = computed(() => {
   if (!profile.value?.handle) return payOpenSchemeUrl();
   return payOpenSchemeUrl(profileShareUrl(payAppOrigin(), profile.value.handle));
 });
+
+function beaconOpen() {
+  if (!handle.value) return;
+  recordShareVisit({ kind: "profile", handle: handle.value });
+}
+
+function beaconPayIntent() {
+  if (!handle.value) return;
+  recordShareVisit({ kind: "profile", handle: handle.value, intent: "pay_cta" });
+}
+
+provide(shareVisitPayIntentKey, beaconPayIntent);
 
 const onSelectTitle = (title: TitleSummary) => {
   if (isNimiqPay()) return;
@@ -98,6 +112,7 @@ const loadProfile = async () => {
 
 onMounted(() => {
   loadProfile();
+  beaconOpen();
   window.addEventListener("keydown", onKeydown);
 });
 onUnmounted(() => {
@@ -107,6 +122,7 @@ onUnmounted(() => {
 
 watch(handle, () => {
   loadProfile();
+  beaconOpen();
 });
 </script>
 

@@ -14,6 +14,17 @@
       </button>
       <p v-else class="wallet">{{ abbreviateWallet(walletAddress) }}</p>
       <p v-if="statsLine" class="stats">{{ statsLine }}</p>
+      <button
+        v-if="achievementCount != null && achievementOpen"
+        type="button"
+        class="achievements"
+        @click="$emit('open-credits')"
+      >
+        {{ achievementLine }}
+      </button>
+      <p v-else-if="achievementCount != null" class="achievements achievements--static">
+        {{ achievementLine }}
+      </p>
       <a
         v-if="showXLink && xUrl"
         class="x-link"
@@ -46,16 +57,24 @@ const props = withDefaults(
     showXLink?: boolean;
     followerCount?: number;
     followingCount?: number;
+    achievementCount?: number | null;
+    achievementOpen?: boolean;
     walletDisplay?: "copy" | "abbrev";
     avatarSize?: number;
   }>(),
   {
     xHandle: null,
     showXLink: true,
+    achievementCount: null,
+    achievementOpen: false,
     walletDisplay: "abbrev",
     avatarSize: 72,
   }
 );
+
+defineEmits<{
+  "open-credits": [];
+}>();
 
 const copied = ref(false);
 
@@ -64,6 +83,11 @@ const xUrl = computed(() => xProfileUrl(props.xHandle));
 const statsLine = computed(() => {
   if (props.followerCount == null || props.followingCount == null) return null;
   return `${props.followerCount} followers · ${props.followingCount} following`;
+});
+
+const achievementLine = computed(() => {
+  const n = props.achievementCount ?? 0;
+  return n === 1 ? "1 Achievement" : `${n} Achievements`;
 });
 
 const copyWallet = async () => {
@@ -124,10 +148,28 @@ const copyWallet = async () => {
   cursor: pointer;
 }
 
-.stats {
+.stats,
+.achievements {
   margin: 0;
   font-size: 0.85rem;
   color: var(--text-secondary);
+}
+
+.achievements {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.achievements--static {
+  cursor: default;
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .x-link {

@@ -3,6 +3,7 @@ import { CREATOR_WALLET, CREATOR_WALLET_DISPLAY } from "@cinima/shared";
 import {
   decideStudioOpen,
   formatActiveMs,
+  formatShareVisitCounts,
   studioEntryVisible,
   studioProfileLocation,
 } from "../src/lib/studio";
@@ -42,6 +43,14 @@ describe("Studio profile links", () => {
     });
     expect(studioProfileLocation("  ")).toBeNull();
     expect(studioProfileLocation(null)).toBeNull();
+  });
+});
+
+describe("Share visit counts", () => {
+  it("labels web, pay, and Pay intent with literals", () => {
+    expect(
+      formatShareVisitCounts({ webCount: 3, payCount: 1, payCtaCount: 2 })
+    ).toBe("3 web · 1 pay · 2 Pay intent");
   });
 });
 

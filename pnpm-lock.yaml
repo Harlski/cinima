@@ -22,6 +22,9 @@ importers:
       '@nimiq/core':
         specifier: ^2.2.2
         version: 2.7.2(vite@6.4.3(@types/node@22.20.1)(jiti@2.7.0)(tsx@4.23.6))
+      '@nimiq/identicons':
+        specifier: ^1.6.2
+        version: 1.6.2
       '@resvg/resvg-js':
         specifier: ^2.6.2
         version: 2.6.2

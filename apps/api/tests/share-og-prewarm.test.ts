@@ -5,6 +5,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   getCachedShareOgImage,
   resetShareOgImageCache,
+  setCachedShareOgImage,
   shareOgCacheKey,
 } from "../src/lib/shareOgCache.js";
 
@@ -115,5 +116,33 @@ describe("Share OG prewarm", () => {
     const cached = getCachedShareOgImage(key);
     expect(cached).toBeDefined();
     expect(cached!.length).toBeGreaterThan(500);
+  }, 15_000);
+
+  it("rebuilds the profile Share preview after a Recommend", async () => {
+    const key = shareOgCacheKey("profile", "prewarmuser");
+    setCachedShareOgImage(key, Buffer.from("stale-profile-preview"));
+
+    const fav = await app.fetch(
+      new Request(`http://test/api/favorites/${encodeURIComponent(TITLE_ID)}`, {
+        method: "POST",
+        headers,
+      })
+    );
+    expect(fav.status).toBe(200);
+
+    const rec = await app.fetch(
+      new Request(`http://test/api/recommends/${encodeURIComponent(TITLE_ID)}`, {
+        method: "POST",
+        headers,
+      })
+    );
+    expect(rec.status).toBe(200);
+
+    await new Promise((r) => setTimeout(r, 2500));
+
+    const cached = getCachedShareOgImage(key);
+    expect(cached).toBeDefined();
+    expect(cached!.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
+    expect(cached!.equals(Buffer.from("stale-profile-preview"))).toBe(false);
   }, 15_000);
 });

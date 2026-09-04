@@ -122,4 +122,78 @@ describe("Share links HTTP API", () => {
     const body = (await res.json()) as { shareUrl: string | null };
     expect(body.shareUrl).toMatch(/^https:\/\/cinima\.app\/s\/[a-z0-9]{8}$/);
   });
+
+  it("rejects Watchlist Share when the Watchlist is empty", async () => {
+    const res = await app.fetch(
+      new Request("http://test/api/share/watchlist", {
+        method: "POST",
+        headers,
+      })
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe("empty_watchlist");
+  });
+
+  it("creates a Watchlist Share that is live JSON, OG HTML, and a short link", async () => {
+    const add = await app.fetch(
+      new Request(`http://test/api/watchlist/${encodeURIComponent(TITLE_ID)}`, {
+        method: "POST",
+        headers,
+      })
+    );
+    expect(add.status).toBe(200);
+
+    const created = await app.fetch(
+      new Request("http://test/api/share/watchlist", {
+        method: "POST",
+        headers,
+      })
+    );
+    expect(created.status).toBe(200);
+    const body = (await created.json()) as {
+      code: string;
+      kind: string;
+      earnedAchievements?: string[];
+    };
+    expect(body.kind).toBe("watchlist");
+    expect(body.code).toMatch(/^[a-z0-9]{8}$/);
+    expect(body.earnedAchievements).toContain("whats-next");
+
+    const again = await app.fetch(
+      new Request("http://test/api/share/watchlist", {
+        method: "POST",
+        headers,
+      })
+    );
+    const bodyAgain = (await again.json()) as { code: string; earnedAchievements?: string[] };
+    expect(bodyAgain.code).toBe(body.code);
+    expect(bodyAgain.earnedAchievements || []).not.toContain("whats-next");
+
+    const json = await app.fetch(new Request("http://test/api/public/linkuser/list"));
+    expect(json.status).toBe(200);
+    const payload = (await json.json()) as {
+      handle: string;
+      titles: { title: string }[];
+    };
+    expect(payload.handle).toBe("linkuser");
+    expect(payload.titles.map((t) => t.title)).toContain("Fight Club");
+
+    const html = await app.fetch(
+      new Request("http://test/api/public/linkuser/list", {
+        headers: { Accept: "text/html" },
+      })
+    );
+    expect(html.status).toBe(200);
+    const page = await html.text();
+    expect(page).toContain("https://cinima.app/linkuser/list");
+    expect(page).toContain("linkuser needs a pick - what's next on their Watchlist?");
+    expect(page).toContain("/api/og/watchlist/linkuser.png");
+
+    const short = await app.fetch(new Request(`http://test/api/s/${body.code}`));
+    expect(short.status).toBe(200);
+    const resolved = (await short.json()) as { kind: string; handle: string };
+    expect(resolved.kind).toBe("watchlist");
+    expect(resolved.handle).toBe("linkuser");
+  });
 });

@@ -31,6 +31,15 @@ export function formatActiveMs(ms: number): string {
 
 export const USAGE_HEARTBEAT_MS = 30_000;
 
+/** Per-link Share visit line for Studio. */
+export function formatShareVisitCounts(row: {
+  webCount: number;
+  payCount: number;
+  payCtaCount: number;
+}): string {
+  return `${row.webCount} web · ${row.payCount} pay · ${row.payCtaCount} Pay intent`;
+}
+
 /** In-app profile for a Studio Handle row. */
 export function studioProfileLocation(
   wallet: string | null | undefined

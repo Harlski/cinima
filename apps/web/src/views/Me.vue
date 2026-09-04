@@ -13,8 +13,11 @@
         :show-x-link="false"
         :follower-count="heatmapMeta?.followerCount"
         :following-count="heatmapMeta?.followingCount"
+        :achievement-count="achievementCount"
+        :achievement-open="true"
         wallet-display="abbrev"
         :avatar-size="64"
+        @open-credits="openCredits"
       >
         <template #actions>
           <div class="card-actions">
@@ -146,14 +149,15 @@ import TmdbAttribution from "@/components/TmdbAttribution.vue";
 import ProfileTaste from "@/components/ProfileTaste.vue";
 import UserCard from "@/components/UserCard.vue";
 import ShareLinkSheet from "@/components/ShareLinkSheet.vue";
-import { useGuidedTourStore } from "@/stores/guidedTour";
+import { useMarqueeStore } from "@/stores/marquee";
 import { studioEntryVisible } from "@/lib/studio";
 import {
   ACTIVITY_UI_VISIBLE,
   displayName,
-  profileShareCopy,
-  profileShareDescription,
 } from "@cinima/shared";
+import { siteOrigin } from "@/lib/siteMeta";
+import { profileShareSheetPreview } from "@/lib/profileShare";
+import { useGuidedTourStore } from "@/stores/guidedTour";
 import type { HeatmapDay, MeResponse, PublicProfile, TitleSummary } from "@cinima/shared";
 
 const router = useRouter();
@@ -172,6 +176,7 @@ const xDraft = ref("");
 const xHandle = ref<string | null>(null);
 const heatmap = ref<HeatmapDay[]>([]);
 const heatmapMeta = ref<{ followerCount: number; followingCount: number } | null>(null);
+const achievementCount = ref(0);
 const xEditorOpen = ref(false);
 const shareOpen = ref(false);
 
@@ -179,16 +184,11 @@ const showStudio = computed(() => studioEntryVisible(user.value?.walletAddress))
 
 const sharePreview = computed(() => {
   if (!shareUrl.value || !user.value?.handle) return null;
-  const imageUrl =
-    recommends.value.find((t) => t.posterUrl)?.posterUrl ??
-    favorites.value.find((t) => t.posterUrl)?.posterUrl ??
-    null;
-  return {
-    url: shareUrl.value,
-    headline: profileShareCopy(user.value.handle),
-    description: profileShareDescription(user.value.handle),
-    imageUrl,
-  };
+  return profileShareSheetPreview({
+    origin: siteOrigin,
+    handle: user.value.handle,
+    shareUrl: shareUrl.value,
+  });
 });
 
 const loadMe = async () => {
@@ -201,6 +201,10 @@ const loadMe = async () => {
     needsHandlePrompt.value = data.needsHandlePrompt;
     xHandle.value = data.xHandle;
     xDraft.value = data.xHandle ? `@${data.xHandle}` : "";
+    achievementCount.value = data.achievementCount ?? 0;
+    if (data.unseenAchievements?.length) {
+      useMarqueeStore().enqueue(data.unseenAchievements);
+    }
     if (authStore.user?.walletAddress) {
       try {
         const profile = await request<PublicProfile>(
@@ -219,6 +223,11 @@ const loadMe = async () => {
   } finally {
     loading.value = false;
   }
+};
+
+const openCredits = () => {
+  if (!user.value?.walletAddress) return;
+  router.push({ name: "credits", params: { wallet: user.value.walletAddress } });
 };
 
 const openXEditor = () => {

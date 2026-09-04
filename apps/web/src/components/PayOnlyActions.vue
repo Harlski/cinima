@@ -49,6 +49,7 @@
             target="_blank"
             rel="noopener noreferrer"
             :aria-describedby="learnPayTooltipId"
+            @click="onGetNimiqPayClick"
           >
             {{ payOnlyGateCopy.getNimiqPay }}
           </a>
@@ -60,6 +61,7 @@
           target="_blank"
           rel="noopener noreferrer"
           :aria-describedby="learnPayTooltipId"
+          @click="onGetNimiqPayClick"
         >
           {{ payOnlyGateCopy.getNimiqPay }}
         </a>
@@ -107,7 +109,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, inject, ref } from "vue";
 import GoldGlowShell from "@/components/GoldGlowShell.vue";
 import NqIcon from "@/components/NqIcon.vue";
 import {
@@ -124,6 +126,7 @@ import {
   initialPayOnlyCoachState,
   shouldInterceptAlreadyInstalledClick,
 } from "@/lib/payOnlyCoach";
+import { shareVisitPayIntentKey } from "@/lib/shareVisit";
 
 const props = withDefaults(
   defineProps<{
@@ -151,6 +154,7 @@ const channels = computed(
 const isDesktop =
   typeof window !== "undefined" && !seemsLikeMobile(readMobileHintSignals());
 const coach = ref(initialPayOnlyCoachState());
+const reportPayIntent = inject(shareVisitPayIntentKey, undefined);
 
 const fullAccessTipDomId = "pay-only-full-access-tip";
 const learnPayTipDomId = "pay-only-learn-pay-tip";
@@ -163,6 +167,7 @@ const learnPayTooltipId = computed(() =>
 );
 
 function onAlreadyInstalledClick(event: MouseEvent): void {
+  reportPayIntent?.();
   if (
     !shouldInterceptAlreadyInstalledClick({
       coachEnabled: props.glowAlreadyInstalled,
@@ -173,6 +178,10 @@ function onAlreadyInstalledClick(event: MouseEvent): void {
   }
   event.preventDefault();
   coach.value = afterDesktopAlreadyInstalledClick(coach.value);
+}
+
+function onGetNimiqPayClick(): void {
+  reportPayIntent?.();
 }
 </script>
 

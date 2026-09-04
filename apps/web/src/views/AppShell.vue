@@ -60,12 +60,14 @@
     </nav>
 
     <GuidedTourHost />
+    <MarqueeHost />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, watch } from "vue";
 import { RouterView, RouterLink, useRoute } from "vue-router";
+import type { AchievementKind } from "@cinima/shared";
 import { ACTIVITY_UI_VISIBLE } from "@cinima/shared";
 import { useViewportChromeLock } from "@/composables/useViewportChromeLock";
 import { useFavoritesStore } from "@/stores/favorites";
@@ -75,9 +77,11 @@ import { useApi } from "@/composables/useApi";
 import AppBrandHeader from "@/components/AppBrandHeader.vue";
 import GuidedTourHost from "@/components/GuidedTourHost.vue";
 import Identicon from "@/components/Identicon.vue";
+import MarqueeHost from "@/components/MarqueeHost.vue";
 import NqIcon from "@/components/NqIcon.vue";
 import TourSpotlight from "@/components/TourSpotlight.vue";
 import { TOUR_SPOTLIGHT } from "@/lib/guidedTour";
+import { useMarqueeStore } from "@/stores/marquee";
 import { USAGE_HEARTBEAT_MS } from "@/lib/studio";
 
 useViewportChromeLock();
@@ -92,7 +96,13 @@ const walletAddress = computed(() => authStore.user?.walletAddress || "");
 function sendHeartbeat() {
   if (!authStore.token || !authStore.user) return;
   if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
-  void request("/usage/heartbeat", { method: "POST" }).catch(() => {});
+  void request<{ earnedAchievements?: AchievementKind[] }>("/usage/heartbeat", {
+    method: "POST",
+  })
+    .then((data) => {
+      if (data.earnedAchievements?.length) useMarqueeStore().enqueue(data.earnedAchievements);
+    })
+    .catch(() => {});
 }
 
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;

@@ -186,9 +186,9 @@ export async function addThanks(opts: {
   return { created: inserted.length > 0 };
 }
 
-export async function thankAllSuggesters(from: string, titleId: string) {
+export async function thankAllSuggesters(from: string, titleId: string): Promise<string[]> {
   const remaining = (await listSuggesters(titleId, from)).filter((s) => !s.thanked);
-  if (remaining.length === 0) return 0;
+  if (remaining.length === 0) return [];
   const fromWallet = normalizeWallet(from);
   const now = new Date();
   await db
@@ -203,7 +203,7 @@ export async function thankAllSuggesters(from: string, titleId: string) {
       }))
     )
     .onConflictDoNothing();
-  return remaining.length;
+  return remaining.map((s) => normalizeWallet(s.walletAddress));
 }
 
 export async function activityFeed(limit = 40) {

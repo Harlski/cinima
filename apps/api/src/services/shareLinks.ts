@@ -7,6 +7,8 @@ import { toTitleSummary, ogPosterUrl } from "../lib/titles.js";
 import { ensureTitleFresh } from "./catalog.js";
 import { activityHeatmap, followCounts } from "./follow.js";
 import { listFavorites, listRecommends } from "./favorites.js";
+import { listWatchlist } from "./watchlist.js";
+import { achievementCount } from "./achievements.js";
 
 const genCode = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", 8);
 
@@ -26,7 +28,7 @@ export async function getOrCreateTitleShareLink(
   handle: string,
   mediaType: MediaType,
   tmdbId: number
-): Promise<string> {
+): Promise<{ code: string; created: boolean }> {
   const existing = await db.query.shareLinks.findFirst({
     where: and(
       eq(schema.shareLinks.kind, "title"),
@@ -35,7 +37,7 @@ export async function getOrCreateTitleShareLink(
       eq(schema.shareLinks.tmdbId, tmdbId)
     ),
   });
-  if (existing) return existing.code;
+  if (existing) return { code: existing.code, created: false };
 
   const code = await allocateCode();
   await db.insert(schema.shareLinks).values({
@@ -47,17 +49,17 @@ export async function getOrCreateTitleShareLink(
     walletAddress,
     createdAt: new Date(),
   });
-  return code;
+  return { code, created: true };
 }
 
 export async function getOrCreateProfileShareLink(
   walletAddress: string,
   handle: string
-): Promise<string> {
+): Promise<{ code: string; created: boolean }> {
   const existing = await db.query.shareLinks.findFirst({
     where: and(eq(schema.shareLinks.kind, "profile"), eq(schema.shareLinks.handle, handle)),
   });
-  if (existing) return existing.code;
+  if (existing) return { code: existing.code, created: false };
 
   const code = await allocateCode();
   await db.insert(schema.shareLinks).values({
@@ -69,7 +71,29 @@ export async function getOrCreateProfileShareLink(
     walletAddress,
     createdAt: new Date(),
   });
-  return code;
+  return { code, created: true };
+}
+
+export async function getOrCreateWatchlistShareLink(
+  walletAddress: string,
+  handle: string
+): Promise<{ code: string; created: boolean }> {
+  const existing = await db.query.shareLinks.findFirst({
+    where: and(eq(schema.shareLinks.kind, "watchlist"), eq(schema.shareLinks.handle, handle)),
+  });
+  if (existing) return { code: existing.code, created: false };
+
+  const code = await allocateCode();
+  await db.insert(schema.shareLinks).values({
+    code,
+    kind: "watchlist",
+    handle,
+    mediaType: null,
+    tmdbId: null,
+    walletAddress,
+    createdAt: new Date(),
+  });
+  return { code, created: true };
 }
 
 export async function resolveShareLink(code: string): Promise<ResolvedShareLink | null> {
@@ -121,6 +145,21 @@ export async function resolveShareLink(code: string): Promise<ResolvedShareLink 
       isSelf: false,
       heatmap: await activityHeatmap(user.walletAddress),
       xHandle: user.xHandle ?? null,
+      achievementCount: await achievementCount(user.walletAddress),
+    };
+  }
+
+  if (row.kind === "watchlist") {
+    const user = await db.query.users.findFirst({
+      where: eq(schema.users.handle, row.handle),
+    });
+    if (!user?.handle) return null;
+    return {
+      kind: "watchlist",
+      code: row.code,
+      handle: user.handle,
+      walletAddress: user.walletAddress,
+      titles: await listWatchlist(user.walletAddress),
     };
   }
 
@@ -139,10 +178,14 @@ export function resolveShareLinkOgPoster(
     return posterPath;
   }
 
-  const previewPoster =
-    resolved.recommends.find((t) => t.posterUrl)?.posterUrl ??
-    resolved.favorites.find((t) => t.posterUrl)?.posterUrl ??
-    null;
+  const posters =
+    resolved.kind === "watchlist"
+      ? resolved.titles
+      : [
+          ...resolved.recommends,
+          ...resolved.favorites,
+        ];
+  const previewPoster = posters.find((t) => t.posterUrl)?.posterUrl ?? null;
   if (!previewPoster) return null;
   if (previewPoster.includes("image.tmdb.org")) {
     return previewPoster.replace("/t/p/w342", "/t/p/w780");
@@ -150,21 +193,29 @@ export function resolveShareLinkOgPoster(
   return previewPoster;
 }
 
+const PROFILE_SHARE_POSTER_LIMIT = 8;
+
+export async function resolveProfileShareOgPosters(
+  recommends: Awaited<ReturnType<typeof listRecommends>>,
+  favorites: Awaited<ReturnType<typeof listFavorites>>
+): Promise<string[]> {
+  const source = recommends.length > 0 ? recommends : favorites;
+  const urls: string[] = [];
+  for (const title of source) {
+    if (urls.length >= PROFILE_SHARE_POSTER_LIMIT) break;
+    const row = await db.query.titles.findFirst({ where: eq(schema.titles.id, title.id) });
+    const url = ogPosterUrl(row?.posterPath);
+    if (url) urls.push(url);
+  }
+  return urls;
+}
+
 export async function resolveProfileShareOgPoster(
   recommends: Awaited<ReturnType<typeof listRecommends>>,
   favorites: Awaited<ReturnType<typeof listFavorites>>
 ): Promise<string | null> {
-  for (const title of recommends) {
-    const row = await db.query.titles.findFirst({ where: eq(schema.titles.id, title.id) });
-    const url = ogPosterUrl(row?.posterPath);
-    if (url) return url;
-  }
-  for (const title of favorites) {
-    const row = await db.query.titles.findFirst({ where: eq(schema.titles.id, title.id) });
-    const url = ogPosterUrl(row?.posterPath);
-    if (url) return url;
-  }
-  return null;
+  const urls = await resolveProfileShareOgPosters(recommends, favorites);
+  return urls[0] ?? null;
 }
 
 export async function resolveShareLinkOgPosterFromDb(

@@ -62,3 +62,19 @@ export function titleShareUrl(
 export function titleShareCopy(handle: string, title: string): string {
   return `${handle} wants you to check out ${title}`;
 }
+
+export function watchlistSharePath(handle: string): string {
+  return `/${handle.trim().toLowerCase()}/list`;
+}
+
+export function watchlistShareUrl(origin: string, handle: string): string {
+  return `${origin.replace(/\/$/, "")}${watchlistSharePath(handle)}`;
+}
+
+export function watchlistShareCopy(handle: string): string {
+  return `${handle} needs a pick - what's next on their Watchlist?`;
+}
+
+export function watchlistShareDescription(handle: string): string {
+  return `Help ${handle} choose what to watch next on Cinima.app`;
+}

@@ -65,15 +65,15 @@
           Loading Recommends…
         </div>
         <div
-          v-else-if="!communityMovies.length && !communityTv.length"
+          v-else-if="!tourCommunityMovies.length && !tourCommunityTv.length"
           class="feed-empty"
         >
           No community Recommends yet.
         </div>
         <CommunityRecommends
           v-else
-          :movies="communityMovies"
-          :tv="communityTv"
+          :movies="tourCommunityMovies"
+          :tv="tourCommunityTv"
           heading="What others on Cinima recommend"
           :max-rows="4"
           tour-first-poster
@@ -260,6 +260,7 @@ import TourSpotlight from "@/components/TourSpotlight.vue";
 import {
   TOUR_CREATOR_WALLET,
   TOUR_SPOTLIGHT,
+  communityRecommendsForTour,
   isTourCreatorWallet,
 } from "@/lib/guidedTour";
 import { useGuidedTourStore } from "@/stores/guidedTour";
@@ -320,6 +321,15 @@ const {
   loading: communityLoading,
   load: loadCommunityRecommends,
 } = useCommunityRecommends();
+const tourCommunity = computed(() =>
+  communityRecommendsForTour({
+    tourActive: tour.active,
+    movies: communityMovies.value,
+    tv: communityTv.value,
+  })
+);
+const tourCommunityMovies = computed(() => tourCommunity.value.movies);
+const tourCommunityTv = computed(() => tourCommunity.value.tv);
 const favoriteCount = ref(0);
 const minFavorites = ref(3);
 const onboardingCandidates = ref<TitleSummary[]>([]);

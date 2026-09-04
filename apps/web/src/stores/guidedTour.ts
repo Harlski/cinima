@@ -1,5 +1,6 @@
 import { computed, ref } from "vue";
 import { defineStore } from "pinia";
+import type { AchievementKind } from "@cinima/shared";
 import {
   advanceTourNext,
   completeTour,
@@ -22,12 +23,18 @@ import {
   type TourRuntimeState,
   type TourSpotlightId,
 } from "@/lib/guidedTour";
+import { useApi } from "@/composables/useApi";
 import { useAuthStore } from "@/stores/auth";
+import { useFavoritesStore } from "@/stores/favorites";
+import { useMarqueeStore } from "@/stores/marquee";
 
 export const useGuidedTourStore = defineStore("guidedTour", () => {
   const runtime = ref<TourRuntimeState>(initialTourRuntime());
   /** True after we already auto-offered this session (avoid double offer). */
   const offeredThisSession = ref(false);
+  /** Shown after Skip tour / Not now: take the tour anytime from Me. */
+  const skipNotice = ref(false);
+  const { request } = useApi();
 
   const phase = computed(() => runtime.value.phase);
   const stepIndex = computed(() => runtime.value.stepIndex);
@@ -62,34 +69,66 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
   }
 
   function acceptOffer() {
+    skipNotice.value = false;
     runtime.value = startTour(runtime.value);
   }
 
   function declineOffer() {
     runtime.value = dismissOffer(runtime.value);
     persist("dismissed");
+    skipNotice.value = true;
   }
 
   /** Start from Me / explicit replay — skips the offer card. */
   function beginTour() {
+    skipNotice.value = false;
     runtime.value = startTour(runtime.value);
   }
 
+  function withFavoriteSnapshot(state: TourRuntimeState): TourRuntimeState {
+    const titleId = state.tourTitleId;
+    if (!titleId) {
+      return { ...state, tourTitleFavorited: false, tourTitleRecommended: false };
+    }
+    const favoritesStore = useFavoritesStore();
+    return {
+      ...state,
+      tourTitleFavorited: favoritesStore.isFavorite(titleId),
+      tourTitleRecommended: favoritesStore.isRecommended(titleId),
+    };
+  }
+
+  async function notifyTourCompleted() {
+    persist("completed");
+    try {
+      const data = await request<{ earnedAchievements?: AchievementKind[] }>(
+        "/tour/complete",
+        { method: "POST" }
+      );
+      if (data.earnedAchievements?.length) {
+        useMarqueeStore().enqueue(data.earnedAchievements);
+      }
+    } catch {
+      // Award is best-effort; local completed status still sticks.
+    }
+  }
+
   function next() {
-    const before = runtime.value;
+    const before = withFavoriteSnapshot(runtime.value);
     runtime.value = advanceTourNext(before);
-    if (runtime.value.phase === "completed") persist("completed");
+    if (runtime.value.phase === "completed") void notifyTourCompleted();
   }
 
   function skip() {
     runtime.value = skipTour(runtime.value);
     persist("dismissed");
+    skipNotice.value = true;
   }
 
   function reportAction(action: TourAction, payload?: { titleId?: string }) {
-    const before = runtime.value;
+    const before = withFavoriteSnapshot(runtime.value);
     runtime.value = reportTourAction(before, action, payload);
-    if (runtime.value.phase === "completed") persist("completed");
+    if (runtime.value.phase === "completed") void notifyTourCompleted();
   }
 
   /**
@@ -117,7 +156,11 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
 
   function markCompleted() {
     runtime.value = completeTour(runtime.value);
-    persist("completed");
+    void notifyTourCompleted();
+  }
+
+  function dismissSkipNotice() {
+    skipNotice.value = false;
   }
 
   return {
@@ -128,6 +171,7 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
     tourTitleId,
     active,
     offering,
+    skipNotice,
     discoverTab,
     filterFindPeopleToCreator,
     isSpotlight,
@@ -141,5 +185,6 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
     maybeOfferAfterOnboarding,
     armForForceOnboarding,
     markCompleted,
+    dismissSkipNotice,
   };
 });

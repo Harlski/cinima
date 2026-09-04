@@ -9,6 +9,7 @@ import {
   TOUR_CREATOR_WALLET,
   TOUR_SPOTLIGHT,
   advanceTourNext,
+  shouldOfferRecommendCue,
   armForceGuidedTour,
   completeTour,
   consumeForceGuidedTour,
@@ -24,6 +25,11 @@ import {
   skipTour,
   startTour,
   tourCoachPlacement,
+  TOUR_COMMUNITY_FALLBACK_TITLE,
+  TOUR_COMMUNITY_FALLBACK_TITLE_ID,
+  TOUR_SKIP_NOTICE_BODY,
+  TOUR_SKIP_NOTICE_TITLE,
+  withTourCommunityFallback,
   tourStepAt,
   tourStepPrimaryLabel,
   tourStepShowsPrimaryButton,
@@ -114,12 +120,20 @@ const EXPECTED_WALKTHROUGH: readonly {
     routeName: "my-list",
   },
   {
-    id: "favorite-optional",
-    showsPrimary: true,
-    primaryLabel: "Continue",
+    id: "favorite-required",
+    showsPrimary: false,
     coach: "bottom",
     spotlights: [TOUR_SPOTLIGHT.deckFavorite],
+    action: "favorite",
     routeName: "my-list",
+  },
+  {
+    id: "recommend-required",
+    showsPrimary: false,
+    coach: "bottom",
+    spotlights: [TOUR_SPOTLIGHT.titleRecommend],
+    action: "recommend",
+    routeName: "title",
   },
   {
     id: "remove-watchlist",
@@ -168,12 +182,12 @@ const EXPECTED_WALKTHROUGH: readonly {
     routeName: "user",
   },
   {
-    id: "you-can-recommend",
-    showsPrimary: true,
-    primaryLabel: "Next",
+    id: "clear-profile",
+    showsPrimary: false,
     coach: "bottom",
-    spotlights: [TOUR_SPOTLIGHT.userRecommends],
-    routeName: "user",
+    spotlights: [TOUR_SPOTLIGHT.titleFavorite],
+    action: "unfavorite",
+    routeName: "title",
   },
   {
     id: "tour-done",
@@ -246,9 +260,15 @@ describe("Guided tour step contracts", () => {
     expect(taste?.body).toBe(
       "Recommends are gold-star picks. Favorites are the rest of what they enjoy. Follow if you like their taste."
     );
-    const youCan = GUIDED_TOUR_STEPS.find((s) => s.id === "you-can-recommend");
-    expect(youCan?.body).toBe(
-      `If you love a title and would tell someone to watch it, Recommend it from the title. You can hold ${MAX_RECOMMENDS} movie Recommends and ${MAX_RECOMMENDS} TV Recommends at a time.`
+    const recommend = GUIDED_TOUR_STEPS.find((s) => s.id === "recommend-required");
+    expect(recommend?.body).toBe(
+      `Favorite means you like it. Recommend is the gold-star you'd tell a friend. You can hold ${MAX_RECOMMENDS} movie Recommends and ${MAX_RECOMMENDS} TV Recommends at a time.`
+    );
+    const clear = GUIDED_TOUR_STEPS.find((s) => s.id === "clear-profile");
+    expect(clear?.actionText).toBe("Tap Favorited, then confirm.");
+    expect(TOUR_SKIP_NOTICE_TITLE).toBe("Tour skipped");
+    expect(TOUR_SKIP_NOTICE_BODY).toBe(
+      "You can take the tour and complete it anytime from Me."
     );
   });
 
@@ -297,9 +317,17 @@ describe("Guided tour step machine", () => {
     state = reportTourAction(state, "watchlist-add");
     expect(tourStepAt(state.stepIndex)?.id).toBe("watchlist-added");
 
-    state = advanceTourNext(state); // favorite-optional
-    expect(tourStepAt(state.stepIndex)?.id).toBe("favorite-optional");
-    state = advanceTourNext(state); // remove
+    state = advanceTourNext(state); // favorite-required
+    expect(tourStepAt(state.stepIndex)?.id).toBe("favorite-required");
+    expect(tourStepShowsPrimaryButton(tourStepAt(state.stepIndex))).toBe(false);
+
+    state = reportTourAction(state, "favorite");
+    expect(state.tourTitleFavorited).toBe(true);
+    expect(tourStepAt(state.stepIndex)?.id).toBe("recommend-required");
+    expect(tourStepShowsPrimaryButton(tourStepAt(state.stepIndex))).toBe(false);
+
+    state = reportTourAction(state, "recommend");
+    expect(state.tourTitleRecommended).toBe(true);
     expect(tourStepAt(state.stepIndex)?.id).toBe("remove-watchlist");
 
     state = reportTourAction(state, "watchlist-remove");
@@ -315,11 +343,13 @@ describe("Guided tour step machine", () => {
     expect(tourStepShowsPrimaryButton(tourStepAt(state.stepIndex))).toBe(true);
 
     state = advanceTourNext(state);
-    expect(tourStepAt(state.stepIndex)?.id).toBe("you-can-recommend");
-    expect(tourStepShowsPrimaryButton(tourStepAt(state.stepIndex))).toBe(true);
-    expect(tourStepAt(state.stepIndex)?.routeName).toBe("user");
+    expect(tourStepAt(state.stepIndex)?.id).toBe("clear-profile");
+    expect(tourStepAt(state.stepIndex)?.routeName).toBe("title");
+    expect(tourStepAt(state.stepIndex)?.useTourTitle).toBe(true);
+    expect(tourStepShowsPrimaryButton(tourStepAt(state.stepIndex))).toBe(false);
 
-    state = advanceTourNext(state);
+    state = reportTourAction(state, "unfavorite");
+    expect(state.tourTitleFavorited).toBe(false);
     expect(tourStepAt(state.stepIndex)?.id).toBe("tour-done");
     expect(tourStepAt(state.stepIndex)?.showFeedbackLinks).toBe(true);
 
@@ -335,6 +365,67 @@ describe("Guided tour step machine", () => {
     state = reportTourAction(state, "open-title", { titleId: "tv:9" });
     expect(state.tourTitleId).toBe("tv:9");
     expect(tourStepAt(state.stepIndex)?.id).toBe("add-watchlist");
+  });
+
+  it("after Favorite, opens title detail and requires Recommend", () => {
+    let state = startTour(initialTourRuntime());
+    state = advanceTourNext(state); // search
+    state = advanceTourNext(state); // recommends
+    state = advanceTourNext(state); // recommends-open
+    state = reportTourAction(state, "open-title", { titleId: "movie:1" });
+    state = reportTourAction(state, "watchlist-add");
+    state = advanceTourNext(state); // favorite-required
+    expect(tourStepAt(state.stepIndex)?.id).toBe("favorite-required");
+
+    state = reportTourAction(state, "favorite");
+
+    const step = tourStepAt(state.stepIndex);
+    expect(step?.id).toBe("recommend-required");
+    expect(step?.routeName).toBe("title");
+    expect(step?.useTourTitle).toBe(true);
+    expect([...step!.spotlights]).toEqual([TOUR_SPOTLIGHT.titleRecommend]);
+    expect(step?.advance).toBe("action");
+    expect(step?.action).toBe("recommend");
+    expect(tourStepShowsPrimaryButton(step)).toBe(false);
+  });
+
+  it("Recommend is required, then Watchlist remove - no Title Share step", () => {
+    let state = startTour(initialTourRuntime());
+    state = advanceTourNext(state); // search
+    state = advanceTourNext(state); // recommends
+    state = advanceTourNext(state); // recommends-open
+    state = reportTourAction(state, "open-title", { titleId: "movie:1" });
+    state = reportTourAction(state, "watchlist-add");
+    state = advanceTourNext(state); // favorite-required
+    state = reportTourAction(state, "favorite");
+    expect(tourStepAt(state.stepIndex)?.id).toBe("recommend-required");
+
+    state = reportTourAction(state, "recommend");
+    expect(tourStepAt(state.stepIndex)?.id).toBe("remove-watchlist");
+  });
+
+  it("skips Favorite when the tour title is already Favorited", () => {
+    let state = startTour(initialTourRuntime());
+    state = advanceTourNext(state); // search
+    state = advanceTourNext(state); // recommends
+    state = advanceTourNext(state); // recommends-open
+    state = reportTourAction(state, "open-title", { titleId: "movie:1" });
+    state = reportTourAction(state, "watchlist-add");
+    state = { ...state, tourTitleFavorited: true };
+    state = advanceTourNext(state);
+    expect(tourStepAt(state.stepIndex)?.id).toBe("recommend-required");
+  });
+
+  it("skips Recommend when the tour title is already Recommended", () => {
+    let state = startTour(initialTourRuntime());
+    state = advanceTourNext(state); // search
+    state = advanceTourNext(state); // recommends
+    state = advanceTourNext(state); // recommends-open
+    state = reportTourAction(state, "open-title", { titleId: "movie:1" });
+    state = reportTourAction(state, "watchlist-add");
+    state = { ...state, tourTitleFavorited: true, tourTitleRecommended: true };
+    state = advanceTourNext(state);
+    expect(tourStepAt(state.stepIndex)?.id).toBe("remove-watchlist");
   });
 
   it("skips Watchlist practice only when landing on those steps without a title", () => {
@@ -360,6 +451,8 @@ describe("Guided tour step machine", () => {
       phase: "active",
       stepIndex: 0,
       tourTitleId: null,
+      tourTitleFavorited: false,
+      tourTitleRecommended: false,
     };
     expect(isTourSpotlightActive(state, TOUR_SPOTLIGHT.tabWatchlist)).toBe(true);
     expect(isTourSpotlightActive(state, TOUR_SPOTLIGHT.tabSearch)).toBe(false);
@@ -374,6 +467,62 @@ describe("Guided tour step machine", () => {
     expect(state.phase).toBe("idle");
     state = completeTour(startTour(initialTourRuntime()));
     expect(state.phase).toBe("completed");
+  });
+});
+
+describe("Recommend cue after Recommend", () => {
+  it("offers the Recommend cue after a new Recommend outside the tour", () => {
+    expect(
+      shouldOfferRecommendCue({
+        tourActive: false,
+        wasRecommended: false,
+      })
+    ).toBe(true);
+  });
+
+  it("does not offer the Recommend cue when clearing a Recommend", () => {
+    expect(
+      shouldOfferRecommendCue({
+        tourActive: false,
+        wasRecommended: true,
+      })
+    ).toBe(false);
+  });
+
+  it("does not offer the Recommend cue during the guided tour", () => {
+    expect(
+      shouldOfferRecommendCue({
+        tourActive: true,
+        wasRecommended: false,
+      })
+    ).toBe(false);
+  });
+});
+
+describe("Tour community Recommends fallback", () => {
+  it("injects Fight Club when movies and TV are empty", () => {
+    const filled = withTourCommunityFallback({ movies: [], tv: [] });
+    expect(filled.movies).toEqual([TOUR_COMMUNITY_FALLBACK_TITLE]);
+    expect(filled.tv).toEqual([]);
+    expect(TOUR_COMMUNITY_FALLBACK_TITLE_ID).toBe("tmdb:movie:550");
+    expect(TOUR_COMMUNITY_FALLBACK_TITLE.title).toBe("Fight Club");
+  });
+
+  it("leaves a populated community list alone", () => {
+    const existing = {
+      id: "tmdb:movie:13" as const,
+      mediaType: "movie" as const,
+      tmdbId: 13,
+      title: "Forrest Gump",
+      year: 1994,
+      posterUrl: null,
+      overview: null,
+      rating: null,
+      popularity: null,
+      imdbId: null,
+    };
+    const filled = withTourCommunityFallback({ movies: [existing], tv: [] });
+    expect(filled.movies).toEqual([existing]);
   });
 });
 
@@ -477,6 +626,9 @@ describe("Guided tour spotlight targets in source", () => {
         "open-creator-profile",
         "open-find-people",
         "open-title",
+        "favorite",
+        "recommend",
+        "unfavorite",
         "watchlist-add",
         "watchlist-remove",
       ].sort()

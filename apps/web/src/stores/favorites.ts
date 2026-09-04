@@ -1,7 +1,8 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { useApi } from "@/composables/useApi";
-import type { TitleSummary } from "@cinima/shared";
+import type { AchievementKind, TitleSummary } from "@cinima/shared";
+import { useMarqueeStore } from "@/stores/marquee";
 
 export const useFavoritesStore = defineStore("favorites", () => {
   const favorites = ref<Set<string>>(new Set());
@@ -57,9 +58,13 @@ export const useFavoritesStore = defineStore("favorites", () => {
   };
 
   const setRecommend = async (titleId: string) => {
-    await request(`/recommends/${encodeURIComponent(titleId)}`, { method: "POST" });
+    const data = await request<{ earnedAchievements?: AchievementKind[] }>(
+      `/recommends/${encodeURIComponent(titleId)}`,
+      { method: "POST" }
+    );
     recommends.value.add(titleId);
     favorites.value.add(titleId);
+    if (data.earnedAchievements?.length) useMarqueeStore().enqueue(data.earnedAchievements);
   };
 
   const clearRecommend = async (titleId: string) => {

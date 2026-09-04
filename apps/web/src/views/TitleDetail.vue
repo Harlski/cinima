@@ -8,7 +8,7 @@
         type="button"
         class="share-button"
         aria-label="Share title"
-        @click="shareOpen = true"
+        @click="openTitleShare"
       >
         <NqIcon name="link" :size="22" />
       </button>
@@ -20,7 +20,13 @@
 
     <div v-else-if="title" class="content">
       <div class="poster-section">
-        <div class="poster">
+        <GoldGlowShell v-if="title.recommended" radius="12px" class="poster-glow">
+          <div class="poster">
+            <PosterImg v-if="title.posterUrl" :src="title.posterUrl" :alt="title.title" />
+            <div v-else class="poster-placeholder">{{ title.title }}</div>
+          </div>
+        </GoldGlowShell>
+        <div v-else class="poster">
           <PosterImg v-if="title.posterUrl" :src="title.posterUrl" :alt="title.title" />
           <div v-else class="poster-placeholder">{{ title.title }}</div>
         </div>
@@ -65,24 +71,33 @@
               </button>
             </TourSpotlight>
 
-            <button
-              type="button"
-              @click="toggleFavorite"
-              class="nq-pill-stretch"
-              :class="title.favorited ? 'nq-pill-blue' : 'nq-pill-secondary'"
-            >
-              {{ title.favorited ? "Favorited" : "Add to Favorites" }}
-            </button>
+            <TourSpotlight :id="TOUR_SPOTLIGHT.titleFavorite" radius="999px">
+              <button
+                type="button"
+                @click="toggleFavorite"
+                class="nq-pill-stretch"
+                :class="title.favorited ? 'nq-pill-blue' : 'nq-pill-secondary'"
+                :data-tour="TOUR_SPOTLIGHT.titleFavorite"
+              >
+                {{ title.favorited ? "Favorited" : "Add to Favorites" }}
+              </button>
+            </TourSpotlight>
 
-            <button
+            <TourSpotlight
               v-if="title.favorited"
-              type="button"
-              class="nq-pill-stretch"
-              :class="title.recommended ? 'nq-pill-gold' : 'nq-pill-secondary'"
-              @click="toggleRecommend"
+              :id="TOUR_SPOTLIGHT.titleRecommend"
+              radius="999px"
             >
-              {{ title.recommended ? "Recommended ★" : "Recommend ★" }}
-            </button>
+              <button
+                type="button"
+                class="nq-pill-stretch"
+                :class="title.recommended ? 'nq-pill-gold' : 'nq-pill-secondary'"
+                :data-tour="TOUR_SPOTLIGHT.titleRecommend"
+                @click="toggleRecommend"
+              >
+                {{ title.recommended ? "Recommended ★" : "Recommend ★" }}
+              </button>
+            </TourSpotlight>
 
             <a
               v-if="imdbUrl"
@@ -285,9 +300,31 @@
       :media-type="title.mediaType"
       :tmdb-id="title.tmdbId"
       :poster-url="title.posterUrl"
-      @close="shareOpen = false"
+      @close="closeTitleShare"
       @claim="goClaimHandle"
     />
+
+    <div
+      v-if="recommendCueOpen && title"
+      class="recommend-cue"
+      role="status"
+      aria-live="polite"
+    >
+      <div class="recommend-cue-bar">
+        <p class="recommend-cue-copy">{{ title.title }} now recommended</p>
+        <button type="button" class="nq-pill-gold recommend-cue-share" @click="shareFromCue">
+          Share?
+        </button>
+        <button
+          type="button"
+          class="recommend-cue-x"
+          aria-label="Dismiss"
+          @click="recommendCueOpen = false"
+        >
+          <NqIcon name="cross" :size="18" />
+        </button>
+      </div>
+    </div>
 
     <FavoritersSheet
       v-if="favoritersOpen && title"
@@ -322,11 +359,12 @@ import { useApi } from "@/composables/useApi";
 import { useAuthStore } from "@/stores/auth";
 import { useFavoritesStore } from "@/stores/favorites";
 import { useCatalogStore } from "@/stores/catalog";
-import { displayName, imdbTitleUrl, makeTitleId, type MediaType } from "@cinima/shared";
+import { displayName, imdbTitleUrl, makeTitleId, type AchievementKind, type MediaType } from "@cinima/shared";
 import type { TitleDetail, CommentDto, TitleSuggester } from "@cinima/shared";
 import ExpandableText from "@/components/ExpandableText.vue";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import FavoritersSheet, { type TastePeopleTab } from "@/components/FavoritersSheet.vue";
+import GoldGlowShell from "@/components/GoldGlowShell.vue";
 import HeatMap from "@/components/HeatMap.vue";
 import Identicon from "@/components/Identicon.vue";
 import NqIcon from "@/components/NqIcon.vue";
@@ -337,9 +375,10 @@ import ShareTitleSheet from "@/components/ShareTitleSheet.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";
 import TourSpotlight from "@/components/TourSpotlight.vue";
 import { useTitleActionConfirm } from "@/composables/useTitleActionConfirm";
-import { TOUR_SPOTLIGHT } from "@/lib/guidedTour";
+import { shouldOfferRecommendCue, TOUR_SPOTLIGHT } from "@/lib/guidedTour";
 import { watchlistButtonLabel } from "@/lib/titleActionLabels";
 import { useGuidedTourStore } from "@/stores/guidedTour";
+import { useMarqueeStore } from "@/stores/marquee";
 import { formatTitleRating, hasTitleRating } from "@/lib/titleRating";
 
 const route = useRoute();
@@ -385,6 +424,7 @@ const thankingAll = ref(false);
 const favoritersOpen = ref(false);
 const tastePeopleTab = ref<TastePeopleTab>("recommends");
 const shareOpen = ref(false);
+const recommendCueOpen = ref(false);
 const composerEl = ref<HTMLElement | null>(null);
 const composerDocked = ref(false);
 const composerSpacerHeight = ref("0px");
@@ -472,6 +512,7 @@ const toggleFavorite = async () => {
     isFavorited: title.value.favorited,
     onAdded: () => {
       if (title.value) title.value.favorited = true;
+      tour.reportAction("favorite");
     },
   });
 };
@@ -494,6 +535,8 @@ const onConfirmAction = async () => {
       if (!title.value) return;
       title.value.favorited = false;
       title.value.recommended = false;
+      recommendCueOpen.value = false;
+      tour.reportAction("unfavorite");
     },
     onRemoveFromWatchlist: () => {
       if (title.value) title.value.watchlisted = false;
@@ -504,18 +547,41 @@ const onConfirmAction = async () => {
 
 const toggleRecommend = async () => {
   if (!title.value?.favorited) return;
+  const wasRecommended = title.value.recommended;
   try {
-    if (title.value.recommended) {
+    if (wasRecommended) {
       await favoritesStore.clearRecommend(title.value.id);
       title.value.recommended = false;
-    } else {
-      await favoritesStore.setRecommend(title.value.id);
-      title.value.recommended = true;
+      return;
+    }
+    await favoritesStore.setRecommend(title.value.id);
+    title.value.recommended = true;
+    tour.reportAction("recommend");
+    if (
+      shouldOfferRecommendCue({
+        tourActive: tour.active,
+        wasRecommended,
+      })
+    ) {
+      recommendCueOpen.value = true;
     }
   } catch (err) {
     console.error("Recommend failed:", err);
     alert(err instanceof Error ? err.message : "Could not update Recommend");
   }
+};
+
+const openTitleShare = () => {
+  shareOpen.value = true;
+};
+
+const shareFromCue = () => {
+  recommendCueOpen.value = false;
+  shareOpen.value = true;
+};
+
+const closeTitleShare = () => {
+  shareOpen.value = false;
 };
 
 const postComment = async () => {
@@ -600,11 +666,17 @@ const thankAll = async () => {
   if (!title.value || !unthankedCount.value) return;
   thankingAll.value = true;
   try {
-    await request("/thanks/all", {
-      method: "POST",
-      body: JSON.stringify({ titleId: title.value.id }),
-    });
+    const data = await request<{ thanked: number; earnedAchievements?: AchievementKind[] }>(
+      "/thanks/all",
+      {
+        method: "POST",
+        body: JSON.stringify({ titleId: title.value.id }),
+      }
+    );
     suggesters.value = suggesters.value.map((s) => ({ ...s, thanked: true }));
+    if (data.earnedAchievements?.length) {
+      useMarqueeStore().enqueue(data.earnedAchievements);
+    }
   } catch (err) {
     console.error("Thank all failed:", err);
   } finally {
@@ -638,7 +710,7 @@ const formatTime = (iso: string) => {
 const goBack = () => router.back();
 const goToUser = (wallet: string) => router.push({ name: "user", params: { wallet } });
 const goClaimHandle = () => {
-  shareOpen.value = false;
+  closeTitleShare();
   router.push({ name: "me" });
 };
 
@@ -702,6 +774,16 @@ onUnmounted(() => {
   margin-bottom: 1rem;
 }
 
+.poster-glow {
+  flex: none;
+  width: 10rem;
+}
+
+.poster-glow :deep(.gold-glow-content) {
+  width: 100%;
+  height: 15rem;
+}
+
 .poster {
   flex: none;
   width: 10rem;
@@ -710,6 +792,11 @@ onUnmounted(() => {
   background: var(--bg-surface);
   border-radius: 12px;
   overflow: hidden;
+}
+
+.poster-glow .poster {
+  width: 100%;
+  height: 100%;
 }
 
 .poster :deep(.poster-img),
@@ -1104,5 +1191,66 @@ onUnmounted(() => {
 
 .title-attr {
   margin-top: 2rem;
+}
+
+.recommend-cue {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--bottom-tabs-inset);
+  z-index: 49;
+  pointer-events: none;
+  animation: recommend-cue-in 0.28s ease-out;
+}
+
+@keyframes recommend-cue-in {
+  from {
+    transform: translateY(110%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.recommend-cue-bar {
+  pointer-events: auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 2.6rem 0.8rem 1rem;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border);
+}
+
+.recommend-cue-copy {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.recommend-cue-share {
+  flex-shrink: 0;
+}
+
+.recommend-cue-x {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  display: grid;
+  place-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
 }
 </style>

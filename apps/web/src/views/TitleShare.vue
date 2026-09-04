@@ -84,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import { RouterLink, useRoute } from "vue-router";
 import {
   titleShareCopy,
@@ -101,6 +101,7 @@ import PosterImg from "@/components/PosterImg.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";
 import { isNimiqPay } from "@/lib/nimiqPay";
 import { payOpenSchemeUrl, payOpenTitleUrl } from "@/lib/payLinks";
+import { recordShareVisit, shareVisitPayIntentKey } from "@/lib/shareVisit";
 import { formatTitleRating } from "@/lib/titleRating";
 
 const route = useRoute();
@@ -128,6 +129,18 @@ const payUrl = computed(() => {
   return payOpenTitleUrl(payload.value.title.id);
 });
 
+function beaconOpen() {
+  if (!handle.value) return;
+  recordShareVisit({ kind: "title", handle: handle.value });
+}
+
+function beaconPayIntent() {
+  if (!handle.value) return;
+  recordShareVisit({ kind: "title", handle: handle.value, intent: "pay_cta" });
+}
+
+provide(shareVisitPayIntentKey, beaconPayIntent);
+
 const onSelectTitle = () => {
   if (!payload.value || isNimiqPay()) return;
   gateTitle.value = payload.value.title;
@@ -138,6 +151,7 @@ const onKeydown = (e: KeyboardEvent) => {
 };
 
 const loadShare = async () => {
+  beaconOpen();
   loading.value = true;
   payload.value = null;
   try {

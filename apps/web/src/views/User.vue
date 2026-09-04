@@ -11,8 +11,11 @@
         :x-handle="profile.xHandle"
         :follower-count="profile.followerCount"
         :following-count="profile.followingCount"
+        :achievement-count="profile.achievementCount ?? 0"
+        :achievement-open="true"
         wallet-display="abbrev"
         :avatar-size="64"
+        @open-credits="openCredits"
       >
         <template v-if="!profile.isSelf" #actions>
           <TourSpotlight :id="TOUR_SPOTLIGHT.userFollow" radius="999px">
@@ -102,6 +105,11 @@ const toggleFollow = async () => {
 
 const goToTitle = (titleId: string) => {
   router.push({ name: "title", params: { id: titleId } });
+};
+
+const openCredits = () => {
+  if (!profile.value) return;
+  router.push({ name: "credits", params: { wallet: profile.value.walletAddress } });
 };
 
 onMounted(loadProfile);

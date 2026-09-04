@@ -9,6 +9,7 @@ import TitleDetail from "../views/TitleDetail.vue";
 import User from "../views/User.vue";
 import PublicProfile from "../views/PublicProfile.vue";
 import TitleShare from "../views/TitleShare.vue";
+import WatchlistShare from "../views/WatchlistShare.vue";
 import ShortShare from "../views/ShortShare.vue";
 import Landing from "../views/Landing.vue";
 import { ACTIVITY_UI_VISIBLE, RESERVED_PUBLIC_HANDLES } from "@cinima/shared";
@@ -55,6 +56,7 @@ export const router = createRouter({
           beforeEnter: () => (ACTIVITY_UI_VISIBLE ? true : { name: "discover" }),
         },
         { path: "me", name: "me", component: Me },
+        { path: "credits/:wallet", name: "credits", component: () => import("../views/Credits.vue") },
         { path: "studio", name: "studio", component: () => import("../views/Studio.vue") },
         {
           path: "title/:mediaType(movie|tv)/:tmdbId(\\d+)",
@@ -83,6 +85,17 @@ export const router = createRouter({
         if (media !== "movie" && media !== "tv") {
           return { name: "public", params: { username: handle } };
         }
+        return true;
+      },
+    },
+    {
+      path: "/:handle/list",
+      name: "watchlist-share",
+      component: WatchlistShare,
+      props: true,
+      beforeEnter: (to) => {
+        const handle = String(to.params.handle || "").toLowerCase();
+        if (RESERVED.has(handle)) return { name: "discover" };
         return true;
       },
     },

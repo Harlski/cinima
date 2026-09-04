@@ -120,6 +120,25 @@ const statements = [
   )`,
   `CREATE INDEX IF NOT EXISTS usage_events_kind_created ON usage_events(kind, created_at)`,
   `CREATE INDEX IF NOT EXISTS usage_events_wallet_kind ON usage_events(wallet_address, kind)`,
+  `CREATE TABLE IF NOT EXISTS share_visits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind TEXT NOT NULL,
+    code TEXT,
+    handle TEXT,
+    channel TEXT NOT NULL,
+    intent TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS share_visits_created ON share_visits(created_at)`,
+  `CREATE INDEX IF NOT EXISTS share_visits_code ON share_visits(code)`,
+  `CREATE INDEX IF NOT EXISTS share_visits_handle_kind ON share_visits(handle, kind)`,
+  `CREATE TABLE IF NOT EXISTS achievements (
+    wallet_address TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    earned_at INTEGER NOT NULL,
+    seen_at INTEGER
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS achievements_unique ON achievements(wallet_address, kind)`,
   `CREATE TABLE IF NOT EXISTS presence_days (
     wallet_address TEXT NOT NULL,
     day TEXT NOT NULL,

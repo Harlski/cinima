@@ -27,6 +27,26 @@
       </div>
     </div>
 
+    <div
+      v-else-if="tour.skipNotice"
+      class="tour-offer"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="tour-skip-title"
+    >
+      <div class="tour-offer-card nq-card">
+        <h2 id="tour-skip-title">{{ skipNoticeTitle }}</h2>
+        <p>{{ skipNoticeBody }}</p>
+        <button
+          type="button"
+          class="nq-pill-blue nq-pill-stretch"
+          @click="tour.dismissSkipNotice()"
+        >
+          Got it
+        </button>
+      </div>
+    </div>
+
     <!-- Active coach card -->
     <div
       v-else-if="tour.active && step && step.id === 'tour-done'"
@@ -114,6 +134,8 @@ import { payGateSocial } from "@/lib/contact";
 import {
   GUIDED_TOUR_STEPS,
   TOUR_CREATOR_WALLET,
+  TOUR_SKIP_NOTICE_BODY,
+  TOUR_SKIP_NOTICE_TITLE,
   tourCoachPlacement,
   tourStepPrimaryLabel,
   tourStepShowsPrimaryButton,
@@ -125,6 +147,8 @@ const router = useRouter();
 
 const stepCount = GUIDED_TOUR_STEPS.length;
 const feedbackChannels = payGateSocial;
+const skipNoticeTitle = TOUR_SKIP_NOTICE_TITLE;
+const skipNoticeBody = TOUR_SKIP_NOTICE_BODY;
 
 const coachPlacement = computed(() => tourCoachPlacement(step.value));
 

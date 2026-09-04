@@ -230,6 +230,8 @@ describe("Studio HTTP API", () => {
         viewsToday: number;
         shares: number;
         sharesToday: number;
+        visits: number;
+        visitsToday: number;
         follows: number;
         followsToday: number;
         favorites: number;
@@ -238,7 +240,13 @@ describe("Studio HTTP API", () => {
       recentSignups: { handle: string | null; walletAddress: string }[];
       recentSearches: { query: string; handle: string | null }[];
       recentViews: { titleId: string; title: string | null }[];
-      recentShares: { kind: string; title: string | null }[];
+      recentShares: {
+        kind: string;
+        title: string | null;
+        webCount: number;
+        payCount: number;
+        payCtaCount: number;
+      }[];
       recentFollows: {
         follower: { handle: string | null };
         followee: { handle: string | null };
@@ -256,6 +264,8 @@ describe("Studio HTTP API", () => {
     expect(body.totals.viewsToday).toBe(1);
     expect(body.totals.shares).toBe(1);
     expect(body.totals.sharesToday).toBe(1);
+    expect(body.totals.visits).toBe(0);
+    expect(body.totals.visitsToday).toBe(0);
     expect(body.totals.follows).toBe(1);
     expect(body.totals.followsToday).toBe(1);
     expect(body.totals.favorites).toBe(1);
@@ -266,6 +276,9 @@ describe("Studio HTTP API", () => {
     expect(body.recentViews[0]?.title).toBe("Fight Club");
     expect(body.recentShares[0]?.kind).toBe("title");
     expect(body.recentShares[0]?.title).toBe("Fight Club");
+    expect(body.recentShares[0]?.webCount).toBe(0);
+    expect(body.recentShares[0]?.payCount).toBe(0);
+    expect(body.recentShares[0]?.payCtaCount).toBe(0);
     expect(body.recentFollows[0]?.follower.handle).toBe("peer");
     expect(body.recentFollows[0]?.followee.handle).toBe("cinima");
     expect(body.topSearches).toEqual([{ query: "dune", count: 1 }]);

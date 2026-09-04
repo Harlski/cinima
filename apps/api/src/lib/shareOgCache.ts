@@ -4,7 +4,7 @@ const cache = new Map<string, Buffer>();
 const inflight = new Map<string, Promise<Buffer | null>>();
 
 export function shareOgCacheKey(
-  kind: "title" | "profile",
+  kind: "title" | "profile" | "watchlist",
   ...parts: (string | number)[]
 ): string {
   return `${kind}:${parts.map(String).join(":")}`;
@@ -16,6 +16,12 @@ export function getCachedShareOgImage(key: string): Buffer | undefined {
 
 export function setCachedShareOgImage(key: string, png: Buffer): void {
   cache.set(key, png);
+}
+
+/** Drop a cached PNG so the next resolve/prewarm rebuilds it. */
+export function invalidateShareOgImage(key: string): void {
+  cache.delete(key);
+  inflight.delete(key);
 }
 
 /** Clear cache between tests. */

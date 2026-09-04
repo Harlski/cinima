@@ -4,6 +4,7 @@ import { db } from "../db/index.js";
 import * as schema from "../db/schema.js";
 import { ogPosterUrl } from "../lib/titles.js";
 import {
+  invalidateShareOgImage,
   prewarmShareOgImage,
   resolveShareOgImage,
   shareOgCacheKey,
@@ -11,9 +12,11 @@ import {
 import {
   renderProfileShareOgImage,
   renderTitleShareOgImage,
+  renderWatchlistShareOgImage,
 } from "../lib/shareOgImage.js";
-import { resolveProfileShareOgPoster } from "./shareLinks.js";
+import { resolveProfileShareOgPosters } from "./shareLinks.js";
 import { listFavorites, listRecommends } from "./favorites.js";
+import { listWatchlist } from "./watchlist.js";
 
 async function findPublicUserByHandle(username: string) {
   const handle = username.replace(/^@/, "").toLowerCase();
@@ -27,6 +30,10 @@ function titleShareOgKey(handle: string, mediaType: MediaType, tmdbId: number): 
 
 function profileShareOgKey(handle: string): string {
   return shareOgCacheKey("profile", handle);
+}
+
+function watchlistShareOgKey(handle: string): string {
+  return shareOgCacheKey("watchlist", handle);
 }
 
 async function buildTitleShareOgImage(
@@ -54,9 +61,13 @@ async function buildProfileShareOgImage(handle: string): Promise<Buffer | null> 
 
   const recommends = await listRecommends(user.walletAddress);
   const favorites = await listFavorites(user.walletAddress);
-  const posterUrl = await resolveProfileShareOgPoster(recommends, favorites);
+  const posterUrls = await resolveProfileShareOgPosters(recommends, favorites);
 
-  return renderProfileShareOgImage({ handle: user.handle, posterUrl });
+  return renderProfileShareOgImage({
+    handle: user.handle,
+    walletAddress: user.walletAddress,
+    posterUrls,
+  });
 }
 
 /** Branded 1200x630 PNG for title share links (X/Facebook/LinkedIn large card). */
@@ -87,4 +98,39 @@ export function prewarmTitleShareOgImage(
 export function prewarmProfileShareOgImage(handle: string): void {
   const key = profileShareOgKey(handle);
   prewarmShareOgImage(key, () => buildProfileShareOgImage(handle));
+}
+
+/** Drop the cached profile PNG and rebuild it in the background. */
+export function refreshProfileShareOgImage(handle: string): void {
+  const key = profileShareOgKey(handle);
+  invalidateShareOgImage(key);
+  prewarmShareOgImage(key, () => buildProfileShareOgImage(handle));
+}
+
+async function buildWatchlistShareOgImage(handle: string): Promise<Buffer | null> {
+  const user = await findPublicUserByHandle(handle);
+  if (!user?.handle) return null;
+  const titles = await listWatchlist(user.walletAddress);
+  const posterUrls = titles.map((t) => t.posterUrl).filter(Boolean) as string[];
+  return renderWatchlistShareOgImage({
+    handle: user.handle,
+    walletAddress: user.walletAddress,
+    posterUrls,
+  });
+}
+
+export function getWatchlistShareOgImage(handle: string): Promise<Buffer | null> {
+  const key = watchlistShareOgKey(handle);
+  return resolveShareOgImage(key, () => buildWatchlistShareOgImage(handle));
+}
+
+export function prewarmWatchlistShareOgImage(handle: string): void {
+  const key = watchlistShareOgKey(handle);
+  prewarmShareOgImage(key, () => buildWatchlistShareOgImage(handle));
+}
+
+export function refreshWatchlistShareOgImage(handle: string): void {
+  const key = watchlistShareOgKey(handle);
+  invalidateShareOgImage(key);
+  prewarmShareOgImage(key, () => buildWatchlistShareOgImage(handle));
 }

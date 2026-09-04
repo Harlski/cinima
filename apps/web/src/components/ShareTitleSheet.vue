@@ -49,6 +49,7 @@ import NqSpinner from "@/components/NqSpinner.vue";
 import ShareLinkSheet from "@/components/ShareLinkSheet.vue";
 import { useApi } from "@/composables/useApi";
 import { payAppOrigin } from "@/lib/payLinks";
+import { useMarqueeStore } from "@/stores/marquee";
 
 const props = defineProps<{
   handle: string | null;
@@ -85,6 +86,9 @@ onMounted(async () => {
       }),
     });
     shareUrl.value = shortShareUrl(payAppOrigin(), data.code);
+    if (data.earnedAchievements?.length) {
+      useMarqueeStore().enqueue(data.earnedAchievements);
+    }
   } catch {
     shareUrl.value = "";
   } finally {

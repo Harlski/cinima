@@ -22,3 +22,7 @@ export function titleShareOgImageUrl(
 ): string {
   return `${siteOrigin.replace(/\/$/, "")}/api/og/title/${encodeURIComponent(handle)}/${mediaType}/${tmdbId}.png`;
 }
+
+export function watchlistShareOgImageUrl(siteOrigin: string, handle: string): string {
+  return `${siteOrigin.replace(/\/$/, "")}/api/og/watchlist/${encodeURIComponent(handle)}.png`;
+}

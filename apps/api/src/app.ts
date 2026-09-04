@@ -24,6 +24,8 @@ import {
   shortShareUrl,
   titleShareOgImageUrl,
   titleShareUrl,
+  watchlistShareOgImageUrl,
+  watchlistShareUrl,
 } from "@cinima/shared";
 import { db } from "./db/index.js";
 import * as schema from "./db/schema.js";
@@ -37,17 +39,23 @@ import {
 } from "./services/auth.js";
 import { titleShareOgHtml } from "./lib/titleShareHtml.js";
 import { profileShareOgHtml } from "./lib/profileShareHtml.js";
+import { watchlistShareOgHtml } from "./lib/watchlistShareHtml.js";
 import { shareOgImageCacheControl } from "./lib/shareOgImage.js";
 import {
   getOrCreateProfileShareLink,
   getOrCreateTitleShareLink,
+  getOrCreateWatchlistShareLink,
   resolveShareLink,
 } from "./services/shareLinks.js";
 import {
   getProfileShareOgImage,
   getTitleShareOgImage,
+  getWatchlistShareOgImage,
   prewarmProfileShareOgImage,
   prewarmTitleShareOgImage,
+  prewarmWatchlistShareOgImage,
+  refreshProfileShareOgImage,
+  refreshWatchlistShareOgImage,
 } from "./services/shareOgServe.js";
 import {
   CommentError,
@@ -96,6 +104,21 @@ import {
   thankAllSuggesters,
 } from "./services/social.js";
 import { recordHeartbeat, recordSearch, recordView } from "./services/usage.js";
+import { recordShareVisit } from "./services/shareVisits.js";
+import { ringDoorAlarm, ringShareVisitDoorAlarm } from "./services/doorAlarm.js";
+import {
+  achievementCount,
+  evaluateAfterHeartbeat,
+  evaluateAfterRecommend,
+  evaluateAfterThanksReceived,
+  evaluateAfterThanksSent,
+  evaluateAfterTitleShare,
+  evaluateAfterTourComplete,
+  evaluateAfterWatchlistShare,
+  evaluateAfterView,
+  listCredits,
+  takeUnseenAchievements,
+} from "./services/achievements.js";
 import { proxyStudio } from "./lib/studioProxy.js";
 
 type Vars = {
@@ -288,6 +311,12 @@ app.post("/api/auth/verify", requirePay, async (c) => {
       createdAt: new Date(),
     });
 
+    ringDoorAlarm({
+      kind: "signed-in",
+      handle: user?.handle ?? null,
+      walletAddress,
+    });
+
     return c.json({ token, user: await sessionUserFor(walletAddress) });
   } catch (err) {
     console.error("[auth/verify]", err);
@@ -310,10 +339,12 @@ app.get("/api/me", requirePay, requireAuth, async (c) => {
     .where(eq(schema.unlocks.walletAddress, user.walletAddress))
     .orderBy(desc(schema.unlocks.createdAt));
 
-  const profileShareCode = user.handle
+  const profileShare = user.handle
     ? await getOrCreateProfileShareLink(user.walletAddress, user.handle)
     : null;
   if (user.handle) prewarmProfileShareOgImage(user.handle);
+
+  const unseen = await takeUnseenAchievements(user.walletAddress);
 
   const response: MeResponse = {
     user: c.get("sessionUser"),
@@ -321,9 +352,11 @@ app.get("/api/me", requirePay, requireAuth, async (c) => {
     recommends: recommendsList,
     watchlist: watchlistList,
     unlocks: unlockRows.map((r) => toTitleSummary(r.titles)),
-    shareUrl: profileShareCode ? shortShareUrl(config.webOrigin, profileShareCode) : null,
+    shareUrl: profileShare ? shortShareUrl(config.webOrigin, profileShare.code) : null,
     needsHandlePrompt: !user.handle,
     xHandle: user.xHandle ?? null,
+    achievementCount: await achievementCount(user.walletAddress),
+    unseenAchievements: unseen,
   };
   return c.json(response);
 });
@@ -349,9 +382,16 @@ app.post("/api/me/handle", requirePay, requireAuth, async (c) => {
 
   await db.update(schema.users).set({ handle: cleaned }).where(eq(schema.users.walletAddress, user.walletAddress));
   const sessionUser = await sessionUserFor(user.walletAddress);
-  const code = await getOrCreateProfileShareLink(user.walletAddress, cleaned);
+  const profileShare = await getOrCreateProfileShareLink(user.walletAddress, cleaned);
   prewarmProfileShareOgImage(cleaned);
-  return c.json({ user: sessionUser, shareUrl: shortShareUrl(config.webOrigin, code) });
+  if (profileShare.created) {
+    ringDoorAlarm({
+      kind: "shared-profile",
+      handle: cleaned,
+      walletAddress: user.walletAddress,
+    });
+  }
+  return c.json({ user: sessionUser, shareUrl: shortShareUrl(config.webOrigin, profileShare.code) });
 });
 
 app.post("/api/me/x-handle", requirePay, requireAuth, async (c) => {
@@ -478,6 +518,7 @@ app.post("/api/favorites/:titleId", requirePay, requireAuth, async (c) => {
   const titleId = decodeURIComponent(c.req.param("titleId"));
   const user = c.get("user");
   await addFavorite(user.walletAddress, titleId);
+  if (user.handle) refreshProfileShareOgImage(user.handle);
   return c.json({ ok: true, user: await sessionUserFor(user.walletAddress) });
 });
 
@@ -485,6 +526,7 @@ app.delete("/api/favorites/:titleId", requirePay, requireAuth, async (c) => {
   const titleId = decodeURIComponent(c.req.param("titleId"));
   const user = c.get("user");
   await removeFavorite(user.walletAddress, titleId);
+  if (user.handle) refreshProfileShareOgImage(user.handle);
   return c.json({ ok: true, user: await sessionUserFor(user.walletAddress) });
 });
 
@@ -505,7 +547,9 @@ app.post("/api/recommends/:titleId", requirePay, requireAuth, async (c) => {
     }
     throw e;
   }
-  return c.json({ ok: true, user: await sessionUserFor(user.walletAddress) });
+  const earnedAchievements = await evaluateAfterRecommend(user.walletAddress);
+  if (user.handle) refreshProfileShareOgImage(user.handle);
+  return c.json({ ok: true, user: await sessionUserFor(user.walletAddress), earnedAchievements });
 });
 
 app.delete("/api/recommends/:titleId", requirePay, requireAuth, async (c) => {
@@ -519,6 +563,7 @@ app.delete("/api/recommends/:titleId", requirePay, requireAuth, async (c) => {
     }
     throw e;
   }
+  if (user.handle) refreshProfileShareOgImage(user.handle);
   return c.json({ ok: true, user: await sessionUserFor(user.walletAddress) });
 });
 
@@ -533,6 +578,7 @@ app.post("/api/watchlist/:titleId", requirePay, requireAuth, async (c) => {
   const titleId = decodeURIComponent(c.req.param("titleId"));
   const user = c.get("user");
   await addToWatchlist(user.walletAddress, titleId);
+  if (user.handle) refreshWatchlistShareOgImage(user.handle);
   return c.json({ ok: true });
 });
 
@@ -540,6 +586,7 @@ app.delete("/api/watchlist/:titleId", requirePay, requireAuth, async (c) => {
   const titleId = decodeURIComponent(c.req.param("titleId"));
   const user = c.get("user");
   await removeFromWatchlist(user.walletAddress, titleId);
+  if (user.handle) refreshWatchlistShareOgImage(user.handle);
   return c.json({ ok: true });
 });
 
@@ -614,7 +661,13 @@ app.post("/api/thanks", requirePay, requireAuth, async (c) => {
       to: body.toWallet,
       titleId: body.titleId,
     });
-    return c.json({ ok: true, created: result.created });
+    const earnedAchievements = result.created
+      ? await evaluateAfterThanksSent(user.walletAddress)
+      : [];
+    if (result.created) {
+      await evaluateAfterThanksReceived(body.toWallet);
+    }
+    return c.json({ ok: true, created: result.created, earnedAchievements });
   } catch (err) {
     const code = err instanceof Error ? err.message : "thanks_failed";
     if (code === "cannot_thank_self") return c.json({ error: code }, 400);
@@ -627,8 +680,16 @@ app.post("/api/thanks/all", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
   const body = await c.req.json<{ titleId: string }>();
   if (!body.titleId) return c.json({ error: "missing_fields" }, 400);
-  const thanked = await thankAllSuggesters(user.walletAddress, body.titleId);
-  return c.json({ ok: true, thanked });
+  const thankedWallets = await thankAllSuggesters(user.walletAddress, body.titleId);
+  const earnedAchievements = thankedWallets.length
+    ? await evaluateAfterThanksSent(user.walletAddress)
+    : [];
+  if (thankedWallets.length) {
+    await Promise.all(
+      thankedWallets.map((toWallet) => evaluateAfterThanksReceived(toWallet))
+    );
+  }
+  return c.json({ ok: true, thanked: thankedWallets.length, earnedAchievements });
 });
 
 app.get("/api/users/:wallet", requirePay, requireAuth, async (c) => {
@@ -648,8 +709,18 @@ app.get("/api/users/:wallet", requirePay, requireAuth, async (c) => {
     isSelf: me === walletAddress,
     heatmap: await activityHeatmap(walletAddress),
     xHandle: user.xHandle ?? null,
+    achievementCount: await achievementCount(walletAddress),
   };
   return c.json(response);
+});
+
+app.get("/api/users/:wallet/credits", requirePay, requireAuth, async (c) => {
+  const walletAddress = normalizeWallet(c.req.param("wallet"));
+  const user = await db.query.users.findFirst({
+    where: eq(schema.users.walletAddress, walletAddress),
+  });
+  if (!user) return c.json({ error: "not_found" }, 404);
+  return c.json({ achievements: await listCredits(walletAddress) });
 });
 
 app.post("/api/users/:wallet/follow", requirePay, requireAuth, async (c) => {
@@ -838,6 +909,35 @@ app.get("/api/og/title/:handle/:mediaType/:tmdbId", async (c) => {
   return pngResponse(png);
 });
 
+app.get("/api/og/watchlist/:handle", async (c) => {
+  const handle = ogPathSegment(c.req.param("handle"));
+  const png = await getWatchlistShareOgImage(handle);
+  if (!png) return c.json({ error: "not_found" }, 404);
+  return pngResponse(png);
+});
+
+// Watchlist Share — no pay gate
+app.get("/api/public/:handle/list", async (c) => {
+  const user = await findPublicUserByHandle(c.req.param("handle"));
+  if (!user?.handle) return c.json({ error: "not_found" }, 404);
+  const titles = await listWatchlist(user.walletAddress);
+  if (wantsHtml(c.req.header("accept"))) {
+    const pageUrl = watchlistShareUrl(config.webOrigin, user.handle);
+    return c.html(
+      watchlistShareOgHtml({
+        pageUrl,
+        handle: user.handle,
+        ogImageUrl: watchlistShareOgImageUrl(config.webOrigin, user.handle),
+      })
+    );
+  }
+  return c.json({
+    handle: user.handle,
+    walletAddress: user.walletAddress,
+    titles,
+  });
+});
+
 // Title Share — no pay gate
 app.get("/api/public/:handle/t/:mediaType/:tmdbId", async (c) => {
   const mediaType = c.req.param("mediaType");
@@ -915,6 +1015,7 @@ app.get("/api/public/:username", async (c) => {
     isSelf: false,
     heatmap: await activityHeatmap(user.walletAddress),
     xHandle: user.xHandle ?? null,
+    achievementCount: await achievementCount(user.walletAddress),
   };
   return c.json(response);
 });
@@ -930,25 +1031,62 @@ app.post("/api/share/title", requirePay, requireAuth, async (c) => {
     return c.json({ error: "invalid_body" }, 400);
   }
 
-  const code = await getOrCreateTitleShareLink(
+  const { code, created } = await getOrCreateTitleShareLink(
     user.walletAddress,
     user.handle,
     mediaType,
     tmdbId
   );
   prewarmTitleShareOgImage(user.handle, mediaType, tmdbId);
+  if (created) {
+    const titleId = makeTitleId(mediaType, tmdbId);
+    const title = await db.query.titles.findFirst({ where: eq(schema.titles.id, titleId) });
+    ringDoorAlarm({
+      kind: "shared-title",
+      handle: user.handle,
+      walletAddress: user.walletAddress,
+      title: title?.title ?? titleId,
+    });
+  }
+  const earnedAchievements = await evaluateAfterTitleShare(user.walletAddress, created);
   const response: ShareLinkCreated = { code, kind: "title" };
-  return c.json(response);
+  return c.json({ ...response, earnedAchievements });
 });
 
 app.post("/api/share/profile", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
   if (!user.handle) return c.json({ error: "handle_required" }, 400);
 
-  const code = await getOrCreateProfileShareLink(user.walletAddress, user.handle);
+  const { code, created } = await getOrCreateProfileShareLink(user.walletAddress, user.handle);
   prewarmProfileShareOgImage(user.handle);
+  if (created) {
+    ringDoorAlarm({
+      kind: "shared-profile",
+      handle: user.handle,
+      walletAddress: user.walletAddress,
+    });
+  }
   const response: ShareLinkCreated = { code, kind: "profile" };
   return c.json(response);
+});
+
+app.post("/api/share/watchlist", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  if (!user.handle) return c.json({ error: "handle_required" }, 400);
+  const titles = await listWatchlist(user.walletAddress);
+  if (titles.length === 0) return c.json({ error: "empty_watchlist" }, 400);
+  const { code, created } = await getOrCreateWatchlistShareLink(user.walletAddress, user.handle);
+  prewarmWatchlistShareOgImage(user.handle);
+  if (created) {
+    ringDoorAlarm({
+      kind: "shared-watchlist",
+      handle: user.handle,
+      walletAddress: user.walletAddress,
+    });
+  }
+  const earnedAchievements = await evaluateAfterWatchlistShare(user.walletAddress, created);
+  const response: ShareLinkCreated = { code, kind: "watchlist" };
+  return c.json({ ...response, earnedAchievements });
 });
 
 app.get("/api/s/:code", async (c) => {
@@ -973,6 +1111,16 @@ app.get("/api/s/:code", async (c) => {
       );
     }
 
+    if (resolved.kind === "watchlist") {
+      return c.html(
+        watchlistShareOgHtml({
+          pageUrl,
+          handle: resolved.handle,
+          ogImageUrl: watchlistShareOgImageUrl(config.webOrigin, resolved.handle),
+        })
+      );
+    }
+
     return c.html(
       profileShareOgHtml({
         pageUrl,
@@ -985,10 +1133,38 @@ app.get("/api/s/:code", async (c) => {
   return c.json(resolved);
 });
 
+app.post("/api/share-visits", async (c) => {
+  const body = (await c.req.json().catch(() => ({}))) as {
+    kind?: unknown;
+    code?: unknown;
+    handle?: unknown;
+    channel?: unknown;
+    intent?: unknown;
+  };
+  const result = await recordShareVisit(body, c.req.header("user-agent") || "");
+  if (!result.recorded && result.reason === "invalid_body") {
+    return c.json({ error: "invalid_body" }, 400);
+  }
+  if (result.recorded) {
+    const handle =
+      typeof body.handle === "string" && body.handle.trim() ? body.handle.trim() : null;
+    ringShareVisitDoorAlarm({ handle });
+  }
+  return c.json({ ok: true });
+});
+
 app.post("/api/usage/search", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
   const body = (await c.req.json().catch(() => ({}))) as { query?: string };
-  await recordSearch(user.walletAddress, String(body.query ?? ""));
+  const result = await recordSearch(user.walletAddress, String(body.query ?? ""));
+  if (result.recorded && result.query) {
+    ringDoorAlarm({
+      kind: "searched",
+      handle: user.handle,
+      walletAddress: user.walletAddress,
+      query: result.query,
+    });
+  }
   return c.json({ ok: true });
 });
 
@@ -997,13 +1173,36 @@ app.post("/api/usage/view", requirePay, requireAuth, async (c) => {
   const body = (await c.req.json().catch(() => ({}))) as { titleId?: string };
   const result = await recordView(user.walletAddress, String(body.titleId ?? ""));
   if ("error" in result) return c.json({ error: result.error }, 400);
-  return c.json({ ok: true });
+  if (result.recorded) {
+    const title = await db.query.titles.findFirst({ where: eq(schema.titles.id, result.titleId) });
+    ringDoorAlarm({
+      kind: "viewed",
+      handle: user.handle,
+      walletAddress: user.walletAddress,
+      title: title?.title ?? result.titleId,
+    });
+  }
+  const earnedAchievements = result.recorded
+    ? await evaluateAfterView(user.walletAddress)
+    : [];
+  return c.json({ ok: true, earnedAchievements });
 });
 
 app.post("/api/usage/heartbeat", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
   await recordHeartbeat(user.walletAddress);
-  return c.json({ ok: true });
+  const earned = await evaluateAfterHeartbeat(user.walletAddress);
+  const unseen = await takeUnseenAchievements(user.walletAddress);
+  const earnedAchievements = [...new Set([...earned, ...unseen])];
+  return c.json({ ok: true, earnedAchievements });
+});
+
+app.post("/api/tour/complete", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  const earned = await evaluateAfterTourComplete(user.walletAddress);
+  const unseen = await takeUnseenAchievements(user.walletAddress);
+  const earnedAchievements = [...new Set([...earned, ...unseen])];
+  return c.json({ ok: true, earnedAchievements });
 });
 
 app.get("/api/studio", async (c) => {

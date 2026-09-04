@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, or, sql } from "drizzle-orm";
 import { makeTitleId, type MediaType, type StudioSnapshot } from "@cinima/shared";
 import { db } from "../db/index.js";
 import * as schema from "../db/schema.js";
@@ -68,6 +68,17 @@ export async function getStudioSnapshot(atMs = Date.now()): Promise<StudioSnapsh
     countRows(schema.shareLinks),
     countRows(schema.shareLinks, gte(schema.shareLinks.createdAt, today)),
   ]);
+
+  const [visitsRow] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.shareVisits)
+    .where(eq(schema.shareVisits.intent, "open"));
+  const [visitsTodayRow] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.shareVisits)
+    .where(
+      and(eq(schema.shareVisits.intent, "open"), gte(schema.shareVisits.createdAt, today))
+    );
 
   const [searchesTodayRow] = await db
     .select({ count: sql<number>`count(*)` })
@@ -158,6 +169,7 @@ export async function getStudioSnapshot(atMs = Date.now()): Promise<StudioSnapsh
 
   const shareRows = await db
     .select({
+      code: schema.shareLinks.code,
       kind: schema.shareLinks.kind,
       handle: schema.shareLinks.handle,
       walletAddress: schema.shareLinks.walletAddress,
@@ -168,6 +180,46 @@ export async function getStudioSnapshot(atMs = Date.now()): Promise<StudioSnapsh
     .from(schema.shareLinks)
     .orderBy(desc(schema.shareLinks.createdAt))
     .limit(RECENT_LIMIT);
+
+  const shareCodes = shareRows.map((r) => r.code);
+  const shareHandles = [...new Set(shareRows.map((r) => r.handle))];
+  const visitMatch =
+    shareCodes.length === 0
+      ? []
+      : await db
+          .select({
+            code: schema.shareVisits.code,
+            handle: schema.shareVisits.handle,
+            kind: schema.shareVisits.kind,
+            channel: schema.shareVisits.channel,
+            intent: schema.shareVisits.intent,
+          })
+          .from(schema.shareVisits)
+          .where(
+            or(
+              inArray(schema.shareVisits.code, shareCodes),
+              and(
+                sql`${schema.shareVisits.code} is null`,
+                inArray(schema.shareVisits.handle, shareHandles)
+              )
+            )
+          );
+
+  function visitCountsFor(row: { code: string; handle: string; kind: string }) {
+    let webCount = 0;
+    let payCount = 0;
+    let payCtaCount = 0;
+    for (const v of visitMatch) {
+      const byCode = v.code != null && v.code === row.code;
+      const byHandle =
+        v.code == null && v.handle === row.handle && v.kind === row.kind;
+      if (!byCode && !byHandle) continue;
+      if (v.intent === "pay_cta") payCtaCount += 1;
+      else if (v.channel === "pay") payCount += 1;
+      else webCount += 1;
+    }
+    return { webCount, payCount, payCtaCount };
+  }
 
   const followRows = await db
     .select({
@@ -359,6 +411,8 @@ export async function getStudioSnapshot(atMs = Date.now()): Promise<StudioSnapsh
       viewsToday: Number(viewsTodayRow?.count || 0),
       shares,
       sharesToday,
+      visits: Number(visitsRow?.count || 0),
+      visitsToday: Number(visitsTodayRow?.count || 0),
       follows,
       followsToday,
       favorites,
@@ -391,10 +445,11 @@ export async function getStudioSnapshot(atMs = Date.now()): Promise<StudioSnapsh
           : null;
       return {
         ...personRef(r.walletAddress, r.handle),
-        kind: r.kind as "title" | "profile",
+        kind: r.kind as "title" | "profile" | "watchlist",
         titleId,
         title: titleId ? titleNameById.get(titleId) ?? null : null,
         createdAt: iso(r.createdAt)!,
+        ...visitCountsFor(r),
       };
     }),
     recentFollows: followRows.map((r) => ({

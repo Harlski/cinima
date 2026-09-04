@@ -95,6 +95,23 @@
       @cancel="cancelConfirm"
       @confirm="onConfirmAction"
     />
+
+    <button
+      v-if="hasAnyItems"
+      type="button"
+      class="share-watchlist"
+      aria-label="Share Watchlist"
+      @click="shareOpen = true"
+    >
+      <NqIcon name="link" :size="20" />
+    </button>
+
+    <ShareWatchlistSheet
+      v-if="shareOpen"
+      :handle="authStore.user?.handle ?? null"
+      @close="shareOpen = false"
+      @claim="goClaimHandle"
+    />
   </div>
 </template>
 
@@ -110,13 +127,17 @@ import TitleDeckPicker, { type DeckItem } from "@/components/TitleDeckPicker.vue
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import CommunityRecommends from "@/components/CommunityRecommends.vue";
 import LoadingWait from "@/components/LoadingWait.vue";
+import NqIcon from "@/components/NqIcon.vue";
+import ShareWatchlistSheet from "@/components/ShareWatchlistSheet.vue";
 import { useTitleActionConfirm } from "@/composables/useTitleActionConfirm";
 import { watchlistButtonLabel } from "@/lib/titleActionLabels";
+import { useAuthStore } from "@/stores/auth";
 import { useGuidedTourStore } from "@/stores/guidedTour";
 
 defineOptions({ name: "MyList" });
 
 const router = useRouter();
+const authStore = useAuthStore();
 const favoritesStore = useFavoritesStore();
 const watchlistStore = useWatchlistStore();
 const tour = useGuidedTourStore();
@@ -138,6 +159,7 @@ const {
 const loading = ref(false);
 const selectedTitleId = ref("");
 const activeTab = ref<MediaType>("movie");
+const shareOpen = ref(false);
 
 const tourPreferredTitleId = computed(() =>
   tour.active && tour.tourTitleId ? tour.tourTitleId : null
@@ -242,6 +264,9 @@ const toggleFavorite = async (titleId: string) => {
   await requestToggleFavorite(titleId, {
     title: item,
     isFavorited: favoritesStore.isFavorite(titleId),
+    onAdded: () => {
+      if (titleId === tour.tourTitleId) tour.reportAction("favorite");
+    },
   });
 };
 
@@ -268,6 +293,11 @@ const goToTitleOverview = (titleId: string) => {
 
 const goToTitleSummary = (title: TitleSummary) => {
   goToTitle(title.id);
+};
+
+const goClaimHandle = () => {
+  shareOpen.value = false;
+  router.push({ name: "me" });
 };
 
 watch(titles, () => {
@@ -399,6 +429,29 @@ onActivated(() => {
 }
 
 .my-list-tab:active {
+  opacity: 0.85;
+}
+
+.share-watchlist {
+  position: fixed;
+  top: calc(var(--app-brand-row, 2.75rem) + var(--vv-offset-top, 0px) + 0.45rem);
+  right: max(0.75rem, calc((100vw - var(--column-max, 28rem)) / 2 + var(--column-pad, 1rem)));
+  z-index: 46;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--colors-neutral-200);
+  color: var(--text-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.share-watchlist:active {
   opacity: 0.85;
 }
 </style>

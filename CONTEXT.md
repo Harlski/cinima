@@ -8,24 +8,32 @@ Social taste discovery for movies and TV inside Nimiq Pay. Users share favorites
 A user’s chosen shareable Cinima identity, distinct from their wallet address.
 _Avoid_: username, wallet name
 
+**Identicon**:
+The Nimiq wallet face that stands in for a Handle when a portrait is needed: profiles, Following strip, Share preview, and Credits.
+_Avoid_: avatar, profile photo, gravatar
+
 **Public Profile**:
-The unauthenticated share page for a Handle: identity, Recommends, and Favorites. Favorites on Public Profile, Me, and other Handles' profiles are Favorite-only; Recommended titles appear under Recommends, not again under Favorites.
-_Avoid_: activity feed, heatmap, Me, User page
+The unauthenticated share page for a Handle: identity, Recommends, Favorites, and Achievement count. Favorites on Public Profile, Me, and other Handles' profiles are Favorite-only; Recommended titles appear under Recommends, not again under Favorites. Achievement count is visible here; Credits are not.
+_Avoid_: activity feed, heatmap, Me, User page, Watchlist on Public Profile
 
 **Title Share**:
 The unauthenticated share page for one Handle plus one Title. It tells the recipient that the Handle wants them to check out that Title, and links to the Handle's Public Profile.
-_Avoid_: Public Profile, invite, checkout page, OG page
+_Avoid_: Public Profile, invite, checkout page, OG page, Watchlist Share
 
 **Title Share link**:
 The public URL that names a Handle and a Title together so a recipient lands on that Title Share.
 _Avoid_: query-string share, profile-only URL, encoded Title ID in the path
+
+**Short Share**:
+The compact public URL (`/s/{code}`) that resolves to a Title Share, Public Profile, or Watchlist Share. The link recipients copy; the long Handle path is what it opens.
+_Avoid_: bitly, vanity URL as a separate product
 
 **Site origin**:
 The public web host Nimiq Pay trusts: cinima.app. Share URLs, Share preview, and Pay intents use https://cinima.app.
 _Avoid_: www.cinima.app
 
 **Share preview**:
-The poster-and-copy card that messaging and social apps show for a Title Share link, Short Share link, or Public Profile link before the recipient opens Cinima.
+The poster-and-copy card that messaging and social apps show for a Title Share link, Short Share link, Public Profile link, or Watchlist Share link before the recipient opens Cinima. A Public Profile Share preview shows the Handle's Identicon plus Recommend title cards (Favorites only when there are no Recommends). A Watchlist Share preview shows the Identicon plus Watchlist title cards.
 _Avoid_: OG card, unfurl, link preview, metadata card, physical card
 
 **X Handle**:
@@ -41,8 +49,16 @@ A Favorite that is not also a Recommend. Profile Favorite lists (Public Profile,
 _Avoid_: un-recommended favorite, leftover favorite
 
 **Watchlist**:
-A user’s private save-for-later queue of titles they intend to watch. Distinct from Favorite (taste signal) and Recommend (gold-star upgrade). Shown on the Watchlist tab as a browsable deck.
-_Avoid_: watchlist as UI label (use “My List”), save, bookmark
+A user’s save-for-later queue of titles they intend to watch. Distinct from Favorite (taste signal) and Recommend (gold-star upgrade). Shown on the Watchlist tab as a browsable deck. Not listed on Public Profile; sharing it is a Watchlist Share.
+_Avoid_: watchlist as UI label (use “My List”), save, bookmark, Watchlist as a taste mark
+
+**Watchlist Share**:
+The unauthenticated share page for one Handle plus their current Watchlist. It asks the recipient to help pick what to watch next, and links to the Handle's Public Profile. Live with the Watchlist, not a frozen snapshot.
+_Avoid_: Public Profile, Title Share, My List as a public URL, Watchlist as automatically public
+
+**Watchlist Share link**:
+The public URL that names a Handle's Watchlist so a recipient lands on that Watchlist Share.
+_Avoid_: query-string share, profile-only URL, encoded Title ID in the path
 
 **Recommend**:
 A gold-star upgrade on a Favorite, meaning this title stands out among the user’s favorites — not a separate mark from Favorite. A user may hold at most six movie Recommends and six TV Recommends at a time; a seventh of that media type is blocked until one of that type is removed. Unfavoriting clears Recommend. Shared Recommends are a stronger taste-overlap signal than shared Favorites alone.
@@ -85,8 +101,8 @@ The Discover gate for accounts under the Favorite minimum. Shows three scrolling
 _Avoid_: swipe deck, search-to-unlock, auto-favorite on tap, live catalog fetch on this screen
 
 **Guided tour**:
-An optional walkthrough of Watchlist, Search, community Recommends, Watchlist actions, For You, Find people (Creator profile), and that the viewer can Recommend up to six movies and six TV shows. Offered once after Favorites onboarding clears; skippable anytime; replayable from Me. Distinct from Favorites onboarding and Handle onboarding.
-_Avoid_: product tour as a separate product term, tutorial modal stack, forced Favorite during the walkthrough, forced Recommend during the walkthrough
+An optional walkthrough of Watchlist, Search, community Recommends (always at least one title, a hardcoded fallback when nobody else has Recommended), Watchlist actions, a required Favorite, a required Recommend, taking that title off the profile, For You, and Find people (Creator profile). Offered once after Favorites onboarding clears; skippable anytime (a notice then points back to Me); replayable from Me. Distinct from Favorites onboarding and Handle onboarding.
+_Avoid_: product tour as a separate product term, tutorial modal stack, skippable Favorite or Recommend as the way to finish the walkthrough
 
 **Following strip**:
 On Discover Following, the horizontal selectable row of followee Identicons (plus Find people) sticky under the brand header. Selecting a followee shows their Handle above the Identicon and filters the feed to that person's recent Favorites and unlocks. Unseen activity sorts ahead of already-viewed activity when the viewer returns to Following.
@@ -105,8 +121,36 @@ The wallet that operates Cinima. The guided tour introduces this Handle; Studio 
 _Avoid_: admin, owner, superuser, operator as a product term
 
 **Studio**:
-The Creator-only read of how people use Cinima: signups, Presence, searches, title views, shares, and follows. Not part of the public product. Entry is at the bottom of Me.
-_Avoid_: admin dashboard, analytics, backoffice, CMS
+The Creator-only read of how people use Cinima: signups, Presence, searches, title views, shares, Share visits, and follows. Not part of the public product. Entry is at the bottom of Me.
+_Avoid_: admin dashboard, analytics, backoffice, CMS, Door alarm
+
+**Share visit**:
+A human opening a Short Share, Public Profile, Title Share, or Watchlist Share. Distinct from a social crawler fetching a Share preview. Counted as web (cinima.app in a browser) or pay (inside Nimiq Pay). A Pay intent is a tap toward opening in Pay from that page (Already Installed, Get Nimiq Pay, or Explore CINIMA).
+_Avoid_: page view of Landing, crawler hit, impression, click as a generic term
+
+**Door alarm**:
+Creator-only Telegram notices of live usage (sign-in, search, title view, share created, Share visit). A pager, not a dashboard; Studio remains the pull read. Not part of the public product.
+_Avoid_: webhook log, Slack alert, analytics ping, Studio notification
+
+**Achievement**:
+A named, once-earned credit for a Cinima action that teaches the product or rewards coming back. The catalog: Opening night (first Recommend), Full house (all movie and TV Recommend slots filled), Word of mouth (Title Share), What's next (Watchlist Share), Bravo (sent Thanks), Encore (received Thanks), High seas (ten unique title views), Season ticket (second distinct UTC day with Presence), That's a wrap (finished the Guided tour).
+_Avoid_: badge as a separate product term, XP, streak freeze, daily quest, points economy
+
+**Achievement count**:
+How many Achievements a Handle has earned. The one-liner on Public Profile, Me, and other Handles' profiles.
+_Avoid_: Achievement points as a separate score, XP, karma
+
+**Credits**:
+The Pay-only screen of the Achievement catalog for a Handle: earned rows with date, still-locked rows with the action that unlocks them. Public Profile shows Achievement count only; Credits are not on the unauthenticated share page. Other Handles' Credits are visible only inside Nimiq Pay.
+_Avoid_: trophy case, badge wall, activity feed, heatmap, earned-only list
+
+**Marquee**:
+A solid bar that slides down from the Cinima brand header when the signed-in Handle earns an Achievement. Shows the Achievement name and what they did to unlock it. One at a time, queued, dismissible with X. Not shown on public web pages.
+_Avoid_: toast, modal, floating gold card, confetti blast, blocking dialog, slide-up above the tab bar
+
+**Recommend cue**:
+A solid bar that slides up above the tab bar after a new Recommend outside the Guided tour. Names the title and offers Share. Dismissing it does not share.
+_Avoid_: auto-opening Title Share, modal, Marquee
 
 **Presence**:
 Time a signed-in Handle spent with Cinima in the foreground, counted in Studio. Distinct from a wallet session token.

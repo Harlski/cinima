@@ -64,4 +64,15 @@ describe("Share OG image HTTP API", () => {
     const buf = Buffer.from(await res.arrayBuffer());
     expect(buf.length).toBeGreaterThan(500);
   });
+
+  it("serves a Watchlist Share preview PNG at the .png URL", async () => {
+    const res = await app.fetch(
+      new Request("http://test/api/og/watchlist/creator.png")
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("image/png");
+    const buf = Buffer.from(await res.arrayBuffer());
+    expect(buf.length).toBeGreaterThan(500);
+    expect(buf.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
+  });
 });

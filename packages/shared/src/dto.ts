@@ -1,4 +1,5 @@
 import type { MediaType, TitleId } from "./ids.js";
+import type { AchievementKind } from "./achievements.js";
 
 export type GatePayload = {
   gate: true;
@@ -127,6 +128,7 @@ export type PublicProfile = {
   heatmap: HeatmapDay[];
   /** Public X (Twitter) handle, without @ */
   xHandle: string | null;
+  achievementCount: number;
 };
 
 export type TitleShare = {
@@ -135,11 +137,18 @@ export type TitleShare = {
   title: TitleSummary;
 };
 
-export type ShareLinkKind = "title" | "profile";
+export type WatchlistShare = {
+  handle: string;
+  walletAddress: string;
+  titles: TitleSummary[];
+};
+
+export type ShareLinkKind = "title" | "profile" | "watchlist";
 
 export type ShareLinkCreated = {
   code: string;
   kind: ShareLinkKind;
+  earnedAchievements?: AchievementKind[];
 };
 
 export type ResolvedTitleShareLink = TitleShare & {
@@ -152,7 +161,15 @@ export type ResolvedProfileShareLink = PublicProfile & {
   code: string;
 };
 
-export type ResolvedShareLink = ResolvedTitleShareLink | ResolvedProfileShareLink;
+export type ResolvedWatchlistShareLink = WatchlistShare & {
+  kind: "watchlist";
+  code: string;
+};
+
+export type ResolvedShareLink =
+  | ResolvedTitleShareLink
+  | ResolvedProfileShareLink
+  | ResolvedWatchlistShareLink;
 
 export type HeatmapDay = {
   /** ISO date YYYY-MM-DD (UTC) */
@@ -249,6 +266,16 @@ export type MeResponse = {
   shareUrl: string | null;
   needsHandlePrompt: boolean;
   xHandle: string | null;
+  achievementCount: number;
+  unseenAchievements: AchievementKind[];
+};
+
+export type CreditsResponse = {
+  achievements: {
+    kind: AchievementKind;
+    title: string;
+    earnedAt: string;
+  }[];
 };
 
 export type PricesResponse = {
@@ -272,6 +299,8 @@ export type StudioTotals = {
   viewsToday: number;
   shares: number;
   sharesToday: number;
+  visits: number;
+  visitsToday: number;
   follows: number;
   followsToday: number;
   favorites: number;
@@ -308,6 +337,9 @@ export type StudioShareRow = StudioPersonRef & {
   titleId: string | null;
   title: string | null;
   createdAt: string;
+  webCount: number;
+  payCount: number;
+  payCtaCount: number;
 };
 
 export type StudioFollowRow = {

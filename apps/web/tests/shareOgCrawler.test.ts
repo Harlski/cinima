@@ -53,8 +53,14 @@ describe("Share OG crawler detection", () => {
       mediaType: "movie",
       tmdbId: "550",
     });
-    expect(parseShareOgPath("/alice")).toEqual({
+    expect(
+      parseShareOgPath("/alice")
+    ).toEqual({
       type: "profile",
+      handle: "alice",
+    });
+    expect(parseShareOgPath("/alice/list")).toEqual({
+      type: "watchlist",
       handle: "alice",
     });
     expect(parseShareOgPath("/discover")).toBeNull();
@@ -75,6 +81,9 @@ describe("Share OG crawler detection", () => {
     ).toBe("/api/public/alice/t/movie/550");
     expect(shareOgApiPath({ type: "profile", handle: "alice" })).toBe(
       "/api/public/alice"
+    );
+    expect(shareOgApiPath({ type: "watchlist", handle: "alice" })).toBe(
+      "/api/public/alice/list"
     );
   });
 });
