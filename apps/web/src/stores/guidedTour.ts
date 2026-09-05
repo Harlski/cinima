@@ -64,18 +64,24 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
     return isTourSpotlightActive(runtime.value, id);
   }
 
-  function showOffer() {
+  /** When false, declining the offer does not persist skipped (Cue lab preview). */
+  let persistDecline = true;
+
+  function showOffer(opts?: { persistDecline?: boolean }) {
+    persistDecline = opts?.persistDecline ?? true;
     runtime.value = offerTour(runtime.value);
   }
 
   function acceptOffer() {
+    persistDecline = true;
     skipNotice.value = false;
     runtime.value = startTour(runtime.value);
   }
 
   function declineOffer() {
     runtime.value = dismissOffer(runtime.value);
-    persist("dismissed");
+    if (persistDecline) persist("dismissed");
+    persistDecline = true;
     skipNotice.value = true;
   }
 

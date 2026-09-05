@@ -1,6 +1,6 @@
 <template>
   <div class="app-shell">
-    <AppBrandHeader fixed link-to-landing />
+    <AppBrandHeader fixed link-to-landing cue-lab />
 
     <div class="app-content">
       <div class="app-column">

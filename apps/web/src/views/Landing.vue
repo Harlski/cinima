@@ -15,10 +15,11 @@
           type="button"
           class="landing-enter"
           :disabled="entering"
+          :aria-busy="entering"
           :aria-label="entering ? 'Entering Cinima' : 'Enter Cinima'"
           @click="enterCinima"
         >
-          <template v-if="entering">Entering…</template>
+          <template v-if="entering">{{ acceptedWaitLabel("Enter", entering) }}</template>
           <template v-else>
             <span class="landing-enter-prefix" aria-hidden="true">Enter</span>
             <BrandWordmark size="sm" accent aria-hidden="true" />
@@ -80,6 +81,7 @@ import {
   sleep,
   welcomeMessage,
 } from "@/lib/welcome";
+import { acceptedWaitLabel } from "@/lib/acceptedWait";
 import { takePostAuthPath } from "@/lib/postAuthPath";
 import { useAuthStore } from "@/stores/auth";
 import { useGuidedTourStore } from "@/stores/guidedTour";

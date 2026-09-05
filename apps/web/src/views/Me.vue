@@ -53,8 +53,23 @@
         <h3>Claim a shareable handle</h3>
         <p>Your public Cinima identity, stored on this server and tied to your wallet.</p>
         <div class="share-link">
-          <input v-model="handleDraft" class="nq-input-box" placeholder="yourname" maxlength="24" />
-          <button type="button" class="nq-pill-blue" @click="saveHandle">Save</button>
+          <input
+            v-model="handleDraft"
+            class="nq-input-box"
+            placeholder="yourname"
+            maxlength="24"
+            :disabled="handleBusy"
+            :aria-busy="handleBusy"
+          />
+          <button
+            type="button"
+            class="nq-pill-blue"
+            :disabled="handleBusy"
+            :aria-busy="handleBusy"
+            @click="saveHandle"
+          >
+            {{ acceptedWaitLabel("Save", handleBusy) }}
+          </button>
         </div>
       </div>
 
@@ -111,17 +126,26 @@
           placeholder="@handle"
           maxlength="16"
           autocomplete="off"
+          :disabled="xBusy"
         />
-        <button type="button" class="nq-pill-blue nq-pill-stretch" @click="saveXHandle(xDraft.trim())">
-          Save
+        <button
+          type="button"
+          class="nq-pill-blue nq-pill-stretch"
+          :disabled="xBusy"
+          :aria-busy="xBusy"
+          @click="saveXHandle(xDraft.trim())"
+        >
+          {{ acceptedWaitLabel("Save", xBusy) }}
         </button>
         <button
           v-if="xHandle"
           type="button"
           class="nq-pill-secondary nq-pill-stretch"
+          :disabled="xBusy"
+          :aria-busy="xBusy"
           @click="clearXHandle"
         >
-          Remove
+          {{ acceptedWaitLabel("Remove", xBusy) }}
         </button>
       </div>
     </div>
@@ -157,6 +181,7 @@ import {
 } from "@cinima/shared";
 import { siteOrigin } from "@/lib/siteMeta";
 import { profileShareSheetPreview } from "@/lib/profileShare";
+import { acceptedWaitLabel } from "@/lib/acceptedWait";
 import { useGuidedTourStore } from "@/stores/guidedTour";
 import type { HeatmapDay, MeResponse, PublicProfile, TitleSummary } from "@cinima/shared";
 
@@ -179,6 +204,8 @@ const heatmapMeta = ref<{ followerCount: number; followingCount: number } | null
 const achievementCount = ref(0);
 const xEditorOpen = ref(false);
 const shareOpen = ref(false);
+const handleBusy = ref(false);
+const xBusy = ref(false);
 
 const showStudio = computed(() => studioEntryVisible(user.value?.walletAddress));
 
@@ -191,8 +218,8 @@ const sharePreview = computed(() => {
   });
 });
 
-const loadMe = async () => {
-  loading.value = true;
+const loadMe = async (opts?: { quiet?: boolean }) => {
+  if (!opts?.quiet) loading.value = true;
   try {
     const data = await request<MeResponse>("/me");
     favorites.value = data.favorites;
@@ -221,7 +248,7 @@ const loadMe = async () => {
       }
     }
   } finally {
-    loading.value = false;
+    if (!opts?.quiet) loading.value = false;
   }
 };
 
@@ -244,18 +271,30 @@ const openShare = () => {
 };
 
 const saveHandle = async () => {
+  if (handleBusy.value) return;
   if (handleDraft.value.trim().length < 3) return;
-  await authStore.setHandle(handleDraft.value.trim());
-  await loadMe();
+  handleBusy.value = true;
+  try {
+    await authStore.setHandle(handleDraft.value.trim());
+    await loadMe({ quiet: true });
+  } finally {
+    handleBusy.value = false;
+  }
 };
 
 const saveXHandle = async (value: string | null) => {
-  await request("/me/x-handle", {
-    method: "POST",
-    body: JSON.stringify({ xHandle: value }),
-  });
-  xEditorOpen.value = false;
-  await loadMe();
+  if (xBusy.value) return;
+  xBusy.value = true;
+  try {
+    await request("/me/x-handle", {
+      method: "POST",
+      body: JSON.stringify({ xHandle: value }),
+    });
+    xEditorOpen.value = false;
+    await loadMe({ quiet: true });
+  } finally {
+    xBusy.value = false;
+  }
 };
 
 const clearXHandle = async () => {

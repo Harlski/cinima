@@ -14,29 +14,47 @@
         </span>
         <BrandWordmark size="sm" animate />
       </component>
+      <RouterLink
+        v-if="showCueLab"
+        class="cue-lab-entry"
+        :to="{ name: 'cue-lab' }"
+      >
+        Cues
+      </RouterLink>
     </div>
   </header>
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
 import { RouterLink } from "vue-router";
 import BrandWordmark from "@/components/BrandWordmark.vue";
 import NqIcon from "@/components/NqIcon.vue";
+import { cueLabEntryVisible } from "@/lib/cueLab";
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     fixed?: boolean;
     /** When true, wordmark navigates to Landing (`/`). */
     linkToLanding?: boolean;
+    /** Signed-in shell: show the DEV Cue lab entry. */
+    cueLab?: boolean;
   }>(),
   {
     fixed: false,
     linkToLanding: false,
+    cueLab: false,
   }
 );
+
+const showCueLab = computed(() => cueLabEntryVisible({ inAppShell: props.cueLab }));
 </script>
 
 <style scoped>
+.app-brand-inner {
+  position: relative;
+}
+
 .brand-home {
   display: inline-flex;
   align-items: center;
@@ -49,5 +67,26 @@ withDefaults(
 a.brand-home {
   pointer-events: auto;
   cursor: pointer;
+}
+
+.cue-lab-entry {
+  position: absolute;
+  right: 0.65rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: auto;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cue-lab-entry.router-link-active {
+  color: var(--text-primary);
 }
 </style>

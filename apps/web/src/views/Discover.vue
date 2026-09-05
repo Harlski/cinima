@@ -11,12 +11,8 @@
         !loading && mode === 'overlap' && !showHandleStep && activeTab === 'recommends',
     }"
   >
-    <div v-if="loading && !showHandleStep" class="loading">
-      <LoadingWait />
-    </div>
-
     <HandleOnboarding
-      v-else-if="showHandleStep"
+      v-if="showHandleStep"
       :wallet-address="authStore.user?.walletAddress ?? null"
       :initial-handle="isForceHandleArmed() ? authStore.user?.handle : null"
       :busy="handleBusy"
@@ -24,14 +20,24 @@
       @continue="onHandleContinue"
     />
 
-    <FavoritesOnboarding
-      v-else-if="mode === 'onboarding'"
-      :candidates="onboardingCandidates"
-      :min-favorites="minFavorites"
-      :busy="onboardingBusy"
-      @continue="onOnboardingContinue"
-      @skip="onOnboardingSkip"
-    />
+    <template v-else-if="mode === 'onboarding'">
+      <div v-if="onboardingBusy || loading" class="loading">
+        <LoadingWait />
+      </div>
+      <FavoritesOnboarding
+        v-show="!onboardingBusy && !loading"
+        :candidates="onboardingCandidates"
+        :min-favorites="minFavorites"
+        :busy="onboardingBusy"
+        :save-error="onboardingSaveError"
+        @continue="onOnboardingContinue"
+        @skip="onOnboardingSkip"
+      />
+    </template>
+
+    <div v-else-if="loading" class="loading">
+      <LoadingWait />
+    </div>
 
     <div v-else class="discover-body">
       <FollowingStrip
@@ -61,8 +67,8 @@
       </section>
 
       <section v-else-if="activeTab === 'recommends'" class="recommends-section">
-        <div v-if="communityLoading && !communityLoaded" class="feed-empty">
-          Loading Recommends…
+        <div v-if="communityLoading && !communityLoaded" class="loading">
+          <LoadingWait />
         </div>
         <div
           v-else-if="!tourCommunityMovies.length && !tourCommunityTv.length"
@@ -82,7 +88,10 @@
       </section>
 
       <section v-else class="feed-section">
-        <div v-if="followingPeople.length === 0" class="feed-empty">
+        <div v-if="followingLoading" class="loading">
+          <LoadingWait />
+        </div>
+        <div v-else-if="followingPeople.length === 0" class="feed-empty">
           Tap Find people above to follow Handles and see their recent Favorites here.
         </div>
         <div v-else-if="feed.length === 0" class="feed-empty">
@@ -334,6 +343,8 @@ const favoriteCount = ref(0);
 const minFavorites = ref(3);
 const onboardingCandidates = ref<TitleSummary[]>([]);
 const onboardingBusy = ref(false);
+const onboardingSaveError = ref<string | null>(null);
+const followingLoading = ref(false);
 const showHandleStep = ref(false);
 const handleBusy = ref(false);
 const handleSaveError = ref<string | null>(null);
@@ -467,12 +478,18 @@ const applyFollowingStripOrder = () => {
 };
 
 const ensureFollowingTabData = async () => {
-  if (!followingStripReady.value) {
-    await loadFollowingPeople();
-  } else {
-    applyFollowingStripOrder();
+  const firstVisit = !followingStripReady.value;
+  if (firstVisit) followingLoading.value = true;
+  try {
+    if (!followingStripReady.value) {
+      await loadFollowingPeople();
+    } else {
+      applyFollowingStripOrder();
+    }
+    await loadFolloweeFeed(selectedFollowee.value);
+  } finally {
+    followingLoading.value = false;
   }
-  await loadFolloweeFeed(selectedFollowee.value);
 };
 
 function resetAppContentScroll() {
@@ -780,12 +797,15 @@ const goToUser = (wallet: string) => {
 const onOnboardingContinue = async (titleIds: string[]) => {
   if (onboardingBusy.value) return;
   onboardingBusy.value = true;
+  onboardingSaveError.value = null;
   try {
     clearForceOnboardingFlow();
     await favoritesStore.addMany(titleIds);
     favoriteCount.value = favoritesStore.count;
     await awaitDiscoverReady();
     tour.maybeOfferAfterOnboarding();
+  } catch {
+    onboardingSaveError.value = "Could not save favorites. Try again.";
   } finally {
     onboardingBusy.value = false;
   }
@@ -794,6 +814,7 @@ const onOnboardingContinue = async (titleIds: string[]) => {
 const onOnboardingSkip = async () => {
   if (onboardingBusy.value) return;
   onboardingBusy.value = true;
+  onboardingSaveError.value = null;
   try {
     clearForceOnboardingFlow();
     const data = await request<DiscoverResponse>("/discover/skip-onboarding", {
@@ -801,6 +822,8 @@ const onOnboardingSkip = async () => {
     });
     await applyDiscoverResponse(data);
     tour.maybeOfferAfterOnboarding();
+  } catch {
+    onboardingSaveError.value = "Could not skip. Try again.";
   } finally {
     onboardingBusy.value = false;
   }

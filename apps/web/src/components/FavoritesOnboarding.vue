@@ -4,9 +4,16 @@
       <div class="header-text">
         <h2>Pick your favorites</h2>
         <p>Tap at least {{ minFavorites }} titles you love</p>
+        <p v-if="saveError" class="save-error">{{ saveError }}</p>
       </div>
-      <button type="button" class="skip" :disabled="busy" @click="$emit('skip')">
-        Skip
+      <button
+        type="button"
+        class="skip"
+        :disabled="busy"
+        :aria-busy="busy"
+        @click="$emit('skip')"
+      >
+        {{ acceptedWaitLabel("Skip", busy) }}
       </button>
     </header>
 
@@ -33,9 +40,10 @@
             type="button"
             class="continue"
             :disabled="busy"
+            :aria-busy="busy"
             @click="$emit('continue', [...selectedIds])"
           >
-            Continue
+            {{ acceptedWaitLabel("Continue", busy) }}
           </button>
         </div>
       </div>
@@ -47,6 +55,7 @@
 import { computed, ref } from "vue";
 import type { TitleSummary } from "@cinima/shared";
 import PosterSlider from "@/components/PosterSlider.vue";
+import { acceptedWaitLabel } from "@/lib/acceptedWait";
 import { splitIntoRows } from "@/lib/onboardingRows";
 
 const props = withDefaults(
@@ -54,10 +63,12 @@ const props = withDefaults(
     candidates: TitleSummary[];
     minFavorites?: number;
     busy?: boolean;
+    saveError?: string | null;
   }>(),
   {
     minFavorites: 3,
     busy: false,
+    saveError: null,
   }
 );
 
@@ -78,6 +89,7 @@ const bottomRow = computed(() => rows.value[rows.value.length - 1] ?? null);
 const canContinue = computed(() => selectedIds.value.size >= props.minFavorites);
 
 function toggle(title: TitleSummary) {
+  if (props.busy) return;
   const next = new Set(selectedIds.value);
   if (next.has(title.id)) next.delete(title.id);
   else next.add(title.id);
@@ -117,6 +129,12 @@ function toggle(title: TitleSummary) {
   color: var(--text-secondary);
   font-size: 0.95rem;
   line-height: 1.35;
+}
+
+.header-text .save-error {
+  margin-top: 0.45rem;
+  color: var(--colors-red, #e74c3c);
+  font-size: 0.85rem;
 }
 
 .skip {

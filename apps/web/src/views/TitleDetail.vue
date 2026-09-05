@@ -155,9 +155,10 @@
               type="button"
               class="nq-pill-blue nq-pill-lg"
               :disabled="thankingAll"
+              :aria-busy="thankingAll"
               @click="thankAll"
             >
-              {{ thankingAll ? "Thanking..." : "Thank all" }}
+              {{ acceptedWaitLabel("Thank all", thankingAll) }}
             </button>
           </div>
         </div>
@@ -231,8 +232,9 @@
                     type="submit"
                     class="nq-pill-blue nq-pill-lg"
                     :disabled="!editText.trim() || savingEdit"
+                    :aria-busy="savingEdit"
                   >
-                    {{ savingEdit ? "Saving..." : "Save" }}
+                    {{ acceptedWaitLabel("Save", savingEdit) }}
                   </button>
                 </div>
               </form>
@@ -276,6 +278,7 @@
               class="nq-input-box"
               placeholder="Share your thoughts..."
               rows="3"
+              :disabled="posting"
               @focus="onComposerFocus"
               @blur="onComposerBlur"
             />
@@ -283,8 +286,9 @@
               type="submit"
               class="nq-pill-blue nq-pill-lg"
               :disabled="!commentText.trim() || posting"
+              :aria-busy="posting"
             >
-              {{ posting ? "Posting..." : "Post" }}
+              {{ acceptedWaitLabel("Post", posting) }}
             </button>
           </div>
         </form>
@@ -303,27 +307,12 @@
       @claim="goClaimHandle"
     />
 
-    <div
+    <RecommendCue
       v-if="recommendCueOpen && title"
-      class="recommend-cue"
-      role="status"
-      aria-live="polite"
-    >
-      <div class="recommend-cue-bar">
-        <p class="recommend-cue-copy">{{ title.title }} now recommended</p>
-        <button type="button" class="nq-pill-gold recommend-cue-share" @click="shareFromCue">
-          Share?
-        </button>
-        <button
-          type="button"
-          class="recommend-cue-x"
-          aria-label="Dismiss"
-          @click="recommendCueOpen = false"
-        >
-          <NqIcon name="cross" :size="18" />
-        </button>
-      </div>
-    </div>
+      :title-name="title.title"
+      @share="shareFromCue"
+      @dismiss="recommendCueOpen = false"
+    />
 
     <FavoritersSheet
       v-if="favoritersOpen && title"
@@ -370,6 +359,7 @@ import NqIcon from "@/components/NqIcon.vue";
 import LoadingWait from "@/components/LoadingWait.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
 import PosterImg from "@/components/PosterImg.vue";
+import RecommendCue from "@/components/RecommendCue.vue";
 import ShareTitleSheet from "@/components/ShareTitleSheet.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";
 import TourSpotlight from "@/components/TourSpotlight.vue";
@@ -379,6 +369,7 @@ import { watchlistButtonLabel } from "@/lib/titleActionLabels";
 import { useGuidedTourStore } from "@/stores/guidedTour";
 import { useMarqueeStore } from "@/stores/marquee";
 import { formatTitleRating, hasTitleRating } from "@/lib/titleRating";
+import { acceptedWaitLabel } from "@/lib/acceptedWait";
 
 const route = useRoute();
 const router = useRouter();
@@ -1190,66 +1181,5 @@ onUnmounted(() => {
 
 .title-attr {
   margin-top: 2rem;
-}
-
-.recommend-cue {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: var(--bottom-tabs-inset);
-  z-index: 49;
-  pointer-events: none;
-  animation: recommend-cue-in 0.28s ease-out;
-}
-
-@keyframes recommend-cue-in {
-  from {
-    transform: translateY(110%);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.recommend-cue-bar {
-  pointer-events: auto;
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  padding: 0.75rem 2.6rem 0.8rem 1rem;
-  background: var(--bg-surface);
-  border-top: 1px solid var(--border);
-}
-
-.recommend-cue-copy {
-  margin: 0;
-  flex: 1;
-  min-width: 0;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.recommend-cue-share {
-  flex-shrink: 0;
-}
-
-.recommend-cue-x {
-  position: absolute;
-  top: 0.4rem;
-  right: 0.4rem;
-  display: grid;
-  place-content: center;
-  width: 1.85rem;
-  height: 1.85rem;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
 }
 </style>

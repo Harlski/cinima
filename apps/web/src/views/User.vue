@@ -22,11 +22,21 @@
             <button
               type="button"
               :class="profile.isFollowing ? 'nq-pill-secondary' : 'nq-pill-blue'"
+              class="follow-action"
               :disabled="followBusy"
+              :aria-busy="followBusy"
               :data-tour="TOUR_SPOTLIGHT.userFollow"
               @click="toggleFollow"
             >
-              {{ profile.isFollowing ? "Following" : "Follow" }}
+              <span v-if="followBusy" aria-hidden="true">
+                <NqSpinner :size="16" label="" />
+              </span>
+              {{
+                acceptedWaitLabel(
+                  profile.isFollowing ? "Following" : "Follow",
+                  followBusy
+                )
+              }}
             </button>
           </TourSpotlight>
         </template>
@@ -55,10 +65,12 @@ import { ACTIVITY_UI_VISIBLE, displayName } from "@cinima/shared";
 import type { PublicProfile } from "@cinima/shared";
 import ActivityHeatmap from "@/components/ActivityHeatmap.vue";
 import LoadingWait from "@/components/LoadingWait.vue";
+import NqSpinner from "@/components/NqSpinner.vue";
 import ProfileTaste from "@/components/ProfileTaste.vue";
 import TourSpotlight from "@/components/TourSpotlight.vue";
 import UserCard from "@/components/UserCard.vue";
 import { TOUR_SPOTLIGHT } from "@/lib/guidedTour";
+import { acceptedWaitLabel } from "@/lib/acceptedWait";
 
 const route = useRoute();
 const router = useRouter();
@@ -126,6 +138,13 @@ watch(wallet, loadProfile);
   text-align: center;
   padding: 3rem 0;
   color: var(--text-secondary);
+}
+
+.follow-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
 }
 
 .content {

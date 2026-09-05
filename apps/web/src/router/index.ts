@@ -58,6 +58,15 @@ export const router = createRouter({
         { path: "me", name: "me", component: Me },
         { path: "credits/:wallet", name: "credits", component: () => import("../views/Credits.vue") },
         { path: "studio", name: "studio", component: () => import("../views/Studio.vue") },
+        ...(import.meta.env.DEV
+          ? [
+              {
+                path: "dev/cues",
+                name: "cue-lab",
+                component: () => import("../views/dev/CueLab.vue"),
+              },
+            ]
+          : []),
         {
           path: "title/:mediaType(movie|tv)/:tmdbId(\\d+)",
           name: "title-tmdb",

@@ -63,9 +63,18 @@
               type="button"
               class="follow-btn nq-pill-blue"
               :disabled="busyWallet === person.walletAddress"
+              :aria-busy="busyWallet === person.walletAddress"
               @click="$emit('follow', person)"
             >
-              Follow
+              <span v-if="busyWallet === person.walletAddress" aria-hidden="true">
+                <NqSpinner :size="14" label="" />
+              </span>
+              {{
+                acceptedWaitLabel(
+                  "Follow",
+                  busyWallet === person.walletAddress
+                )
+              }}
             </button>
           </li>
         </ul>
@@ -79,8 +88,10 @@ import { displayName } from "@cinima/shared";
 import type { FindPeopleEntry } from "@cinima/shared";
 import Identicon from "@/components/Identicon.vue";
 import NqIcon from "@/components/NqIcon.vue";
+import NqSpinner from "@/components/NqSpinner.vue";
 import LoadingWait from "@/components/LoadingWait.vue";
 import TourSpotlight from "@/components/TourSpotlight.vue";
+import { acceptedWaitLabel } from "@/lib/acceptedWait";
 import { TOUR_SPOTLIGHT, isTourCreatorWallet } from "@/lib/guidedTour";
 
 withDefaults(
@@ -252,5 +263,9 @@ defineEmits<{
   min-width: 5.6rem;
   padding-inline: 0.75rem;
   font-size: 0.82rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
 }
 </style>

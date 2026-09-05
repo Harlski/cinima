@@ -21,6 +21,7 @@
             autocapitalize="off"
             spellcheck="false"
             :disabled="busy"
+            :aria-busy="busy"
             @keydown.enter="submit"
           />
           <p v-if="localError" class="error">{{ localError }}</p>
@@ -33,9 +34,10 @@
           type="button"
           class="continue"
           :disabled="busy || !canSave"
+          :aria-busy="busy"
           @click="submit"
         >
-          Continue
+          {{ acceptedWaitLabel("Continue", busy) }}
         </button>
       </div>
     </div>
@@ -45,6 +47,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import Identicon from "@/components/Identicon.vue";
+import { acceptedWaitLabel } from "@/lib/acceptedWait";
 import { handleValidationError } from "@/lib/handleOnboarding";
 
 const props = withDefaults(

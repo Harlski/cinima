@@ -101,8 +101,12 @@ One action that sends Thanks to every remaining peer who Favorited a title (incl
 _Avoid_: mass tip, blast, thank everyone as a separate mark
 
 **Favorites onboarding**:
-The Discover gate for accounts under the Favorite minimum. Shows three scrolling poster rows drawn from the local Catalog cache: recognizable recent movies and TV (with posters), ranked by peer Favorite overlap then popularity. Selection is local until Continue commits Favorites; Skip remembers the choice on the account and enters For You with popular cached suggestions. No title detail or search on this screen.
+The Discover gate for accounts under the Favorite minimum. Shows three scrolling poster rows drawn from the local Catalog cache: recognizable recent movies and TV (with posters), ranked by peer Favorite overlap then popularity. Selection is local until Continue commits Favorites; Skip remembers the choice on the account and enters For You with popular cached suggestions. Continue and Skip leave the picker for an Accepted wait while Discover loads. No title detail or search on this screen.
 _Avoid_: swipe deck, search-to-unlock, auto-favorite on tap, live catalog fetch on this screen
+
+**Accepted wait**:
+The signal that a tap has landed while Cinima is still on the same screen talking to the API: the control disables and names the wait (Continue becomes Continuing…, Enter becomes Entering…), or the hex spinner and cinema wait lines replace a screen that has nothing left to show. Follow keeps the Follow label while busy, because Following already means the person is followed.
+_Avoid_: toast, silent dimmed button, Following as a wait label, spinner-only on Continue / Enter / Skip
 
 **Guided tour**:
 An optional walkthrough of Watchlist, Search, community Recommends (always at least one title, a hardcoded fallback when nobody else has Recommended), Watchlist actions, a required Favorite, a required Recommend, taking that title off the profile, For You, and Find people (Creator profile). Offered once after Favorites onboarding clears; skippable anytime (a notice then points back to Me); replayable from Me. Distinct from Favorites onboarding and Handle onboarding.
