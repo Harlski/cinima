@@ -54,4 +54,23 @@ describe("searchStageBox", () => {
       height: 350,
     });
   });
+
+  const iphoneFieldDock = {
+    layoutHeight: 844,
+    headerHeight: 47,
+    tabsHeight: 96,
+    dockHeight: 110,
+  };
+
+  it("keeps a results stage on iPhone with the keyboard open over a field-only dock", () => {
+    expect(
+      searchStageBox(iphoneFieldDock, { offsetTop: 0, height: 508 }).height
+    ).toBeGreaterThan(0);
+  });
+
+  it("keeps a results stage when iOS scrolls the visual viewport to the focused field", () => {
+    expect(
+      searchStageBox(iphoneFieldDock, { offsetTop: 280, height: 508 }).height
+    ).toBeGreaterThan(0);
+  });
 });

@@ -69,7 +69,7 @@ import PayTitleModal from "@/components/PayTitleModal.vue";
 import PosterSlider from "@/components/PosterSlider.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";
 import { isNimiqPay } from "@/lib/nimiqPay";
-import { payAppOrigin, payOpenSchemeUrl, payOpenTitleUrl } from "@/lib/payLinks";
+import { payAppOrigin, payOpenHttpsUrl, payOpenTitleUrl } from "@/lib/payLinks";
 import { recordShareVisit, shareVisitPayIntentKey } from "@/lib/shareVisit";
 
 const route = useRoute();
@@ -86,8 +86,8 @@ const inviteLine = computed(() =>
 );
 
 const payUrl = computed(() => {
-  if (!payload.value?.handle) return payOpenSchemeUrl();
-  return payOpenSchemeUrl(watchlistShareUrl(payAppOrigin(), payload.value.handle));
+  if (!payload.value?.handle) return payOpenHttpsUrl();
+  return payOpenHttpsUrl(watchlistShareUrl(payAppOrigin(), payload.value.handle));
 });
 
 function beaconOpen() {

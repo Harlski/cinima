@@ -205,11 +205,13 @@ function onGetNimiqPayClick(): void {
 .pay-only-cta {
   position: relative;
   width: 100%;
+  overflow: visible;
 }
 
 .pay-only-cta-glow {
   display: block;
   width: 100%;
+  overflow: visible;
 }
 
 .pay-only-cta-glow :deep(.gold-glow-content) {

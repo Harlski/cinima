@@ -69,7 +69,7 @@ import TitleMarquee from "@/components/TitleMarquee.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";
 import WelcomeOverlay from "@/components/WelcomeOverlay.vue";
 import { landingCopy } from "@/lib/contact";
-import { payOpenSchemeUrl } from "@/lib/payLinks";
+import { payOpenHttpsUrl } from "@/lib/payLinks";
 import { detectNimiqPay, isNimiqPay, isNimiqPayUserAgent } from "@/lib/nimiqPay";
 import {
   FORCE_FAVORITES_PICK_QUERY,
@@ -98,7 +98,7 @@ const welcomeWallet = ref("");
 const welcomeText = ref<ReturnType<typeof welcomeMessage>>("Welcome!");
 const forcePickEnabled = canForceFavoritesPick();
 
-const payUrl = computed(() => payOpenSchemeUrl());
+const payUrl = computed(() => payOpenHttpsUrl());
 
 let cancelled = false;
 /** Bumped to cancel an in-flight welcome hold (e.g. force-pick). */

@@ -12,6 +12,11 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import {
+  goldGlowHaloInsetPx,
+  goldGlowRimInsetPx,
+  goldGlowShellBleedPx,
+} from "@/lib/goldGlow";
 
 const props = withDefaults(
   defineProps<{
@@ -28,13 +33,20 @@ const props = withDefaults(
 
 const shellStyle = computed(() => ({
   "--gold-glow-radius": props.radius,
+  "--gold-glow-bleed": `${goldGlowShellBleedPx(props.soft)}px`,
+  "--gold-glow-halo-inset": `${goldGlowHaloInsetPx(props.soft)}px`,
+  "--gold-glow-rim-inset": `${goldGlowRimInsetPx()}px`,
 }));
 </script>
 
 <style scoped>
 .gold-glow-shell {
   position: relative;
-  border-radius: var(--gold-glow-radius, 12px);
+  box-sizing: content-box;
+  padding: var(--gold-glow-bleed, 0px);
+  margin: calc(-1 * var(--gold-glow-bleed, 0px));
+  overflow: visible;
+  pointer-events: none;
   flex-shrink: 0;
 }
 
@@ -42,8 +54,8 @@ const shellStyle = computed(() => ({
 .gold-glow-shell::after {
   content: "";
   position: absolute;
-  inset: -3px;
-  border-radius: inherit;
+  inset: calc(var(--gold-glow-bleed, 0px) - var(--gold-glow-rim-inset, 2px));
+  border-radius: var(--gold-glow-radius, 12px);
   pointer-events: none;
   background: conic-gradient(
     from var(--gold-glow-angle, 0deg),
@@ -59,14 +71,13 @@ const shellStyle = computed(() => ({
 
 .gold-glow-shell--soft::before {
   z-index: 0;
-  inset: -8px;
+  inset: calc(var(--gold-glow-bleed, 0px) - var(--gold-glow-halo-inset, 8px));
   filter: blur(12px);
   opacity: 0.65;
 }
 
 .gold-glow-shell::after {
   z-index: 0;
-  inset: -2px;
   padding: 1.5px;
   opacity: 0.95;
   -webkit-mask:
@@ -79,7 +90,8 @@ const shellStyle = computed(() => ({
 .gold-glow-content {
   position: relative;
   z-index: 1;
-  border-radius: inherit;
+  border-radius: var(--gold-glow-radius, 12px);
+  pointer-events: auto;
 }
 
 @property --gold-glow-angle {

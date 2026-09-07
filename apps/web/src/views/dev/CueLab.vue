@@ -114,7 +114,7 @@ import {
   initialTourRuntime,
   TOUR_COMMUNITY_FALLBACK_TITLE,
 } from "@/lib/guidedTour";
-import { payOpenSchemeUrl } from "@/lib/payLinks";
+import { payOpenHttpsUrl } from "@/lib/payLinks";
 import { siteOrigin } from "@/lib/siteMeta";
 import { WELCOME_HOLD_MS, welcomeMessage } from "@/lib/welcome";
 import { useAuthStore } from "@/stores/auth";
@@ -128,7 +128,7 @@ const auth = useAuthStore();
 const marqueeKinds = cueLabMarqueeKinds();
 const overlayGroups = cueLabOverlayGroups();
 const sampleTitle = TOUR_COMMUNITY_FALLBACK_TITLE;
-const payUrl = payOpenSchemeUrl();
+const payUrl = payOpenHttpsUrl();
 const shareUrl = `${siteOrigin}/ada/t/movie/550`;
 const confirmMessage = "Remove Fight Club from Favorites?";
 

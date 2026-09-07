@@ -54,7 +54,7 @@ import PayTitleModal from "@/components/PayTitleModal.vue";
 import ProfileTaste from "@/components/ProfileTaste.vue";
 import UserCard from "@/components/UserCard.vue";
 import { isNimiqPay } from "@/lib/nimiqPay";
-import { payAppOrigin, payOpenSchemeUrl } from "@/lib/payLinks";
+import { payAppOrigin, payOpenHttpsUrl } from "@/lib/payLinks";
 import { recordShareVisit, shareVisitPayIntentKey } from "@/lib/shareVisit";
 
 const route = useRoute();
@@ -65,8 +65,8 @@ const profile = ref<PublicProfile | null>(null);
 const gateTitle = ref<TitleSummary | null>(null);
 
 const payUrl = computed(() => {
-  if (!profile.value?.handle) return payOpenSchemeUrl();
-  return payOpenSchemeUrl(profileShareUrl(payAppOrigin(), profile.value.handle));
+  if (!profile.value?.handle) return payOpenHttpsUrl();
+  return payOpenHttpsUrl(profileShareUrl(payAppOrigin(), profile.value.handle));
 });
 
 function beaconOpen() {

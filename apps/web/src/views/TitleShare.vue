@@ -100,7 +100,7 @@ import PayTitleModal from "@/components/PayTitleModal.vue";
 import PosterImg from "@/components/PosterImg.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";
 import { isNimiqPay } from "@/lib/nimiqPay";
-import { payOpenSchemeUrl, payOpenTitleUrl } from "@/lib/payLinks";
+import { payOpenHttpsUrl, payOpenTitleUrl } from "@/lib/payLinks";
 import { recordShareVisit, shareVisitPayIntentKey } from "@/lib/shareVisit";
 import { formatTitleRating } from "@/lib/titleRating";
 
@@ -125,7 +125,7 @@ const mediaLabel = computed(() =>
 );
 
 const payUrl = computed(() => {
-  if (!payload.value) return payOpenSchemeUrl();
+  if (!payload.value) return payOpenHttpsUrl();
   return payOpenTitleUrl(payload.value.title.id);
 });
 

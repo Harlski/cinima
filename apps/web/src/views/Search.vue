@@ -175,8 +175,11 @@
           <div class="search-box">
             <NqIcon name="magnifying-glass" :size="20" class="search-ico" />
             <input
+              ref="searchInputEl"
               v-model="searchQuery"
-              @input="onSearch"
+              @input="onFieldEvent"
+              @search.prevent="onFieldEvent"
+              @change="onFieldEvent"
               type="search"
               enterkeyhint="search"
               autocomplete="off"
@@ -229,6 +232,7 @@ import {
   type TitleLookup,
 } from "@/lib/searchTitleLookups";
 import { parseSearchQuery, searchRouteQuery } from "@/lib/searchQuery";
+import { searchFieldAction } from "@/lib/searchField";
 import {
   loadSearchResults,
   saveSearchResults,
@@ -278,6 +282,7 @@ const searchStageStyle = ref<Record<string, string>>({
     "calc(100dvh - var(--app-brand-row) - var(--bottom-tabs-inset) - 4.5rem)",
 });
 const searchDockEl = ref<HTMLElement | null>(null);
+const searchInputEl = ref<HTMLInputElement | null>(null);
 const historyListEl = ref<HTMLUListElement | null>(null);
 const resultsEl = ref<HTMLElement | null>(null);
 
@@ -395,23 +400,37 @@ async function runSearch(query: string, record: boolean) {
   }
 }
 
-const onSearch = () => {
-  clearTimeout(searchTimeout);
-
-  if (!searchQuery.value.trim()) {
-    results.value = [];
-    return;
-  }
-
-  searchTimeout = setTimeout(() => {
-    void runSearch(searchQuery.value, false);
-  }, 300);
+const onFieldEvent = (event: Event) => {
+  applyFieldAction(event.type, event);
 };
 
 const onSubmit = () => {
-  clearTimeout(searchTimeout);
-  void runSearch(searchQuery.value, true);
+  applyFieldAction("submit");
 };
+
+function nativeSearchValue(event?: Event): string {
+  if (event?.target instanceof HTMLInputElement) return event.target.value;
+  if (searchInputEl.value) return searchInputEl.value.value;
+  return searchQuery.value;
+}
+
+function applyFieldAction(eventType: string, event?: Event) {
+  const native = nativeSearchValue(event);
+  searchQuery.value = native;
+  const action = searchFieldAction(eventType, native);
+  clearTimeout(searchTimeout);
+  if (action.kind === "idle") {
+    results.value = [];
+    return;
+  }
+  if (action.kind === "live") {
+    searchTimeout = setTimeout(() => {
+      void runSearch(action.query, false);
+    }, 300);
+    return;
+  }
+  void runSearch(action.query, true);
+}
 
 const setSort = (key: SearchSortKey) => {
   sortKey.value = saveSearchSort(key);

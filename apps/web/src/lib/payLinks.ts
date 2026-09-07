@@ -56,9 +56,10 @@ function parseLegacyTitleId(
 /**
  * Open a title inside Cinima via Nimiq Pay.
  * When already in Pay, returns a same-origin path for in-app navigation.
+ * Outside Pay, web CTAs use the HTTPS intent (iPhone drops custom-scheme hrefs).
  */
 export function payOpenTitleUrl(titleId: string, origin = payAppOrigin()): string {
   const path = titleAppPath(titleId);
   if (isNimiqPay()) return path;
-  return payOpenSchemeUrl(`${origin.replace(/\/$/, "")}${path}`);
+  return payOpenHttpsUrl(`${origin.replace(/\/$/, "")}${path}`);
 }
