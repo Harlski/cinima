@@ -49,6 +49,10 @@ export const config = {
   get tmdbApiKey() {
     return envString("TMDB_API_KEY");
   },
+  get tmdbTimeoutMs() {
+    const n = Number(process.env.TMDB_TIMEOUT_MS || 4000);
+    return Number.isFinite(n) && n > 0 ? n : 4000;
+  },
   get webOrigin() {
     return canonicalWebOrigin(envString("WEB_ORIGIN", "http://localhost:5174"));
   },

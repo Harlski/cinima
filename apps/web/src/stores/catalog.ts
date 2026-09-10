@@ -8,17 +8,25 @@ export const useCatalogStore = defineStore("catalog", () => {
   const { request } = useApi();
   const cache = ref(new Map<string, TitleDetail>());
 
-  const search = async (query: string): Promise<TitleSummary[]> => {
-    const data = await request<{ results: TitleSummary[] }>(
-      `/search?q=${encodeURIComponent(query)}`
+  const search = async (
+    query: string,
+    signal?: AbortSignal
+  ): Promise<{ results: TitleSummary[]; stalled: boolean }> => {
+    const data = await request<{ results: TitleSummary[]; tmdbTimedOut?: boolean }>(
+      `/search?q=${encodeURIComponent(query)}`,
+      { signal }
     );
-    if (query.trim().length >= 3) {
+    const stalled = Boolean(data.tmdbTimedOut) && data.results.length === 0;
+    if (query.trim().length >= 3 && !stalled) {
       void request("/usage/search", {
         method: "POST",
         body: JSON.stringify({ query }),
       }).catch(() => {});
     }
-    return data.results;
+    return {
+      results: data.results,
+      stalled,
+    };
   };
 
   const fetchDetail = async (id: string): Promise<TitleDetail> => {

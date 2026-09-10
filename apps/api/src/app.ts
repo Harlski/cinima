@@ -419,15 +419,15 @@ app.post("/api/me/x-handle", requirePay, requireAuth, async (c) => {
 app.get("/api/search", requirePay, requireAuth, async (c) => {
   const q = c.req.query("q") || "";
   try {
-    const results = await searchCatalog(q);
-    return c.json({ results });
+    const { results, tmdbTimedOut } = await searchCatalog(q);
+    return c.json({ results, tmdbTimedOut });
   } catch {
     const rows = await db
       .select()
       .from(schema.titles)
       .where(sql`${schema.titles.title} LIKE ${`%${q}%`}`)
       .limit(24);
-    return c.json({ results: rows.map(toTitleSummary) });
+    return c.json({ results: rows.map(toTitleSummary), tmdbTimedOut: false });
   }
 });
 

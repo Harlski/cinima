@@ -32,11 +32,14 @@ function isStale(fetchedAt: Date | null | undefined): boolean {
   return Date.now() - fetchedAt.getTime() > TTL_MS;
 }
 
-async function tmdbFetch(path: string): Promise<unknown | null> {
+async function tmdbFetch(path: string, opts?: { timeoutMs?: number }): Promise<unknown | null> {
   if (!config.tmdbApiKey) return null;
   const url = `https://api.themoviedb.org/3${path}${path.includes("?") ? "&" : "?"}api_key=${config.tmdbApiKey}`;
   try {
-    const res = await fetch(url);
+    const res = await fetch(
+      url,
+      opts?.timeoutMs ? { signal: AbortSignal.timeout(opts.timeoutMs) } : undefined
+    );
     if (!res.ok) return null;
     return await res.json();
   } catch {
@@ -182,11 +185,14 @@ async function syncTvEpisodes(titleIdValue: string, tmdbId: number) {
   }
 }
 
-export async function searchCatalog(query: string, limit = 24) {
+export async function searchCatalog(query: string, limit = 24): Promise<{
+  results: ReturnType<typeof toTitleSummary>[];
+  tmdbTimedOut: boolean;
+}> {
   const q = query.trim();
   if (!q) {
     const rows = await db.select().from(titles).orderBy(sql`title`).limit(limit);
-    return rows.map(toTitleSummary);
+    return { results: rows.map(toTitleSummary), tmdbTimedOut: false };
   }
 
   let rows = await db
@@ -195,28 +201,31 @@ export async function searchCatalog(query: string, limit = 24) {
     .where(or(like(titles.title, `%${q}%`), like(titles.overview, `%${q}%`)))
     .limit(limit);
 
+  let tmdbTimedOut = false;
   if (rows.length < 5 && config.tmdbApiKey) {
-    const movieRes = (await tmdbFetch(
-      `/search/movie?query=${encodeURIComponent(q)}&include_adult=false`
-    )) as { results?: Array<{ id: number }> } | null;
-    const tvRes = (await tmdbFetch(
-      `/search/tv?query=${encodeURIComponent(q)}&include_adult=false`
-    )) as { results?: Array<{ id: number }> } | null;
-
-    const movieIds = (movieRes?.results ?? []).slice(0, 8).map((r) => r.id);
-    const tvIds = (tvRes?.results ?? []).slice(0, 8).map((r) => r.id);
-
-    for (const id of movieIds) {
-      await upsertFromTmdb("movie", id);
-    }
-    for (const id of tvIds) {
-      await upsertFromTmdb("tv", id);
-    }
-
-    const tmdbTitleIds = [
-      ...movieIds.map((id) => makeTitleId("movie", id)),
-      ...tvIds.map((id) => makeTitleId("tv", id)),
+    const timeoutMs = config.tmdbTimeoutMs;
+    const [movieRes, tvRes] = (await Promise.all([
+      tmdbFetch(`/search/movie?query=${encodeURIComponent(q)}&include_adult=false`, {
+        timeoutMs,
+      }),
+      tmdbFetch(`/search/tv?query=${encodeURIComponent(q)}&include_adult=false`, {
+        timeoutMs,
+      }),
+    ])) as [
+      { results?: TmdbListItem[] } | null,
+      { results?: TmdbListItem[] } | null,
     ];
+    tmdbTimedOut = movieRes == null && tvRes == null;
+
+    const tmdbTitleIds: string[] = [];
+    for (const item of (movieRes?.results ?? []).slice(0, 8)) {
+      const id = await upsertFromTmdbSearchListItem("movie", item);
+      if (id) tmdbTitleIds.push(id);
+    }
+    for (const item of (tvRes?.results ?? []).slice(0, 8)) {
+      const id = await upsertFromTmdbSearchListItem("tv", item);
+      if (id) tmdbTitleIds.push(id);
+    }
 
     if (tmdbTitleIds.length) {
       const fromTmdb = await db
@@ -227,16 +236,10 @@ export async function searchCatalog(query: string, limit = 24) {
       const byId = new Map(rows.map((r) => [r.id, r]));
       for (const row of fromTmdb) byId.set(row.id, row);
       rows = [...byId.values()].slice(0, limit);
-    } else {
-      rows = await db
-        .select()
-        .from(titles)
-        .where(or(like(titles.title, `%${q}%`), like(titles.overview, `%${q}%`)))
-        .limit(limit);
     }
   }
 
-  return rows.map(toTitleSummary);
+  return { results: rows.map(toTitleSummary), tmdbTimedOut };
 }
 
 async function tvMissingEpisodes(titleId: string): Promise<boolean> {
@@ -336,6 +339,40 @@ async function upsertFromTmdbListItem(mediaType: MediaType, item: TmdbListItem):
       },
     });
   return true;
+}
+
+/** Search list rows are cards only. Title detail still hydrates IMDb ids and TV episodes. */
+async function upsertFromTmdbSearchListItem(
+  mediaType: MediaType,
+  item: TmdbListItem
+): Promise<string | null> {
+  if (!Number.isInteger(item.id) || item.id <= 0) return null;
+  const values = titleValuesFromTmdbListItem(mediaType, item);
+  const set: {
+    title: string;
+    year?: number | null;
+    posterPath?: string | null;
+    overview?: string | null;
+    rating?: string | null;
+    popularity?: number | null;
+    source: "tmdb";
+  } = {
+    title: values.title,
+    source: values.source,
+  };
+  if (values.year != null) set.year = values.year;
+  if (values.posterPath) set.posterPath = values.posterPath;
+  if (values.overview) set.overview = values.overview;
+  if (values.rating) set.rating = values.rating;
+  if (values.popularity != null) set.popularity = values.popularity;
+  await db
+    .insert(titles)
+    .values({ ...values, fetchedAt: new Date(0) })
+    .onConflictDoUpdate({
+      target: titles.id,
+      set,
+    });
+  return values.id;
 }
 
 async function countQualityRecentTitles(): Promise<number> {

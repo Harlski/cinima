@@ -120,6 +120,10 @@ _Avoid_: stories rail, avatar carousel, Following tabs chrome
 The Following strip entry (black-and-white hexagon with +) that opens a centered list of Handles the viewer does not already follow, with Favorite counts by media type and Thanks received, so the viewer can follow or open a Public Profile.
 _Avoid_: user search, directory as a top-level tab, invite sheet
 
+**Search**:
+The signed-in tab for finding titles by typed query: results are title cards, and opening one is title detail (where Catalog data for that title is filled in). A search that does not finish is Accepted wait, then Retry, not "No results found".
+_Avoid_: user search, Find people, autocomplete as a separate product, observability as a product term
+
 **Thanks received**:
 How many Thanks other users have sent to this Handle. The social reputation signal shown in Find people.
 _Avoid_: thank rating, thanks score, tip count

@@ -2,12 +2,19 @@
   <div class="search">
     <div class="search-stage" :style="searchStageStyle">
       <div class="search-stage-inner">
-        <div v-if="!showHistory && loading" class="loading">
+        <div v-if="wait === 'searching'" class="loading">
           <LoadingWait label="Searching" />
         </div>
 
+        <div v-else-if="wait === 'retry'" class="empty">
+          <p>Search didn't finish</p>
+          <button type="button" class="nq-pill-blue" @click="retrySearch">
+            Retry
+          </button>
+        </div>
+
         <div
-          v-else-if="!showHistory && searchQuery && results.length === 0"
+          v-else-if="wait === 'empty'"
           class="empty"
         >
           <p>No results found</p>
@@ -36,7 +43,7 @@
           </div>
         </div>
 
-        <div v-else-if="!showHistory && showSparseLookups" class="results sparse-with-results">
+        <div v-else-if="wait === 'results' && showSparseLookups" class="results sparse-with-results">
           <TitleCard
             v-for="title in displayedResults"
             :key="title.id"
@@ -73,7 +80,7 @@
           </div>
         </div>
 
-        <div v-else-if="!showHistory" ref="resultsEl" class="results">
+        <div v-else-if="wait === 'results'" ref="resultsEl" class="results">
           <TitleCard
             v-for="title in displayedResults"
             :key="title.id"
@@ -238,6 +245,10 @@ import {
   saveSearchResults,
 } from "@/lib/searchResultsCache";
 import {
+  SEARCH_WAIT_DEADLINE_MS,
+  searchWait,
+} from "@/lib/searchWait";
+import {
   searchDockBottomPx,
   searchStageBox,
   type SearchChrome,
@@ -272,6 +283,7 @@ const results = ref<TitleSummary[]>(
   loadSearchResults(searchQuery.value) ?? []
 );
 const loading = ref(false);
+const failed = ref(false);
 const history = ref<string[]>(loadSearchHistory());
 const titleLookups = ref<TitleLookup[]>(loadTitleLookups());
 const sortKey = ref<SearchSortKey>(loadSearchSort());
@@ -292,7 +304,15 @@ const sortOptions: { key: SearchSortKey; label: string }[] = [
   { key: "year", label: "Released" },
 ];
 
-const showHistory = computed(() => !searchQuery.value.trim());
+const wait = computed(() =>
+  searchWait({
+    query: searchQuery.value,
+    loading: loading.value,
+    failed: failed.value,
+    resultCount: results.value.length,
+  })
+);
+const showHistory = computed(() => wait.value === "history");
 const showSparseLookups = computed(
   () =>
     !!searchQuery.value.trim() &&
@@ -352,6 +372,18 @@ watch(displayedResults, () => {
 });
 
 let searchTimeout: ReturnType<typeof setTimeout>;
+let searchAttempt = 0;
+let inflight: AbortController | null = null;
+let deadlineTimer: ReturnType<typeof setTimeout> | null = null;
+
+function abortInflight() {
+  if (deadlineTimer) {
+    clearTimeout(deadlineTimer);
+    deadlineTimer = null;
+  }
+  inflight?.abort();
+  inflight = null;
+}
 
 function syncSearchRoute(query: string) {
   if (parseSearchQuery(route.query.q) === query) return;
@@ -376,28 +408,57 @@ watch(
 async function runSearch(query: string, record: boolean) {
   const q = query.trim();
   if (!q) {
+    abortInflight();
     results.value = [];
+    failed.value = false;
+    loading.value = false;
     return;
   }
 
+  const my = ++searchAttempt;
+  abortInflight();
+  const ac = new AbortController();
+  inflight = ac;
+  deadlineTimer = setTimeout(() => ac.abort(), SEARCH_WAIT_DEADLINE_MS);
+
   const cached = loadSearchResults(q);
+  failed.value = false;
   if (cached) {
     results.value = cached;
     if (record) history.value = pushSearchHistory(q);
   } else {
+    results.value = [];
     loading.value = true;
   }
 
   try {
-    const fresh = await catalogStore.search(q);
+    const { results: fresh, stalled } = await catalogStore.search(q, ac.signal);
+    if (my !== searchAttempt) return;
+    if (stalled) {
+      failed.value = true;
+      results.value = [];
+      return;
+    }
     results.value = fresh;
     saveSearchResults(q, fresh);
+    failed.value = false;
     if (record && !cached) {
       history.value = pushSearchHistory(q);
     }
+  } catch {
+    if (my !== searchAttempt) return;
+    failed.value = !cached;
   } finally {
-    loading.value = false;
+    if (deadlineTimer) {
+      clearTimeout(deadlineTimer);
+      deadlineTimer = null;
+    }
+    if (my === searchAttempt) loading.value = false;
   }
+}
+
+function retrySearch() {
+  void runSearch(searchQuery.value, false);
 }
 
 const onFieldEvent = (event: Event) => {
@@ -420,10 +481,20 @@ function applyFieldAction(eventType: string, event?: Event) {
   const action = searchFieldAction(eventType, native);
   clearTimeout(searchTimeout);
   if (action.kind === "idle") {
+    abortInflight();
     results.value = [];
+    failed.value = false;
+    loading.value = false;
     return;
   }
   if (action.kind === "live") {
+    searchAttempt += 1;
+    abortInflight();
+    failed.value = false;
+    if (!loadSearchResults(action.query)) {
+      results.value = [];
+      loading.value = true;
+    }
     searchTimeout = setTimeout(() => {
       void runSearch(action.query, false);
     }, 300);
@@ -495,8 +566,11 @@ const openLookup = async (item: TitleLookup) => {
 
 const clearQuery = () => {
   clearTimeout(searchTimeout);
+  abortInflight();
   searchQuery.value = "";
   results.value = [];
+  failed.value = false;
+  loading.value = false;
 };
 
 onMounted(() => {
@@ -515,6 +589,8 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  clearTimeout(searchTimeout);
+  abortInflight();
   window.visualViewport?.removeEventListener("resize", syncSearchLayout);
   window.visualViewport?.removeEventListener("scroll", syncSearchLayout);
   window.removeEventListener("resize", syncSearchLayout);
