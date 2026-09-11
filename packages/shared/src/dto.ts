@@ -88,6 +88,16 @@ export type CommentDto = {
   createdAt: string;
   updatedAt: string | null;
   deleted: boolean;
+  thanksCount: number;
+  thanked: boolean;
+};
+
+export type CommentFeedItem = CommentDto & {
+  title: TitleSummary;
+};
+
+export type CommentFeedResponse = {
+  items: CommentFeedItem[];
 };
 
 export type TitleSuggester = {
@@ -366,6 +376,26 @@ export type StudioPersonRow = StudioPersonRef & {
   favoriteCount: number;
   followingCount: number;
   followerCount: number;
+  quiet: boolean;
+};
+
+export type StudioSendRow = {
+  id: number;
+  kind: "reward" | "ping";
+  source: "thanks" | "system" | "creator";
+  toWallet: string;
+  toHandle: string | null;
+  luna: number;
+  memo: string;
+  status: "queued" | "sending" | "sent" | "failed";
+  txHash: string | null;
+  createdAt: string;
+};
+
+export type StudioSenderStatus = {
+  configured: boolean;
+  balanceLuna: number | null;
+  updatedAt: string | null;
 };
 
 export type StudioSnapshot = {
@@ -380,4 +410,17 @@ export type StudioSnapshot = {
   topViews: StudioTitleCount[];
   topShares: StudioTitleCount[];
   people: StudioPersonRow[];
+  sender: StudioSenderStatus;
+  recentSends: StudioSendRow[];
+};
+
+export type CreatorPingRequest = {
+  toWallet: string;
+  message: string;
+};
+
+export type CreatorPingResponse = {
+  ok: true;
+  queued: boolean;
+  memo: string;
 };

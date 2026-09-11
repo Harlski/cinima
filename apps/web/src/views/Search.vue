@@ -208,9 +208,11 @@
       </div>
     </div>
 
-    <ConfirmDialog
-      v-if="pendingConfirm"
+    <TitleActionDialogs
+      :pending="pendingConfirm"
       :message="confirmMessage"
+      :reason="leaveReason"
+      @update:reason="leaveReason = $event"
       @cancel="cancelConfirm"
       @confirm="onConfirmAction"
     />
@@ -224,7 +226,7 @@ import { useFavoritesStore } from "@/stores/favorites";
 import { useWatchlistStore } from "@/stores/watchlist";
 import { useCatalogStore } from "@/stores/catalog";
 import TitleCard from "@/components/TitleCard.vue";
-import ConfirmDialog from "@/components/ConfirmDialog.vue";
+import TitleActionDialogs from "@/components/TitleActionDialogs.vue";
 import NqIcon from "@/components/NqIcon.vue";
 import LoadingWait from "@/components/LoadingWait.vue";
 import {
@@ -272,6 +274,7 @@ const catalogStore = useCatalogStore();
 const {
   pendingConfirm,
   confirmMessage,
+  leaveReason,
   cancelConfirm,
   confirmPending,
   requestToggleFavorite,

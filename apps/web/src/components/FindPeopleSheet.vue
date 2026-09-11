@@ -13,7 +13,7 @@
         </button>
 
         <h2 id="find-people-title">Find people</h2>
-        <p class="hint">Follow users whose taste you want on Following.</p>
+        <p class="hint">Follow people to peek their Recommends.</p>
 
         <div v-if="loading" class="state">
           <LoadingWait />

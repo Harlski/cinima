@@ -34,6 +34,19 @@ export const config = {
   get studioUpstream() {
     return envString("STUDIO_UPSTREAM");
   },
+  get senderPort() {
+    return Number(process.env.SENDER_PORT || 8789);
+  },
+  /** Local `pnpm dev` drains Sends in-process. Docker API sets this to 0. */
+  get senderInline() {
+    return process.env.SENDER_INLINE !== "0";
+  },
+  get senderPrivateKey() {
+    return envString("NIM_SENDER_PRIVATE_KEY");
+  },
+  get nimiqNetwork() {
+    return envString("NIM_NETWORK", "mainalbatross");
+  },
   get demoMode() {
     return envBool("DEMO_MODE", true);
   },

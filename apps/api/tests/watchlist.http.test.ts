@@ -95,4 +95,73 @@ describe("Watchlist HTTP API", () => {
     const afterBody = (await afterRes.json()) as { items: { id: string }[] };
     expect(afterBody.items.map((item) => item.id)).not.toContain(TITLE_ID);
   });
+
+  it("records an optional Watchlist leave reason and rejects unknown reasons", async () => {
+    const headers = {
+      Authorization: `Bearer ${TOKEN}`,
+      "Content-Type": "application/json",
+      "X-Cinima-Demo": "1",
+    };
+
+    const addRes = await app.fetch(
+      new Request(`http://test/api/watchlist/${encodeURIComponent(TITLE_ID)}`, {
+        method: "POST",
+        headers,
+      })
+    );
+    expect(addRes.status).toBe(200);
+
+    const bad = await app.fetch(
+      new Request(`http://test/api/watchlist/${encodeURIComponent(TITLE_ID)}`, {
+        method: "DELETE",
+        headers,
+        body: JSON.stringify({ reason: "watched" }),
+      })
+    );
+    expect(bad.status).toBe(400);
+
+    const stillThere = await app.fetch(new Request("http://test/api/watchlist", { headers }));
+    expect(
+      ((await stillThere.json()) as { items: { id: string }[] }).items.map((item) => item.id)
+    ).toContain(TITLE_ID);
+
+    const delRes = await app.fetch(
+      new Request(`http://test/api/watchlist/${encodeURIComponent(TITLE_ID)}`, {
+        method: "DELETE",
+        headers,
+        body: JSON.stringify({ reason: "finished" }),
+      })
+    );
+    expect(delRes.status).toBe(200);
+    expect(((await delRes.json()) as { ok: boolean; removed: boolean }).removed).toBe(true);
+
+    const afterRes = await app.fetch(new Request("http://test/api/watchlist", { headers }));
+    expect(
+      ((await afterRes.json()) as { items: { id: string }[] }).items.map((item) => item.id)
+    ).not.toContain(TITLE_ID);
+
+    const { db } = await import("../src/db/index.js");
+    const schema = await import("../src/db/schema.js");
+    const { eq } = await import("drizzle-orm");
+    const leaves = await db
+      .select()
+      .from(schema.watchlistLeaves)
+      .where(eq(schema.watchlistLeaves.titleId, TITLE_ID));
+    expect(leaves.some((row) => row.reason === "finished")).toBe(true);
+    const leaveCount = leaves.length;
+
+    const noop = await app.fetch(
+      new Request(`http://test/api/watchlist/${encodeURIComponent(TITLE_ID)}`, {
+        method: "DELETE",
+        headers,
+      })
+    );
+    expect(noop.status).toBe(200);
+    expect(((await noop.json()) as { removed: boolean }).removed).toBe(false);
+    const leavesAfterNoop = await db
+      .select()
+      .from(schema.watchlistLeaves)
+      .where(eq(schema.watchlistLeaves.titleId, TITLE_ID));
+    expect(leavesAfterNoop).toHaveLength(leaveCount);
+  });
 });

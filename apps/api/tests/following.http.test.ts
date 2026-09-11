@@ -159,4 +159,43 @@ describe("Following strip HTTP API", () => {
     });
     expect(body.people[0]?.walletAddress).toBe(OTHER);
   });
+
+  it("does not treat deleted Comments as Following strip activity", async () => {
+    const { db } = await import("../src/db/index.js");
+    const schema = await import("../src/db/schema.js");
+    const now = new Date();
+    const future = new Date(now.getTime() + 60 * 60 * 1000);
+
+    await db.insert(schema.users).values({
+      walletAddress: "NQ05FOLLOWTESTWALLETSILENT00000001",
+      handle: "silent",
+      lifetimeUnlockedAt: null,
+      createdAt: now,
+    });
+    await db.insert(schema.follows).values({
+      followerWallet: ME,
+      followeeWallet: "NQ05FOLLOWTESTWALLETSILENT00000001",
+      createdAt: now,
+    });
+    await db.insert(schema.comments).values({
+      titleId: MOVIE_ID,
+      walletAddress: "NQ05FOLLOWTESTWALLETSILENT00000001",
+      body: "gone",
+      txHash: "deleted-comment-activity-hash",
+      createdAt: future,
+      updatedAt: null,
+      deletedAt: future,
+    });
+
+    const res = await app.fetch(new Request("http://test/api/following", { headers }));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      people: { walletAddress: string; lastActivityAt: string | null }[];
+    };
+    const silent = body.people.find(
+      (p) => p.walletAddress === "NQ05FOLLOWTESTWALLETSILENT00000001"
+    );
+    expect(silent).toBeTruthy();
+    expect(silent?.lastActivityAt).toBeNull();
+  });
 });

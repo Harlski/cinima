@@ -7,6 +7,7 @@ const ACCEPTED_WAIT_LABELS: Record<string, string> = {
   Post: "Posting…",
   "Thank all": "Thanking…",
   Remove: "Removing…",
+  Send: "Sending…",
 };
 
 /** Follow/Following keep their idle label: Following already means the person is followed. */

@@ -18,6 +18,8 @@ import {
 import { db } from "../db/index.js";
 import {
   achievements,
+  commentThanks,
+  comments,
   favorites,
   presenceDays,
   shareLinks,
@@ -181,10 +183,14 @@ async function evaluatePending(wallet: string, atMs: number): Promise<Achievemen
     .select({ n: count() })
     .from(thanks)
     .where(eq(thanks.fromWallet, wallet));
+  const [commentSentRow] = await db
+    .select({ n: count() })
+    .from(commentThanks)
+    .where(eq(commentThanks.fromWallet, wallet));
   if (
     shouldAwardBravo({
       alreadyEarned: have.has("bravo"),
-      thanksSentAfter: Number(sentRow?.n || 0),
+      thanksSentAfter: Number(sentRow?.n || 0) + Number(commentSentRow?.n || 0),
     })
   ) {
     if (await insertIfNew(wallet, "bravo", atMs)) earned.push("bravo");
@@ -194,10 +200,16 @@ async function evaluatePending(wallet: string, atMs: number): Promise<Achievemen
     .select({ n: count() })
     .from(thanks)
     .where(eq(thanks.toWallet, wallet));
+  const [commentReceivedRow] = await db
+    .select({ n: count() })
+    .from(commentThanks)
+    .innerJoin(comments, eq(commentThanks.commentId, comments.id))
+    .where(eq(comments.walletAddress, wallet));
   if (
     shouldAwardEncore({
       alreadyEarned: have.has("encore"),
-      thanksReceivedAfter: Number(receivedRow?.n || 0),
+      thanksReceivedAfter:
+        Number(receivedRow?.n || 0) + Number(commentReceivedRow?.n || 0),
     })
   ) {
     if (await insertIfNew(wallet, "encore", atMs)) earned.push("encore");

@@ -15,6 +15,7 @@ import {
   type TitleShare,
   type TitleSuggester,
   type TitleDetail,
+  type CommentFeedResponse,
   type FollowingFeedResponse,
   type FollowingPeopleResponse,
   type FindPeopleResponse,
@@ -26,6 +27,7 @@ import {
   titleShareUrl,
   watchlistShareOgImageUrl,
   watchlistShareUrl,
+  isCreatorWallet,
 } from "@cinima/shared";
 import { db } from "./db/index.js";
 import * as schema from "./db/schema.js";
@@ -59,8 +61,10 @@ import {
 } from "./services/shareOgServe.js";
 import {
   CommentError,
+  addCommentThanks,
   createComment,
   deleteComment,
+  listCommentFeed,
   listCommentsForTitle,
   commentActivityBody,
   updateComment,
@@ -95,7 +99,9 @@ import {
   addToWatchlist,
   isOnWatchlist,
   listWatchlist,
+  parseLeaveReasonOrThrow,
   removeFromWatchlist,
+  WatchlistError,
 } from "./services/watchlist.js";
 import {
   addThanks,
@@ -121,6 +127,11 @@ import {
   takeUnseenAchievements,
 } from "./services/achievements.js";
 import { proxyStudio } from "./lib/studioProxy.js";
+import {
+  queueCreatorPing,
+  queueRewardForThanks,
+  queueRewardsForThanks,
+} from "./services/sends.js";
 
 type Vars = {
   user: typeof schema.users.$inferSelect;
@@ -495,7 +506,7 @@ app.get("/api/titles/:id", requirePay, requireAuth, async (c) => {
 
 app.get("/api/titles/:id/comments", requirePay, requireAuth, async (c) => {
   const id = decodeURIComponent(c.req.param("id"));
-  return c.json({ comments: await listCommentsForTitle(id) });
+  return c.json({ comments: await listCommentsForTitle(id, c.get("user").walletAddress) });
 });
 
 // --- Favorites / Discover (social taste module) ---
@@ -586,15 +597,36 @@ app.post("/api/watchlist/:titleId", requirePay, requireAuth, async (c) => {
 app.delete("/api/watchlist/:titleId", requirePay, requireAuth, async (c) => {
   const titleId = decodeURIComponent(c.req.param("titleId"));
   const user = c.get("user");
-  await removeFromWatchlist(user.walletAddress, titleId);
-  if (user.handle) refreshWatchlistShareOgImage(user.handle);
-  return c.json({ ok: true });
+  let rawReason: unknown;
+  try {
+    const body = await c.req.json<{ reason?: unknown }>();
+    rawReason = body?.reason;
+  } catch {
+    rawReason = undefined;
+  }
+  try {
+    const reason = parseLeaveReasonOrThrow(rawReason);
+    const removed = await removeFromWatchlist(user.walletAddress, titleId, reason);
+    if (user.handle) refreshWatchlistShareOgImage(user.handle);
+    return c.json({ ok: true, removed });
+  } catch (e) {
+    if (e instanceof WatchlistError) {
+      return c.json({ error: e.code, message: e.message }, 400);
+    }
+    throw e;
+  }
 });
 
 // --- Payments (retired: TMDB catalog data is not sold) ---
 app.post("/api/unlocks", requirePay, requireAuth, (c) => c.json(PAYMENTS_RETIRED, 410));
 
 app.post("/api/lifetime", requirePay, requireAuth, (c) => c.json(PAYMENTS_RETIRED, 410));
+
+app.get("/api/comments/feed", requirePay, requireAuth, async (c) => {
+  const items = await listCommentFeed(c.get("user").walletAddress);
+  const body: CommentFeedResponse = { items };
+  return c.json(body);
+});
 
 app.post("/api/comments", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
@@ -651,6 +683,42 @@ app.delete("/api/comments/:id", requirePay, requireAuth, async (c) => {
   }
 });
 
+app.post("/api/comments/:id/thanks", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  const id = Number(c.req.param("id"));
+  if (!Number.isInteger(id) || id <= 0) return c.json({ error: "invalid_id" }, 400);
+
+  try {
+    const result = await addCommentThanks(user.walletAddress, id);
+    let rewarded = false;
+    if (result.created && result.id) {
+      rewarded = await queueRewardForThanks({
+        fromWallet: user.walletAddress,
+        toWallet: result.comment.walletAddress,
+        idempotencyKey: `reward:comment:${result.id}`,
+      });
+    }
+    const earnedAchievements = result.created
+      ? await evaluateAfterThanksSent(user.walletAddress)
+      : [];
+    if (result.created) {
+      await evaluateAfterThanksReceived(result.comment.walletAddress);
+    }
+    return c.json({
+      ok: true,
+      created: result.created,
+      rewarded,
+      comment: result.comment,
+      earnedAchievements,
+    });
+  } catch (e) {
+    if (e instanceof CommentError) {
+      return c.json({ error: e.code, message: e.message }, commentErrorStatus(e.code));
+    }
+    throw e;
+  }
+});
+
 app.post("/api/thanks", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
   const body = await c.req.json<{ toWallet: string; titleId: string; tipTxHash?: string }>();
@@ -662,13 +730,21 @@ app.post("/api/thanks", requirePay, requireAuth, async (c) => {
       to: body.toWallet,
       titleId: body.titleId,
     });
+    const rewarded =
+      result.created && result.id
+        ? await queueRewardForThanks({
+            thanksId: result.id,
+            fromWallet: user.walletAddress,
+            toWallet: result.toWallet,
+          })
+        : false;
     const earnedAchievements = result.created
       ? await evaluateAfterThanksSent(user.walletAddress)
       : [];
     if (result.created) {
       await evaluateAfterThanksReceived(body.toWallet);
     }
-    return c.json({ ok: true, created: result.created, earnedAchievements });
+    return c.json({ ok: true, created: result.created, rewarded, earnedAchievements });
   } catch (err) {
     const code = err instanceof Error ? err.message : "thanks_failed";
     if (code === "cannot_thank_self") return c.json({ error: code }, 400);
@@ -681,16 +757,39 @@ app.post("/api/thanks/all", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
   const body = await c.req.json<{ titleId: string }>();
   if (!body.titleId) return c.json({ error: "missing_fields" }, 400);
-  const thankedWallets = await thankAllSuggesters(user.walletAddress, body.titleId);
-  const earnedAchievements = thankedWallets.length
+  const thanked = await thankAllSuggesters(user.walletAddress, body.titleId);
+  const rewarded = thanked.length
+    ? await queueRewardsForThanks({ fromWallet: user.walletAddress, rows: thanked })
+    : 0;
+  const earnedAchievements = thanked.length
     ? await evaluateAfterThanksSent(user.walletAddress)
     : [];
-  if (thankedWallets.length) {
-    await Promise.all(
-      thankedWallets.map((toWallet) => evaluateAfterThanksReceived(toWallet))
-    );
+  if (thanked.length) {
+    await Promise.all(thanked.map((row) => evaluateAfterThanksReceived(row.toWallet)));
   }
-  return c.json({ ok: true, thanked: thankedWallets.length, earnedAchievements });
+  return c.json({
+    ok: true,
+    thanked: thanked.length,
+    rewarded,
+    earnedAchievements,
+  });
+});
+
+app.post("/api/sends", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  if (!isCreatorWallet(user.walletAddress)) {
+    return c.json({ error: "not_found" }, 404);
+  }
+  const body = await c.req.json<{ toWallet?: string; message?: string }>();
+  const toWallet = String(body.toWallet ?? "").trim();
+  const message = String(body.message ?? "").trim();
+  if (!toWallet || !message) return c.json({ error: "missing_fields" }, 400);
+  const target = await db.query.users.findFirst({
+    where: eq(schema.users.walletAddress, normalizeWallet(toWallet)),
+  });
+  if (!target) return c.json({ error: "not_found" }, 404);
+  const result = await queueCreatorPing({ toWallet, message });
+  return c.json({ ok: true, queued: result.queued, memo: result.memo });
 });
 
 app.get("/api/users/:wallet", requirePay, requireAuth, async (c) => {

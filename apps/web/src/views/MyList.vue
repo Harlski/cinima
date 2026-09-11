@@ -89,9 +89,11 @@
       </div>
     </nav>
 
-    <ConfirmDialog
-      v-if="pendingConfirm"
+    <TitleActionDialogs
+      :pending="pendingConfirm"
       :message="confirmMessage"
+      :reason="leaveReason"
+      @update:reason="leaveReason = $event"
       @cancel="cancelConfirm"
       @confirm="onConfirmAction"
     />
@@ -124,7 +126,7 @@ import { useFavoritesStore } from "@/stores/favorites";
 import { useWatchlistStore } from "@/stores/watchlist";
 import { useCommunityRecommends } from "@/composables/useCommunityRecommends";
 import TitleDeckPicker, { type DeckItem } from "@/components/TitleDeckPicker.vue";
-import ConfirmDialog from "@/components/ConfirmDialog.vue";
+import TitleActionDialogs from "@/components/TitleActionDialogs.vue";
 import CommunityRecommends from "@/components/CommunityRecommends.vue";
 import LoadingWait from "@/components/LoadingWait.vue";
 import NqIcon from "@/components/NqIcon.vue";
@@ -144,6 +146,7 @@ const tour = useGuidedTourStore();
 const {
   pendingConfirm,
   confirmMessage,
+  leaveReason,
   cancelConfirm,
   confirmPending,
   requestToggleFavorite,

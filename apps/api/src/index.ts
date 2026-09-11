@@ -11,6 +11,7 @@ import { config } from "./lib/config.js";
 import { seedTitles } from "./seed/seed-titles.js";
 import { prefetchPopularCatalog } from "./services/catalog.js";
 import { seedDemoSocialGraph } from "./services/demoSocial.js";
+import { startSenderLoop } from "./services/sends.js";
 
 async function main() {
   await migrate();
@@ -52,6 +53,10 @@ async function main() {
   if (config.studioInline) {
     serve({ fetch: studioApp.fetch, port: config.studioPort, hostname });
     console.log(`[cinima-studio] http://${hostname}:${config.studioPort} (inline)`);
+  }
+  if (config.senderInline) {
+    startSenderLoop();
+    console.log("[cinima-sender] inline drain");
   }
 }
 

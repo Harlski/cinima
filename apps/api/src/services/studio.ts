@@ -3,6 +3,7 @@ import { makeTitleId, type MediaType, type StudioSnapshot } from "@cinima/shared
 import { db } from "../db/index.js";
 import * as schema from "../db/schema.js";
 import { utcDayKey } from "./usage.js";
+import { listRecentSends, quietByWallet, readSenderStatus } from "./sends.js";
 
 const RECENT_LIMIT = 20;
 const PEOPLE_LIMIT = 50;
@@ -398,6 +399,8 @@ export async function getStudioSnapshot(atMs = Date.now()): Promise<StudioSnapsh
       },
     ])
   );
+  const quietMap = await quietByWallet(wallets);
+  const [sender, recentSends] = await Promise.all([readSenderStatus(), listRecentSends()]);
 
   return {
     totals: {
@@ -487,7 +490,10 @@ export async function getStudioSnapshot(atMs = Date.now()): Promise<StudioSnapsh
         favoriteCount: favMap.get(u.walletAddress) ?? 0,
         followingCount: followingMap.get(u.walletAddress) ?? 0,
         followerCount: followerMap.get(u.walletAddress) ?? 0,
+        quiet: quietMap.get(u.walletAddress) ?? false,
       };
     }),
+    sender,
+    recentSends,
   };
 }

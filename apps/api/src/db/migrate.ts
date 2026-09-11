@@ -240,6 +240,59 @@ export async function migrate() {
   await client.execute(
     `CREATE UNIQUE INDEX IF NOT EXISTS thanks_unique ON thanks(from_wallet, to_wallet, title_id)`
   );
+  await client.execute(`CREATE TABLE IF NOT EXISTS comment_thanks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    from_wallet TEXT NOT NULL,
+    comment_id INTEGER NOT NULL,
+    created_at INTEGER NOT NULL
+  )`);
+  await client.execute(
+    `CREATE UNIQUE INDEX IF NOT EXISTS comment_thanks_unique ON comment_thanks(from_wallet, comment_id)`
+  );
+  await client.execute(
+    `CREATE INDEX IF NOT EXISTS comment_thanks_comment ON comment_thanks(comment_id)`
+  );
+  await client.execute(`CREATE TABLE IF NOT EXISTS watchlist_leaves (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wallet_address TEXT NOT NULL,
+    title_id TEXT NOT NULL,
+    reason TEXT,
+    created_at INTEGER NOT NULL
+  )`);
+  await client.execute(
+    `CREATE INDEX IF NOT EXISTS watchlist_leaves_wallet ON watchlist_leaves(wallet_address)`
+  );
+  await client.execute(
+    `CREATE TABLE IF NOT EXISTS sends (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      kind TEXT NOT NULL,
+      source TEXT NOT NULL,
+      from_wallet TEXT,
+      to_wallet TEXT NOT NULL,
+      luna INTEGER NOT NULL,
+      memo TEXT NOT NULL,
+      status TEXT NOT NULL,
+      idempotency_key TEXT NOT NULL,
+      thanks_id INTEGER,
+      tx_hash TEXT,
+      error TEXT,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      sent_at INTEGER
+    )`
+  );
+  await client.execute(`CREATE UNIQUE INDEX IF NOT EXISTS sends_idempotency ON sends(idempotency_key)`);
+  await client.execute(`CREATE INDEX IF NOT EXISTS sends_status_created ON sends(status, created_at)`);
+  await client.execute(`CREATE INDEX IF NOT EXISTS sends_to_source ON sends(to_wallet, source)`);
+  await client.execute(`CREATE INDEX IF NOT EXISTS sends_from_kind ON sends(from_wallet, kind)`);
+  await client.execute(
+    `CREATE TABLE IF NOT EXISTS sender_heartbeat (
+      id INTEGER PRIMARY KEY,
+      configured INTEGER NOT NULL,
+      balance_luna INTEGER,
+      updated_at INTEGER NOT NULL
+    )`
+  );
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

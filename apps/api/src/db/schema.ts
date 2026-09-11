@@ -136,6 +136,32 @@ export const thanks = sqliteTable(
   (t) => [uniqueIndex("thanks_unique").on(t.fromWallet, t.toWallet, t.titleId)]
 );
 
+export const commentThanks = sqliteTable(
+  "comment_thanks",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    fromWallet: text("from_wallet").notNull(),
+    commentId: integer("comment_id").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [
+    uniqueIndex("comment_thanks_unique").on(t.fromWallet, t.commentId),
+    index("comment_thanks_comment").on(t.commentId),
+  ]
+);
+
+export const watchlistLeaves = sqliteTable(
+  "watchlist_leaves",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    walletAddress: text("wallet_address").notNull(),
+    titleId: text("title_id").notNull(),
+    reason: text("reason"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [index("watchlist_leaves_wallet").on(t.walletAddress)]
+);
+
 export const follows = sqliteTable(
   "follows",
   {
@@ -219,3 +245,39 @@ export const presenceDays = sqliteTable(
   },
   (t) => [uniqueIndex("presence_days_unique").on(t.walletAddress, t.day)]
 );
+
+/** Outgoing NIM Sends (Rewards and Pings). Public API enqueues; Sender process drains. */
+export const sends = sqliteTable(
+  "sends",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    kind: text("kind").notNull(),
+    source: text("source").notNull(),
+    fromWallet: text("from_wallet"),
+    toWallet: text("to_wallet").notNull(),
+    luna: integer("luna").notNull(),
+    memo: text("memo").notNull(),
+    status: text("status").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    thanksId: integer("thanks_id"),
+    txHash: text("tx_hash"),
+    error: text("error"),
+    attempts: integer("attempts").notNull().default(0),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    sentAt: integer("sent_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [
+    uniqueIndex("sends_idempotency").on(t.idempotencyKey),
+    index("sends_status_created").on(t.status, t.createdAt),
+    index("sends_to_source").on(t.toWallet, t.source),
+    index("sends_from_kind").on(t.fromWallet, t.kind),
+  ]
+);
+
+/** Sender process heartbeat: configured flag and last known Sender wallet balance. */
+export const senderHeartbeat = sqliteTable("sender_heartbeat", {
+  id: integer("id").primaryKey(),
+  configured: integer("configured", { mode: "boolean" }).notNull(),
+  balanceLuna: integer("balance_luna"),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+});

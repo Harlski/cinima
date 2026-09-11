@@ -27,7 +27,7 @@ Integration follows [nimiq.dev/mini-apps](https://nimiq.dev/mini-apps): `init()`
 - **Favorites** are public taste marks. After you Favorite at least three titles, Discover switches to taste overlap.
 - **Recommends** are a gold-star upgrade on a Favorite (at most six movies and six TV shows).
 - **Watchlist** (My List in the app) is a private save-for-later queue.
-- **Thanks** are a directed signal that someone's Favorite was useful. Comments and Thanks are free.
+- **Thanks** are a directed signal that someone's Favorite was useful. Comments and Thanks are free. Cinima may attach a 1 NIM Reward (five per thanker per UTC day) from the Sender wallet; extra Thanks stay social-only.
 - **Handles** make shareable URLs. Public Profile is `/:handle`. Title Share is `/:handle/t/{movie|tv}/{tmdbId}`.
 
 In-app TMDB attribution lives on Me → Sources & terms.
@@ -36,7 +36,7 @@ In-app TMDB attribution lives on Me → Sources & terms.
 
 ```
 apps/web         Vue 3, Vite, Vue Router, Pinia, @nimiq/mini-app-sdk
-apps/api         Hono, Drizzle, LibSQL/SQLite (public API on :8787; Studio on :8788)
+apps/api         Hono, Drizzle, LibSQL/SQLite (public API on :8787; Studio on :8788; Sender on :8789)
 packages/shared  Title IDs, Pay links, DTOs
 ```
 
@@ -55,6 +55,7 @@ pnpm dev
 - Web: [http://localhost:5174/?demo=1](http://localhost:5174/?demo=1)
 - API: [http://localhost:8787/health](http://localhost:8787/health)
 - Studio: [http://localhost:8788/health](http://localhost:8788/health) (Creator-gated reads; local `pnpm dev` binds this in-process)
+- Sender: local `pnpm dev` drains Rewards and Pings in-process. Docker runs a third container with `NIM_SENDER_PRIVATE_KEY`.
 
 `DEMO_MODE` / `VITE_DEMO_MODE` is for local desktop only (`?demo=1`). Do not use demo auth inside Pay; Pay injects the wallet.
 
@@ -93,6 +94,10 @@ Root `.env` is read by the API. `apps/web/.env` is read by Vite.
 | `STUDIO_PORT` | API | Studio listen port. Default `8788`. |
 | `STUDIO_INLINE` | API | Local `pnpm dev` binds Studio in-process unless `0`. Docker API sets `0`. |
 | `STUDIO_UPSTREAM` | API | Studio container URL. Docker sets `http://studio:8788` so `api.cinima.app/api/studio` reaches Studio. |
+| `NIM_SENDER_PRIVATE_KEY` | Sender | Hex key for the Sender wallet. Docker blanks this on API and Studio. Unset locally uses a demo chain. |
+| `NIM_NETWORK` | Sender | Nimiq network. Default `mainalbatross`. |
+| `SENDER_INLINE` | API | Local `pnpm dev` drains Sends in-process unless `0`. Docker API sets `0`. |
+| `SENDER_PORT` | Sender | Sender health port. Default `8789`. |
 
 See `.env.example` and `apps/web/.env.example`.
 

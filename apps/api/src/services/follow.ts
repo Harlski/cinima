@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, ne, sql } from "drizzle-orm";
 import type {
   FindPeopleEntry,
   FollowingFeedItem,
@@ -83,7 +83,7 @@ export async function activityHeatmap(wallet: string, dayCount = 371): Promise<H
     counts.set(key, (counts.get(key) || 0) + 1);
   };
 
-  const [favs, unlocks, comments, thanksGiven] = await Promise.all([
+  const [favs, unlocks, comments, thanksGiven, commentThanksGiven] = await Promise.all([
     db
       .select({ createdAt: schema.favorites.createdAt })
       .from(schema.favorites)
@@ -100,12 +100,17 @@ export async function activityHeatmap(wallet: string, dayCount = 371): Promise<H
       .select({ createdAt: schema.thanks.createdAt })
       .from(schema.thanks)
       .where(and(eq(schema.thanks.fromWallet, w), gte(schema.thanks.createdAt, start))),
+    db
+      .select({ createdAt: schema.commentThanks.createdAt })
+      .from(schema.commentThanks)
+      .where(and(eq(schema.commentThanks.fromWallet, w), gte(schema.commentThanks.createdAt, start))),
   ]);
 
   for (const r of favs) bump(r.createdAt);
   for (const r of unlocks) bump(r.createdAt);
   for (const r of comments) bump(r.createdAt);
   for (const r of thanksGiven) bump(r.createdAt);
+  for (const r of commentThanksGiven) bump(r.createdAt);
 
   const out: HeatmapDay[] = [];
   for (let i = 0; i < dayCount; i++) {
@@ -142,7 +147,7 @@ export async function listFollowingPeople(follower: string): Promise<FollowingPe
     if (t > prev) activityAt.set(wallet, t);
   };
 
-  const [favRows, unlockRows] = await Promise.all([
+  const [favRows, unlockRows, commentRows] = await Promise.all([
     db
       .select({
         walletAddress: schema.favorites.walletAddress,
@@ -157,10 +162,23 @@ export async function listFollowingPeople(follower: string): Promise<FollowingPe
       })
       .from(schema.unlocks)
       .where(inArray(schema.unlocks.walletAddress, wallets)),
+    db
+      .select({
+        walletAddress: schema.comments.walletAddress,
+        createdAt: schema.comments.createdAt,
+      })
+      .from(schema.comments)
+      .where(
+        and(
+          inArray(schema.comments.walletAddress, wallets),
+          isNull(schema.comments.deletedAt)
+        )
+      ),
   ]);
 
   for (const r of favRows) bump(r.walletAddress, r.createdAt);
   for (const r of unlockRows) bump(r.walletAddress, r.createdAt);
+  for (const r of commentRows) bump(r.walletAddress, r.createdAt);
 
   return [...followees]
     .sort((a, b) => (activityAt.get(b.walletAddress) ?? 0) - (activityAt.get(a.walletAddress) ?? 0))
@@ -188,7 +206,7 @@ export async function listFindPeople(viewer: string): Promise<FindPeopleEntry[]>
   if (!users.length) return [];
 
   const wallets = users.map((u) => u.walletAddress);
-  const [favRows, thanksRows, followRows] = await Promise.all([
+  const [favRows, thanksRows, commentThanksRows, followRows] = await Promise.all([
     db
       .select({
         walletAddress: schema.favorites.walletAddress,
@@ -205,6 +223,15 @@ export async function listFindPeople(viewer: string): Promise<FindPeopleEntry[]>
       .from(schema.thanks)
       .where(inArray(schema.thanks.toWallet, wallets))
       .groupBy(schema.thanks.toWallet),
+    db
+      .select({
+        toWallet: schema.comments.walletAddress,
+        count: sql<number>`count(*)`,
+      })
+      .from(schema.commentThanks)
+      .innerJoin(schema.comments, eq(schema.commentThanks.commentId, schema.comments.id))
+      .where(inArray(schema.comments.walletAddress, wallets))
+      .groupBy(schema.comments.walletAddress),
     db
       .select({ followeeWallet: schema.follows.followeeWallet })
       .from(schema.follows)
@@ -224,6 +251,9 @@ export async function listFindPeople(viewer: string): Promise<FindPeopleEntry[]>
   const thanksReceived = new Map<string, number>();
   for (const r of thanksRows) {
     thanksReceived.set(r.toWallet, Number(r.count) || 0);
+  }
+  for (const r of commentThanksRows) {
+    thanksReceived.set(r.toWallet, (thanksReceived.get(r.toWallet) ?? 0) + (Number(r.count) || 0));
   }
 
   const following = new Set(followRows.map((r) => r.followeeWallet));

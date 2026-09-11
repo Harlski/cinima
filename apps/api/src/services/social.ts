@@ -1,5 +1,5 @@
 import { DELETED_COMMENT_LABEL, normalizeWallet } from "@cinima/shared";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { comments, favorites, thanks, titles, unlocks, users } from "../db/schema.js";
 import { toTitleSummary } from "../lib/titles.js";
@@ -148,6 +148,7 @@ export async function listSuggesters(titleId: string, me: string) {
       )
     )
     .where(and(eq(favorites.titleId, titleId), sql`${favorites.walletAddress} != ${w}`))
+    .orderBy(asc(favorites.createdAt))
     .limit(24);
 
   return peers.map((p) => ({
@@ -163,7 +164,7 @@ export async function addThanks(opts: {
   to: string;
   titleId: string;
   tipTxHash?: string | null;
-}): Promise<{ created: boolean }> {
+}): Promise<{ created: boolean; id: number | null; toWallet: string }> {
   if (opts.tipTxHash) {
     throw new Error("payments_retired");
   }
@@ -183,15 +184,18 @@ export async function addThanks(opts: {
     })
     .onConflictDoNothing()
     .returning({ id: thanks.id });
-  return { created: inserted.length > 0 };
+  return { created: inserted.length > 0, id: inserted[0]?.id ?? null, toWallet };
 }
 
-export async function thankAllSuggesters(from: string, titleId: string): Promise<string[]> {
+export async function thankAllSuggesters(
+  from: string,
+  titleId: string
+): Promise<{ id: number; toWallet: string }[]> {
   const remaining = (await listSuggesters(titleId, from)).filter((s) => !s.thanked);
   if (remaining.length === 0) return [];
   const fromWallet = normalizeWallet(from);
   const now = new Date();
-  await db
+  const inserted = await db
     .insert(thanks)
     .values(
       remaining.map((s) => ({
@@ -202,8 +206,9 @@ export async function thankAllSuggesters(from: string, titleId: string): Promise
         createdAt: now,
       }))
     )
-    .onConflictDoNothing();
-  return remaining.map((s) => normalizeWallet(s.walletAddress));
+    .onConflictDoNothing()
+    .returning({ id: thanks.id, toWallet: thanks.toWallet });
+  return inserted;
 }
 
 export async function activityFeed(limit = 40) {

@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { useApi } from "@/composables/useApi";
-import type { TitleSummary } from "@cinima/shared";
+import type { TitleSummary, WatchlistLeaveReason } from "@cinima/shared";
 
 export const useWatchlistStore = defineStore("watchlist", () => {
   const ids = ref<Set<string>>(new Set());
@@ -16,7 +16,11 @@ export const useWatchlistStore = defineStore("watchlist", () => {
     titles.value = [title, ...titles.value.filter((t) => t.id !== title.id)];
   };
 
-  const toggle = async (titleId: string, title?: TitleSummary) => {
+  const toggle = async (
+    titleId: string,
+    title?: TitleSummary,
+    reason?: WatchlistLeaveReason | null
+  ): Promise<boolean> => {
     const wasOnList = ids.value.has(titleId);
     const previousTitles = [...titles.value];
     const previousIds = new Set(ids.value);
@@ -30,12 +34,20 @@ export const useWatchlistStore = defineStore("watchlist", () => {
     }
 
     try {
-      await request(`/watchlist/${encodeURIComponent(titleId)}`, {
-        method: wasOnList ? "DELETE" : "POST",
-      });
+      const data = await request<{ ok?: boolean; removed?: boolean }>(
+        `/watchlist/${encodeURIComponent(titleId)}`,
+        {
+          method: wasOnList ? "DELETE" : "POST",
+          body:
+            wasOnList && reason
+              ? JSON.stringify({ reason })
+              : undefined,
+        }
+      );
       if (!wasOnList && !title) {
         await refresh();
       }
+      return wasOnList && data.removed !== false;
     } catch (err) {
       ids.value = previousIds;
       titles.value = previousTitles;

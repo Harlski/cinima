@@ -245,13 +245,31 @@
               <ExpandableText v-else :text="comment.body" :lines="2" />
 
               <div
-                v-if="isOwnComment(comment) && !comment.deleted && editingCommentId !== comment.id"
+                v-if="!comment.deleted && editingCommentId !== comment.id"
                 class="comment-actions"
               >
-                <button type="button" class="comment-action" @click="startEdit(comment)">
+                <CommentThanksButton
+                  :own="isOwnComment(comment)"
+                  :deleted="comment.deleted"
+                  :thanked="comment.thanked"
+                  :count="comment.thanksCount"
+                  :busy="thankBusyId === comment.id"
+                  @thank="thankComment(comment)"
+                />
+                <button
+                  v-if="isOwnComment(comment)"
+                  type="button"
+                  class="comment-action"
+                  @click="startEdit(comment)"
+                >
                   Edit
                 </button>
-                <button type="button" class="comment-action comment-action--danger" @click="requestDeleteComment(comment.id)">
+                <button
+                  v-if="isOwnComment(comment)"
+                  type="button"
+                  class="comment-action comment-action--danger"
+                  @click="requestDeleteComment(comment.id)"
+                >
                   Delete
                 </button>
               </div>
@@ -324,9 +342,11 @@
       @open-profile="onOpenFavoriterProfile"
     />
 
-    <ConfirmDialog
-      v-if="pendingConfirm"
+    <TitleActionDialogs
+      :pending="pendingConfirm"
       :message="confirmMessage"
+      :reason="leaveReason"
+      @update:reason="leaveReason = $event"
       @cancel="cancelConfirm"
       @confirm="onConfirmAction"
     />
@@ -350,7 +370,9 @@ import { useCatalogStore } from "@/stores/catalog";
 import { displayName, imdbTitleUrl, makeTitleId, type AchievementKind, type MediaType } from "@cinima/shared";
 import type { TitleDetail, CommentDto, TitleSuggester } from "@cinima/shared";
 import ExpandableText from "@/components/ExpandableText.vue";
+import CommentThanksButton from "@/components/CommentThanksButton.vue";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
+import TitleActionDialogs from "@/components/TitleActionDialogs.vue";
 import FavoritersSheet, { type TastePeopleTab } from "@/components/FavoritersSheet.vue";
 import GoldGlowShell from "@/components/GoldGlowShell.vue";
 import HeatMap from "@/components/HeatMap.vue";
@@ -381,6 +403,7 @@ const tour = useGuidedTourStore();
 const {
   pendingConfirm,
   confirmMessage,
+  leaveReason,
   cancelConfirm,
   confirmPending,
   requestToggleFavorite,
@@ -409,6 +432,7 @@ const editingCommentId = ref<number | null>(null);
 const editText = ref("");
 const savingEdit = ref(false);
 const commentPendingDelete = ref<number | null>(null);
+const thankBusyId = ref<number | null>(null);
 const suggesters = ref<TitleSuggester[]>([]);
 const thankingAll = ref(false);
 const favoritersOpen = ref(false);
@@ -532,6 +556,9 @@ const onConfirmAction = async () => {
       if (title.value) title.value.watchlisted = false;
       tour.reportAction("watchlist-remove");
     },
+    onFavoriteAfterLeave: () => {
+      if (title.value) title.value.favorited = true;
+    },
   });
 };
 
@@ -599,6 +626,27 @@ const postComment = async () => {
 
 const isOwnComment = (comment: CommentDto) =>
   comment.walletAddress === meWallet.value;
+
+const thankComment = async (comment: CommentDto) => {
+  if (thankBusyId.value || comment.thanked || isOwnComment(comment)) return;
+  thankBusyId.value = comment.id;
+  try {
+    const data = await request<{
+      comment: CommentDto;
+      earnedAchievements?: AchievementKind[];
+    }>(`/comments/${comment.id}/thanks`, { method: "POST" });
+    comments.value = comments.value.map((c) =>
+      c.id === comment.id ? { ...c, ...data.comment } : c
+    );
+    if (data.earnedAchievements?.length) {
+      useMarqueeStore().enqueue(data.earnedAchievements);
+    }
+  } catch (err) {
+    console.error("Comment Thanks failed:", err);
+  } finally {
+    thankBusyId.value = null;
+  }
+};
 
 const startEdit = (comment: CommentDto) => {
   editingCommentId.value = comment.id;

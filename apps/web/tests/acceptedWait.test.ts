@@ -13,6 +13,7 @@ describe("accepted wait labels", () => {
     expect(acceptedWaitLabel("Post", false)).toBe("Post");
     expect(acceptedWaitLabel("Thank all", false)).toBe("Thank all");
     expect(acceptedWaitLabel("Remove", false)).toBe("Remove");
+    expect(acceptedWaitLabel("Send", false)).toBe("Send");
     expect(acceptedWaitLabel("Follow", false)).toBe("Follow");
   });
 
@@ -24,6 +25,7 @@ describe("accepted wait labels", () => {
     expect(acceptedWaitLabel("Post", true)).toBe("Posting…");
     expect(acceptedWaitLabel("Thank all", true)).toBe("Thanking…");
     expect(acceptedWaitLabel("Remove", true)).toBe("Removing…");
+    expect(acceptedWaitLabel("Send", true)).toBe("Sending…");
   });
 
   it("keeps Follow while busy because Following already means the person is followed", () => {

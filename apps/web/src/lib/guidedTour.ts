@@ -228,7 +228,7 @@ export const GUIDED_TOUR_STEPS: readonly TourStepDef[] = [
   {
     id: "following-find",
     title: "Find people",
-    body: "Follow users whose taste you want on Following.",
+    body: "Follow people to peek their Recommends.",
     actionText: "Tap Find.",
     spotlights: [TOUR_SPOTLIGHT.discoverTabFollowing, TOUR_SPOTLIGHT.findPeople],
     routeName: "discover",

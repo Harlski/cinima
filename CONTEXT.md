@@ -9,12 +9,12 @@ A user’s chosen shareable Cinima identity, distinct from their wallet address.
 _Avoid_: username, wallet name
 
 **Identicon**:
-The Nimiq wallet face that stands in for a Handle when a portrait is needed: profiles, Following strip, Share preview, and Credits.
+The Nimiq wallet face that stands in for a Handle when a portrait is needed: profiles, Following strip, Followee peek, Share preview, and Credits.
 _Avoid_: avatar, profile photo, gravatar
 
 **Public Profile**:
 The unauthenticated share page for a Handle: identity, Recommends, Favorites, and Achievement count. Favorites on Public Profile, Me, and other Handles' profiles are Favorite-only; Recommended titles appear under Recommends, not again under Favorites. Achievement count is visible here; Credits are not.
-_Avoid_: activity feed, heatmap, Me, User page, Watchlist on Public Profile
+_Avoid_: Feed, Followee peek, heatmap, Me, User page, Watchlist on Public Profile
 
 **Title Share**:
 The unauthenticated share page for one Handle plus one Title. It tells the recipient that the Handle wants them to check out that Title, and links to the Handle's Public Profile.
@@ -56,6 +56,18 @@ _Avoid_: un-recommended favorite, leftover favorite
 A user’s save-for-later queue of titles they intend to watch. Distinct from Favorite (taste signal) and Recommend (gold-star upgrade). Shown on the Watchlist tab as a browsable deck. Not listed on Public Profile; sharing it is a Watchlist Share.
 _Avoid_: watchlist as UI label (use “My List”), save, bookmark, Watchlist as a taste mark
 
+**Watchlist leave**:
+A recorded exit from Watchlist. An optional Watchlist leave reason is stored so a watched history can exist later; Cinima does not show that history yet.
+_Avoid_: watched tab, history as a current product surface, required reason
+
+**Watchlist leave reason**:
+Optional why on a Watchlist leave: Watched, Not for me, or Changed my mind.
+_Avoid_: rating, review, required dropdown
+
+**Watchlist leave Favorite cue**:
+After a Watchlist leave, if the Title is not a Favorite, a second confirm asks whether to Favorite it.
+_Avoid_: auto-favorite on leave, combining Favorite into the leave confirm
+
 **Watchlist Share**:
 The unauthenticated share page for one Handle plus their current Watchlist. It asks the recipient to help pick what to watch next, and links to the Handle's Public Profile. Live with the Watchlist, not a frozen snapshot.
 _Avoid_: Public Profile, Title Share, My List as a public URL, Watchlist as automatically public
@@ -67,6 +79,10 @@ _Avoid_: query-string share, profile-only URL, encoded Title ID in the path
 **Recommend**:
 A gold-star upgrade on a Favorite, meaning this title stands out among the user’s favorites — not a separate mark from Favorite. A user may hold at most six movie Recommends and six TV Recommends at a time; a seventh of that media type is blocked until one of that type is removed. Unfavoriting clears Recommend. Shared Recommends are a stronger taste-overlap signal than shared Favorites alone.
 _Avoid_: rating, review, super-like (unless used only as UI synonym), highlight, top pick as a separate mark
+
+**Comment**:
+A user’s written take on a Title. Shown on title detail and on Feed. Distinct from Recommend and from Thanks.
+_Avoid_: review, rating, post, tweet
 
 **Title taste counts**:
 On title detail, peer social tallies under the rating / year / media line: Recommend count (peers with Recommend) and Favorite count (peers Favorited without Recommend). A peer who Recommended is not counted in Favorites. Tapping either opens a tabbed Handle list (Recommends | Favorites). Viewer’s own mark is excluded from both counts.
@@ -93,8 +109,12 @@ Required TMDB credit: logo plus the non-endorsement notice that the application 
 _Avoid_: powered by IMDb, sourced from OMDb
 
 **Thanks**:
-A user’s directed signal that another user’s Favorite of a title was useful. Binary per thanker, thankee, and title.
-_Avoid_: tip, like, kudos, shout-out
+A user’s directed signal that another user’s Favorite of a title was useful. Binary per thanker, thankee, and title. Distinct from Comment Thanks.
+_Avoid_: tip, like, kudos, shout-out, Comment Thanks as the same mark
+
+**Comment Thanks**:
+A user’s directed signal that another user’s Comment was useful. Binary per thanker and Comment. Distinct from Thanks. Counts toward Bravo, Encore, Thanks received, and Presence heatmap.
+_Avoid_: like, kudos, title Thanks as the same mark, unlike
 
 **Thank all**:
 One action that sends Thanks to every remaining peer who Favorited a title (including those who Recommended it). On title detail, peers are shown as Identicons with a Favorited count; tapping the stack opens the same tabbed Handle list used by Title taste counts. Individual per-peer Thanks are not offered on that screen.
@@ -112,9 +132,17 @@ _Avoid_: toast, silent dimmed button, Following as a wait label, spinner-only on
 An optional walkthrough of Watchlist, Search, community Recommends (always at least one title, a hardcoded fallback when nobody else has Recommended), Watchlist actions, a required Favorite, a required Recommend, taking that title off the profile, For You, and Find people (Creator profile). Offered once after Favorites onboarding clears; skippable anytime (a notice then points back to Me); replayable from Me. Distinct from Favorites onboarding and Handle onboarding. Completing or skipping it is what opens Achievement earning for good (replay does not close the gate). Completing awards That's a wrap as the first Achievement, then any others already true from the tour.
 _Avoid_: product tour as a separate product term, tutorial modal stack, skippable Favorite or Recommend as the way to finish the walkthrough
 
+**Feed**:
+The Discover tab of recent Comments from any Handle (not only followees), newest first. Deleted Comments are omitted. Each row is a Comment on a Title; the viewer can send Comment Thanks from here.
+_Avoid_: activity feed, Following as the tab label, followee-only comments, likes
+
 **Following strip**:
-On Discover Following, the horizontal selectable row of followee Identicons (plus Find people) sticky under the brand header. Selecting a followee shows their Handle above the Identicon and filters the feed to that person's recent Favorites and unlocks. Unseen activity sorts ahead of already-viewed activity when the viewer returns to Following.
-_Avoid_: stories rail, avatar carousel, Following tabs chrome
+On Discover Feed, the horizontal row of followee Identicons (plus Find people) sticky under the brand header. Tapping a followee opens a Followee peek. Unseen activity sorts ahead of already-viewed activity when the viewer returns to Feed.
+_Avoid_: stories rail, avatar carousel, Following as the tab label, strip as a feed filter
+
+**Followee peek**:
+A short modal for one followee: Identicon, Handle, Movie and TV Recommends only, and View Profile. Not Public Profile and not Favorites.
+_Avoid_: profile page, Favorites in the peek, stories, heatmap
 
 **Find people**:
 The Following strip entry (black-and-white hexagon with +) that opens a centered list of Handles the viewer does not already follow, with Favorite counts by media type and Thanks received, so the viewer can follow or open a Public Profile.
@@ -125,15 +153,43 @@ The signed-in tab for finding titles by typed query. Results are title cards; op
 _Avoid_: user search, Find people, autocomplete as a separate product, observability as a product term
 
 **Thanks received**:
-How many Thanks other users have sent to this Handle. The social reputation signal shown in Find people.
-_Avoid_: thank rating, thanks score, tip count
+How many Thanks and Comment Thanks other users have sent to this Handle. The social reputation signal shown in Find people.
+_Avoid_: thank rating, thanks score, tip count, Reward count
+
+**Send**:
+An outgoing NIM transfer from the Sender wallet to a Handle's wallet, with a memo Nimiq Pay shows in its header. Thanks stays the social mark; a Send is optional extra.
+_Avoid_: notification, tip, payout, treasury transfer, like
+
+**Reward**:
+A Send of 1 NIM attached to a Thanks or Comment Thanks, funded by Cinima. A thanker gets at most five Rewards per UTC day; further Thanks that day stay social-only. Thank all spends remaining Rewards in Favorited order, then Thanks the rest without NIM.
+_Avoid_: tip, like, Ping, funded Thanks as a separate mark
+
+**Ping**:
+A Send of 0.0001 NIM whose job is the memo, not the amount. System or Creator. Never a Reward.
+_Avoid_: notification, Door alarm, Marquee, Reward
+
+**Sender wallet**:
+The Nimiq wallet Cinima uses to Send. Distinct from a user's wallet. The retired incoming treasury address is not this.
+_Avoid_: treasury, hot wallet as a product term, user wallet
+
+**Quiet**:
+A Handle who has received three System Pings since last Presence. System Pings skip them until they return; Rewards and Creator Pings still go. Return (Presence) clears Quiet.
+_Avoid_: unsubscribed, notifications off, blocked, banned
+
+**System Ping**:
+An automatic Ping after seven days without Presence, at most one per Handle per seven days, and only after the Guided tour is completed or skipped. Prefers the oldest Watchlist title ("Cinima.app - Have you watched: {title} yet?"); otherwise at least three new Handles since last Presence ("Cinima.app - {n} new users since last visit"). Skips the Creator.
+_Avoid_: blast, campaign, Door alarm, Creator Ping
+
+**Creator Ping**:
+A Ping the Creator enqueues by choosing a Handle and a memo. Shown as "Cinima.app - {message}". Not blocked by Quiet.
+_Avoid_: admin send, blast, System Ping
 
 **Creator**:
 The wallet that operates Cinima. The guided tour introduces this Handle; Studio is visible only to this wallet when signed in.
 _Avoid_: admin, owner, superuser, operator as a product term
 
 **Studio**:
-The Creator-only read of how people use Cinima: signups, Presence, searches, title views, shares, Share visits, and follows. Not part of the public product. Entry is at the bottom of Me.
+The Creator-only screen of how people use Cinima: signups, Presence, searches, title views, shares, Share visits, follows, and Sends. The Creator enqueues a Creator Ping from here. Not part of the public product. Entry is at the bottom of Me.
 _Avoid_: admin dashboard, analytics, backoffice, CMS, Door alarm
 
 **Share visit**:

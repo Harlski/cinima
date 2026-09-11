@@ -201,6 +201,48 @@
       </section>
 
       <section class="nq-card block">
+        <h2>Sends</h2>
+        <p class="lede sender-balance">
+          Sender wallet
+          <strong v-if="snapshot.sender.balanceLuna != null">
+            {{ (snapshot.sender.balanceLuna / LUNA_PER_NIM).toFixed(4) }} NIM
+          </strong>
+          <span v-else>balance unknown</span>
+          · {{ snapshot.sender.configured ? "configured" : "unconfigured" }}
+        </p>
+        <form class="ping-form" @submit.prevent="sendPing">
+          <label>
+            Handle wallet
+            <input v-model="pingWallet" class="nq-input" autocomplete="off" />
+          </label>
+          <label>
+            Message
+            <input v-model="pingMessage" class="nq-input" autocomplete="off" />
+          </label>
+          <button
+            type="submit"
+            class="nq-pill-blue"
+            :disabled="pinging || !pingWallet.trim() || !pingMessage.trim()"
+            :aria-busy="pinging"
+          >
+            {{ acceptedWaitLabel("Send", pinging) }}
+          </button>
+          <p v-if="pingError" class="empty">{{ pingError }}</p>
+          <p v-else-if="pingMemo" class="empty">Queued: {{ pingMemo }}</p>
+        </form>
+        <ul v-if="snapshot.recentSends.length" class="rows rows--people">
+          <li v-for="row in snapshot.recentSends" :key="row.id">
+            <span class="row-main">
+              {{ row.source }} · {{ row.toHandle || row.toWallet.slice(0, 8) }}
+              · {{ row.memo }}
+            </span>
+            <span class="row-meta">{{ row.status }}</span>
+          </li>
+        </ul>
+        <p v-else class="empty">No Sends yet.</p>
+      </section>
+
+      <section class="nq-card block">
         <h2>People</h2>
         <p v-if="!snapshot.people.length" class="empty">No Handles yet.</p>
         <ul v-else class="rows rows--people">
@@ -214,6 +256,7 @@
               <span v-else>{{ label(row) }}</span>
               · {{ row.favoriteCount }} fav
               · {{ row.followerCount }} followers
+              <template v-if="row.quiet"> · Quiet</template>
             </span>
             <span class="row-meta">{{ formatActiveMs(row.activeMs7d) }}</span>
           </li>
@@ -229,13 +272,14 @@ import { RouterLink, useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
 import { useAuthStore } from "@/stores/auth";
 import LoadingWait from "@/components/LoadingWait.vue";
+import { acceptedWaitLabel } from "@/lib/acceptedWait";
 import {
   decideStudioOpen,
   formatActiveMs,
   formatShareVisitCounts,
   studioProfileLocation,
 } from "@/lib/studio";
-import { displayName, type StudioPersonRef, type StudioSnapshot } from "@cinima/shared";
+import { displayName, LUNA_PER_NIM, type StudioPersonRef, type StudioSnapshot } from "@cinima/shared";
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -245,6 +289,11 @@ const loading = ref(true);
 const snapshot = ref<StudioSnapshot | null>(null);
 const loadError = ref<string | null>(null);
 const loadDetail = ref<string | null>(null);
+const pingWallet = ref("");
+const pingMessage = ref("");
+const pinging = ref(false);
+const pingError = ref<string | null>(null);
+const pingMemo = ref<string | null>(null);
 
 function label(row: StudioPersonRef): string {
   return displayName(row.handle, row.walletAddress);
@@ -268,7 +317,8 @@ async function loadStudio() {
     await router.replace({ name: "me" });
     return;
   }
-  loading.value = true;
+  const showWait = !snapshot.value;
+  if (showWait) loading.value = true;
   loadError.value = null;
   loadDetail.value = null;
   try {
@@ -295,6 +345,29 @@ async function loadStudio() {
 onMounted(() => {
   void loadStudio();
 });
+
+async function sendPing() {
+  pinging.value = true;
+  pingError.value = null;
+  pingMemo.value = null;
+  try {
+    const result = await request<{ queued: boolean; memo: string }>("/sends", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        toWallet: pingWallet.value.trim(),
+        message: pingMessage.value.trim(),
+      }),
+    });
+    pingMemo.value = result.memo;
+    pingMessage.value = "";
+    await loadStudio();
+  } catch (err) {
+    pingError.value = err instanceof Error ? err.message : "Could not queue Ping.";
+  } finally {
+    pinging.value = false;
+  }
+}
 </script>
 
 <style scoped>
@@ -410,5 +483,32 @@ h1 {
 
 .handle-link:hover {
   text-decoration: underline;
+}
+
+.sender-balance {
+  font-size: 0.9rem;
+}
+
+.ping-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ping-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.nq-input {
+  font: inherit;
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--border, #ccc);
+  background: var(--surface, #fff);
+  color: inherit;
 }
 </style>

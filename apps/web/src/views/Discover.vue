@@ -43,8 +43,8 @@
       <FollowingStrip
         v-if="activeTab === 'following'"
         :people="followingPeople"
-        :selected-wallet="selectedFollowee"
-        @select="onSelectFollowee"
+        :selected-wallet="peekWallet"
+        @select="onPeekFollowee"
         @find-people="openFindPeople"
       />
 
@@ -91,64 +91,20 @@
         <div v-if="followingLoading" class="loading">
           <LoadingWait />
         </div>
-        <div v-else-if="followingPeople.length === 0" class="feed-empty">
-          Tap Find people above to follow Handles and see their recent Favorites here.
+        <div v-else-if="commentFeed.length === 0" class="feed-empty">
+          No comments yet
         </div>
-        <div v-else-if="feed.length === 0" class="feed-empty">
-          No recent Favorites or unlocks from this Handle yet.
-        </div>
-
         <div v-else class="feed-list">
-          <article
-            v-for="card in feedCards"
-            :key="card.key"
-            class="feed-item"
-          >
-            <button type="button" class="feed-user" @click="goToUser(card.walletAddress)">
-              <Identicon :address="card.walletAddress" :size="36" alt="" />
-              <div class="feed-user-text">
-                <strong>{{ displayName(card.handle, card.walletAddress) }}</strong>
-                <span>{{ card.subtitle }} · {{ relativeTime(card.createdAt) }}</span>
-              </div>
-            </button>
-
-            <div v-if="card.titles.length === 1" class="feed-single">
-              <button type="button" class="feed-title" @click="goToTitle(card.titles[0]!.id)">
-                <div class="feed-thumb poster-press">
-                  <PosterImg
-                    v-if="card.titles[0]!.posterUrl"
-                    :src="card.titles[0]!.posterUrl"
-                    :alt="card.titles[0]!.title"
-                    :spinner-size="22"
-                  />
-                  <div v-else class="poster-fallback">{{ card.titles[0]!.title }}</div>
-                </div>
-                <div class="feed-title-meta">
-                  <strong>{{ card.titles[0]!.title }}</strong>
-                  <span>{{ card.titles[0]!.year }} · {{ card.titles[0]!.mediaType }}</span>
-                </div>
-              </button>
-            </div>
-
-            <div v-else class="feed-posters">
-              <button
-                v-for="title in card.titles"
-                :key="title.id"
-                type="button"
-                class="feed-poster poster-press"
-                :title="title.title"
-                @click="goToTitle(title.id)"
-              >
-                <PosterImg
-                  v-if="title.posterUrl"
-                  :src="title.posterUrl"
-                  :alt="title.title"
-                  :spinner-size="22"
-                />
-                <span v-else>{{ title.title.slice(0, 1) }}</span>
-              </button>
-            </div>
-          </article>
+          <CommentFeedCard
+            v-for="item in commentFeed"
+            :key="item.id"
+            :item="item"
+            :own="item.walletAddress === authStore.user?.walletAddress"
+            :thank-busy="thankBusyId === item.id"
+            @open-user="goToUser"
+            @open-title="goToTitle"
+            @thank="thankComment(item)"
+          />
         </div>
       </section>
     </div>
@@ -198,7 +154,7 @@
                 :data-tour="TOUR_SPOTLIGHT.discoverTabFollowing"
                 @click="activeTab = 'following'"
               >
-                Following
+                Feed
               </button>
             </TourSpotlight>
           </div>
@@ -217,9 +173,20 @@
       @follow="onFollowPerson"
     />
 
-    <ConfirmDialog
-      v-if="pendingConfirm"
+    <FolloweePeekSheet
+      v-if="peekWallet"
+      :profile="peekProfile"
+      :loading="peekLoading"
+      @close="closePeek"
+      @view-profile="onPeekViewProfile"
+      @open-title="onPeekOpenTitle"
+    />
+
+    <TitleActionDialogs
+      :pending="pendingConfirm"
       :message="confirmMessage"
+      :reason="leaveReason"
+      @update:reason="leaveReason = $event"
       @cancel="cancelConfirm"
       @confirm="onConfirmAction"
     />
@@ -241,11 +208,11 @@ import {
 } from "@/lib/welcome";
 import { useFavoritesStore } from "@/stores/favorites";
 import { useWatchlistStore } from "@/stores/watchlist";
-import { displayName } from "@cinima/shared";
 import type {
+  AchievementKind,
+  CommentFeedItem,
+  CommentFeedResponse,
   DiscoverResponse,
-  FollowingFeedItem,
-  FollowingFeedResponse,
   FollowingPeopleResponse,
   FollowingPerson,
   OverlapSuggestion,
@@ -262,9 +229,11 @@ import {
 } from "@/lib/handleOnboarding";
 import { preloadImages } from "@/lib/preloadImages";
 import { useAuthStore } from "@/stores/auth";
-import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import CommunityRecommends from "@/components/CommunityRecommends.vue";
+import CommentFeedCard from "@/components/CommentFeedCard.vue";
 import FindPeopleSheet from "@/components/FindPeopleSheet.vue";
+import FolloweePeekSheet from "@/components/FolloweePeekSheet.vue";
+import TitleActionDialogs from "@/components/TitleActionDialogs.vue";
 import TourSpotlight from "@/components/TourSpotlight.vue";
 import {
   TOUR_CREATOR_WALLET,
@@ -274,10 +243,8 @@ import {
 } from "@/lib/guidedTour";
 import { useGuidedTourStore } from "@/stores/guidedTour";
 import FollowingStrip from "@/components/FollowingStrip.vue";
-import Identicon from "@/components/Identicon.vue";
 import ForYouPicker from "@/components/ForYouPicker.vue";
 import LoadingWait from "@/components/LoadingWait.vue";
-import PosterImg from "@/components/PosterImg.vue";
 import {
   loadFollowingStripSeen,
   markFollowingStripSeen,
@@ -285,18 +252,9 @@ import {
 } from "@/lib/followingStrip";
 import { useCommunityRecommends } from "@/composables/useCommunityRecommends";
 import { useTitleActionConfirm } from "@/composables/useTitleActionConfirm";
+import { useMarqueeStore } from "@/stores/marquee";
 
 defineOptions({ name: "Discover" });
-
-type FeedCard = {
-  key: string;
-  type: "favorite" | "unlock";
-  walletAddress: string;
-  handle: string | null;
-  titles: TitleSummary[];
-  createdAt: string;
-  subtitle: string;
-};
 
 const router = useRouter();
 const route = useRoute();
@@ -314,6 +272,7 @@ const tourFeedTabGlow = computed(
 const {
   pendingConfirm,
   confirmMessage,
+  leaveReason,
   cancelConfirm,
   confirmPending,
   requestToggleFavorite,
@@ -349,9 +308,12 @@ const showHandleStep = ref(false);
 const handleBusy = ref(false);
 const handleSaveError = ref<string | null>(null);
 const suggestions = ref<OverlapSuggestion[]>([]);
-const feed = ref<FollowingFeedItem[]>([]);
+const commentFeed = ref<CommentFeedItem[]>([]);
 const followingPeople = ref<FollowingPerson[]>([]);
-const selectedFollowee = ref<string | null>(null);
+const peekWallet = ref<string | null>(null);
+const peekProfile = ref<PublicProfile | null>(null);
+const peekLoading = ref(false);
+const thankBusyId = ref<number | null>(null);
 const findPeopleOpen = ref(false);
 const findPeople = ref<FindPeopleEntry[]>([]);
 const peopleLoading = ref(false);
@@ -371,102 +333,19 @@ const visibleFindPeople = computed(() => {
   return fromList;
 });
 
-/** Merge a user's favorites into one card; unlocks stay one-per-title. */
-const feedCards = computed((): FeedCard[] => {
-  const favoritesByWallet = new Map<
-    string,
-    { handle: string | null; titles: TitleSummary[]; createdAt: string; seen: Set<string> }
-  >();
-  const unlocks: FeedCard[] = [];
-
-  for (const item of feed.value) {
-    if (item.type === "unlock") {
-      unlocks.push({
-        key: `unlock-${item.walletAddress}-${item.title.id}-${item.createdAt}`,
-        type: "unlock",
-        walletAddress: item.walletAddress,
-        handle: item.handle,
-        titles: [item.title],
-        createdAt: item.createdAt,
-        subtitle: "unlocked",
-      });
-      continue;
-    }
-
-    let group = favoritesByWallet.get(item.walletAddress);
-    if (!group) {
-      group = {
-        handle: item.handle,
-        titles: [],
-        createdAt: item.createdAt,
-        seen: new Set(),
-      };
-      favoritesByWallet.set(item.walletAddress, group);
-    }
-    if (!group.seen.has(item.title.id)) {
-      group.seen.add(item.title.id);
-      group.titles.push(item.title);
-    }
-    if (item.createdAt > group.createdAt) group.createdAt = item.createdAt;
-    if (!group.handle && item.handle) group.handle = item.handle;
-  }
-
-  const favoriteCards: FeedCard[] = [...favoritesByWallet.entries()].map(([wallet, g]) => ({
-    key: `fav-${wallet}`,
-    type: "favorite",
-    walletAddress: wallet,
-    handle: g.handle,
-    titles: g.titles,
-    createdAt: g.createdAt,
-    subtitle:
-      g.titles.length === 1
-        ? "favorited"
-        : `favorited ${g.titles.length} titles`,
-  }));
-
-  return [...favoriteCards, ...unlocks].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-});
-
-function relativeTime(iso: string) {
-  const ms = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(ms / 60000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 48) return `${h}h ago`;
-  const d = Math.floor(h / 24);
-  return `${d}d ago`;
-}
-
 const loadFollowingPeople = async () => {
   const res = await request<FollowingPeopleResponse>("/following").catch(
     () => ({ people: [] as FollowingPerson[] })
   );
-  const sorted = sortFollowingStripPeople(res.people, loadFollowingStripSeen());
-  followingPeople.value = sorted;
-  if (
-    selectedFollowee.value &&
-    !sorted.some((p) => p.walletAddress === selectedFollowee.value)
-  ) {
-    selectedFollowee.value = sorted[0]?.walletAddress ?? null;
-  } else if (!selectedFollowee.value && sorted.length) {
-    selectedFollowee.value = sorted[0]!.walletAddress;
-  }
+  followingPeople.value = sortFollowingStripPeople(res.people, loadFollowingStripSeen());
   followingStripReady.value = true;
 };
 
-const loadFolloweeFeed = async (wallet: string | null) => {
-  if (!wallet) {
-    feed.value = [];
-    return;
-  }
-  const feedRes = await request<FollowingFeedResponse>(
-    `/feed?followee=${encodeURIComponent(wallet)}`
-  ).catch(() => ({ items: [] as FollowingFeedItem[] }));
-  feed.value = feedRes.items;
-  const person = followingPeople.value.find((p) => p.walletAddress === wallet);
-  // Record seen now; strip order updates when the viewer leaves Following and returns.
-  markFollowingStripSeen(wallet, person?.lastActivityAt);
+const loadCommentFeed = async () => {
+  const feedRes = await request<CommentFeedResponse>("/comments/feed").catch(
+    () => ({ items: [] as CommentFeedItem[] })
+  );
+  commentFeed.value = feedRes.items;
 };
 
 const applyFollowingStripOrder = () => {
@@ -486,7 +365,7 @@ const ensureFollowingTabData = async () => {
     } else {
       applyFollowingStripOrder();
     }
-    await loadFolloweeFeed(selectedFollowee.value);
+    await loadCommentFeed();
   } finally {
     followingLoading.value = false;
   }
@@ -606,10 +485,58 @@ const finishHandleStep = async () => {
   }
 };
 
-const onSelectFollowee = async (wallet: string) => {
-  if (selectedFollowee.value === wallet) return;
-  selectedFollowee.value = wallet;
-  await loadFolloweeFeed(wallet);
+const onPeekFollowee = async (wallet: string) => {
+  peekWallet.value = wallet;
+  peekLoading.value = true;
+  peekProfile.value = null;
+  const person = followingPeople.value.find((p) => p.walletAddress === wallet);
+  markFollowingStripSeen(wallet, person?.lastActivityAt);
+  try {
+    peekProfile.value = await request<PublicProfile>(
+      `/users/${encodeURIComponent(wallet)}`
+    );
+  } catch {
+    peekProfile.value = null;
+  } finally {
+    peekLoading.value = false;
+  }
+};
+
+const closePeek = () => {
+  peekWallet.value = null;
+  peekProfile.value = null;
+};
+
+const onPeekViewProfile = () => {
+  const wallet = peekWallet.value;
+  closePeek();
+  if (wallet) goToUser(wallet);
+};
+
+const onPeekOpenTitle = (title: TitleSummary) => {
+  closePeek();
+  goToTitle(title.id);
+};
+
+const thankComment = async (item: CommentFeedItem) => {
+  if (thankBusyId.value || item.thanked) return;
+  thankBusyId.value = item.id;
+  try {
+    const data = await request<{
+      comment: CommentFeedItem;
+      earnedAchievements?: AchievementKind[];
+    }>(`/comments/${item.id}/thanks`, { method: "POST" });
+    commentFeed.value = commentFeed.value.map((row) =>
+      row.id === item.id
+        ? { ...row, thanksCount: data.comment.thanksCount, thanked: data.comment.thanked }
+        : row
+    );
+    if (data.earnedAchievements?.length) {
+      useMarqueeStore().enqueue(data.earnedAchievements);
+    }
+  } finally {
+    thankBusyId.value = null;
+  }
 };
 
 const openFindPeople = async () => {
@@ -684,12 +611,7 @@ const onFollowPerson = async (person: FindPeopleEntry) => {
       (p) => p.walletAddress !== person.walletAddress
     );
     await loadFollowingPeople();
-    if (!selectedFollowee.value && followingPeople.value.length) {
-      selectedFollowee.value = followingPeople.value[0]!.walletAddress;
-    }
-    if (selectedFollowee.value) {
-      await loadFolloweeFeed(selectedFollowee.value);
-    }
+    await loadCommentFeed();
   } finally {
     followBusyWallet.value = null;
   }
@@ -767,6 +689,9 @@ const toggleWatchlist = async (titleOrId: string | TitleSummary) => {
 const onConfirmAction = async () => {
   await confirmPending({
     onUnfavorite: () => {
+      favoriteCount.value = favoritesStore.count;
+    },
+    onFavoriteAfterLeave: () => {
       favoriteCount.value = favoritesStore.count;
     },
   });
@@ -1020,139 +945,5 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-}
-
-.feed-item {
-  background: var(--bg-surface);
-  border-radius: 14px;
-  padding: 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-}
-
-.feed-user,
-.feed-title {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  background: transparent;
-  border: 0;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-  padding: 0;
-  width: 100%;
-}
-
-.feed-user-text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.feed-user-text strong {
-  color: var(--text-primary);
-  font-size: 0.95rem;
-}
-
-.feed-user-text span {
-  color: var(--text-secondary);
-  font-size: 0.8rem;
-}
-
-.feed-title {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  background: transparent;
-  border: 0;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-  padding: 0;
-  width: 100%;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.feed-thumb {
-  width: 44px;
-  height: 66px;
-  border-radius: 6px;
-  overflow: hidden;
-  background: var(--bg-primary);
-  flex-shrink: 0;
-}
-
-.feed-thumb img,
-.poster-fallback {
-  width: 100%;
-  height: 100%;
-  border-radius: 0;
-  object-fit: cover;
-  background: var(--bg-primary);
-  display: block;
-}
-
-.poster-fallback {
-  display: grid;
-  place-items: center;
-  font-size: 0.55rem;
-  color: var(--text-secondary);
-  padding: 0.25rem;
-  text-align: center;
-}
-
-.feed-title-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.feed-title-meta strong {
-  color: var(--text-primary);
-}
-
-.feed-title-meta span {
-  color: var(--text-secondary);
-  font-size: 0.8rem;
-}
-
-.feed-posters {
-  display: flex;
-  gap: 0.4rem;
-  overflow-x: auto;
-  padding-bottom: 0.15rem;
-  -webkit-overflow-scrolling: touch;
-}
-
-.feed-poster {
-  position: relative;
-  flex: 0 0 auto;
-  width: 44px;
-  height: 66px;
-  padding: 0;
-  border: 0;
-  border-radius: 6px;
-  overflow: hidden;
-  background: var(--bg-primary);
-  cursor: pointer;
-  color: var(--text-secondary);
-  font-size: 0.7rem;
-  font-weight: 700;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.feed-poster img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.feed-poster span {
-  display: grid;
-  place-items: center;
-  height: 100%;
 }
 </style>

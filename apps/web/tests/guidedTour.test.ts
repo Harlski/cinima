@@ -208,6 +208,12 @@ describe("Guided tour step contracts", () => {
     );
   });
 
+  it("tells Find people to peek Recommends from the Feed tab", () => {
+    const step = GUIDED_TOUR_STEPS.find((s) => s.id === "following-find");
+    expect(step?.discoverTab).toBe("following");
+    expect(step?.body).toBe("Follow people to peek their Recommends.");
+  });
+
   it("every step has a consistent primary-button contract", () => {
     for (const step of GUIDED_TOUR_STEPS) {
       const expected = EXPECTED_WALKTHROUGH.find((e) => e.id === step.id);
