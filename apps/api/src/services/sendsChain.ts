@@ -1,3 +1,9 @@
+import {
+  installNimiqConsoleFilter,
+  senderConfiguredLine,
+  senderConsensusLine,
+} from "../lib/senderLogs.js";
+
 export type ChainSend = {
   to: string;
   luna: number;
@@ -49,14 +55,25 @@ export async function createNimiqChain(opts: {
   privateKey: string;
   network: string;
 }): Promise<ChainAdapter> {
+  installNimiqConsoleFilter();
   const Nimiq = await import("@nimiq/core");
   const hex = opts.privateKey.trim();
   const keyPair = Nimiq.KeyPair.derive(Nimiq.PrivateKey.fromHex(hex));
+  const address = keyPair.toAddress().toUserFriendlyAddress();
+  console.log(senderConfiguredLine({ network: opts.network, address }));
   const cfg = new Nimiq.ClientConfiguration();
   cfg.network(opts.network);
-  cfg.logLevel("warn");
+  cfg.logLevel("error");
   const client = await Nimiq.Client.create(cfg.build());
   let mutex: Promise<void> = Promise.resolve();
+  let consensusLogged = false;
+  const waitForConsensus = async () => {
+    await client.waitForConsensusEstablished();
+    if (!consensusLogged) {
+      consensusLogged = true;
+      console.log(senderConsensusLine());
+    }
+  };
   const withMutex = <T>(fn: () => Promise<T>): Promise<T> => {
     const next = mutex.then(fn);
     mutex = next.then(
@@ -69,14 +86,14 @@ export async function createNimiqChain(opts: {
     configured: () => true,
     async balanceLuna() {
       return withMutex(async () => {
-        await client.waitForConsensusEstablished();
+        await waitForConsensus();
         const account = await client.getAccount(keyPair.toAddress());
         return BigInt(account.balance);
       });
     },
     async send(tx) {
       return withMutex(async () => {
-        await client.waitForConsensusEstablished();
+        await waitForConsensus();
         const recipient = Nimiq.Address.fromUserFriendlyAddress(tx.to);
         const head = await client.getHeadBlock();
         const networkId = await client.getNetworkId();
