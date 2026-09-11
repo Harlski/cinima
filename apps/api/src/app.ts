@@ -114,6 +114,7 @@ import {
   evaluateAfterThanksSent,
   evaluateAfterTitleShare,
   evaluateAfterTourComplete,
+  evaluateAfterTourSkip,
   evaluateAfterWatchlistShare,
   evaluateAfterView,
   listCredits,
@@ -1192,6 +1193,14 @@ app.post("/api/usage/heartbeat", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
   await recordHeartbeat(user.walletAddress);
   const earned = await evaluateAfterHeartbeat(user.walletAddress);
+  const unseen = await takeUnseenAchievements(user.walletAddress);
+  const earnedAchievements = [...new Set([...earned, ...unseen])];
+  return c.json({ ok: true, earnedAchievements });
+});
+
+app.post("/api/tour/skip", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  const earned = await evaluateAfterTourSkip(user.walletAddress);
   const unseen = await takeUnseenAchievements(user.walletAddress);
   const earnedAchievements = [...new Set([...earned, ...unseen])];
   return c.json({ ok: true, earnedAchievements });

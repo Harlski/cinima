@@ -68,11 +68,38 @@ export function creditsCatalog(
   }));
 }
 
+/** Server-known Guided tour resolution. Skip includes Not now. */
+export type GuidedTourResolution = "never" | "skipped" | "completed";
+
+export function achievementsEligible(input: {
+  tourStatus: GuidedTourResolution;
+  alreadyHasAchievement: boolean;
+}): boolean {
+  if (input.alreadyHasAchievement) return true;
+  return input.tourStatus !== "never";
+}
+
+/** That's a wrap leads the Marquee queue when the tour also unlocks other credits. */
+export function orderEarnedAchievements(
+  kinds: readonly AchievementKind[]
+): AchievementKind[] {
+  const waiting = new Set(kinds);
+  const ordered: AchievementKind[] = [];
+  if (waiting.has("thats-a-wrap")) {
+    ordered.push("thats-a-wrap");
+    waiting.delete("thats-a-wrap");
+  }
+  for (const kind of ACHIEVEMENT_KINDS) {
+    if (waiting.has(kind)) ordered.push(kind);
+  }
+  return ordered;
+}
+
 export function shouldAwardOpeningNight(input: {
   alreadyEarned: boolean;
   recommendCountAfter: number;
 }): boolean {
-  return !input.alreadyEarned && input.recommendCountAfter === 1;
+  return !input.alreadyEarned && input.recommendCountAfter >= 1;
 }
 
 export function shouldAwardFullHouse(input: {
@@ -89,30 +116,30 @@ export function shouldAwardFullHouse(input: {
 
 export function shouldAwardWordOfMouth(input: {
   alreadyEarned: boolean;
-  isNewTitleShare: boolean;
+  hasTitleShare: boolean;
 }): boolean {
-  return !input.alreadyEarned && input.isNewTitleShare;
+  return !input.alreadyEarned && input.hasTitleShare;
 }
 
 export function shouldAwardWhatsNext(input: {
   alreadyEarned: boolean;
-  isNewWatchlistShare: boolean;
+  hasWatchlistShare: boolean;
 }): boolean {
-  return !input.alreadyEarned && input.isNewWatchlistShare;
+  return !input.alreadyEarned && input.hasWatchlistShare;
 }
 
 export function shouldAwardBravo(input: {
   alreadyEarned: boolean;
   thanksSentAfter: number;
 }): boolean {
-  return !input.alreadyEarned && input.thanksSentAfter === 1;
+  return !input.alreadyEarned && input.thanksSentAfter >= 1;
 }
 
 export function shouldAwardEncore(input: {
   alreadyEarned: boolean;
   thanksReceivedAfter: number;
 }): boolean {
-  return !input.alreadyEarned && input.thanksReceivedAfter === 1;
+  return !input.alreadyEarned && input.thanksReceivedAfter >= 1;
 }
 
 export function shouldAwardHighSeas(input: {

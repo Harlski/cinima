@@ -158,7 +158,17 @@ describe("Share links HTTP API", () => {
     };
     expect(body.kind).toBe("watchlist");
     expect(body.code).toMatch(/^[a-z0-9]{8}$/);
-    expect(body.earnedAchievements).toContain("whats-next");
+    expect(body.earnedAchievements || []).not.toContain("whats-next");
+
+    const skip = await app.fetch(
+      new Request("http://test/api/tour/skip", {
+        method: "POST",
+        headers,
+      })
+    );
+    expect(skip.status).toBe(200);
+    const skipBody = (await skip.json()) as { earnedAchievements: string[] };
+    expect(skipBody.earnedAchievements).toContain("whats-next");
 
     const again = await app.fetch(
       new Request("http://test/api/share/watchlist", {

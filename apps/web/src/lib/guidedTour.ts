@@ -517,6 +517,15 @@ export function shouldAutoOfferTour(opts: {
   return opts.persisted === "never";
 }
 
+/** Sync local tour skip/complete onto the server Achievement gate. */
+export function tourResolutionSyncPath(
+  persisted: TourPersistedStatus
+): "/tour/skip" | "/tour/complete" | null {
+  if (persisted === "dismissed") return "/tour/skip";
+  if (persisted === "completed") return "/tour/complete";
+  return null;
+}
+
 const FORCE_TOUR_SESSION_KEY = "cinima.forceGuidedTour";
 
 export function armForceGuidedTour(): void {

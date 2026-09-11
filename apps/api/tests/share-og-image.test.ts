@@ -39,23 +39,24 @@ describe("shareOgImage template", () => {
     expect(slot.textColumnLeft + slot.textColumnWidth).toBeLessThan(SHARE_OG_IMAGE_WIDTH - 40);
   });
 
-  it("places the Identicon on the left of the identity column", () => {
+  it("places a large Identicon, vertically centered in the left identity column", () => {
     const slot = shareOgIdenticonSlot();
-    expect(slot.width).toBe(128);
-    expect(slot.height).toBe(128);
-    expect(slot.left).toBe(48);
-    expect(slot.top).toBe(80);
-    expect(slot.top + slot.height).toBeLessThan(SHARE_OG_IMAGE_HEIGHT - 116);
+    const contentHeight = SHARE_OG_IMAGE_HEIGHT - 116;
+    expect(slot.width).toBe(208);
+    expect(slot.height).toBe(208);
+    expect(slot.left).toBe(40);
+    expect(slot.top).toBe(Math.round((contentHeight - slot.height) / 2));
+    expect(slot.top + slot.height).toBeLessThan(contentHeight);
   });
 
   it("lays out up to eight posters in two rows of four beside the Identicon", () => {
     const identicon = shareOgIdenticonSlot();
     const slots = shareOgPosterGridSlots(8);
     expect(slots).toHaveLength(8);
-    expect(slots[0]).toEqual({ width: 152, height: 228, left: 220, top: 40 });
-    expect(slots[3]).toEqual({ width: 152, height: 228, left: 718, top: 40 });
-    expect(slots[4]).toEqual({ width: 152, height: 228, left: 220, top: 282 });
-    expect(slots[7]).toEqual({ width: 152, height: 228, left: 718, top: 282 });
+    expect(slots[0]).toEqual({ width: 152, height: 228, left: 276, top: 40 });
+    expect(slots[3]).toEqual({ width: 152, height: 228, left: 774, top: 40 });
+    expect(slots[4]).toEqual({ width: 152, height: 228, left: 276, top: 282 });
+    expect(slots[7]).toEqual({ width: 152, height: 228, left: 774, top: 282 });
     for (const slot of slots) {
       expect(slot.left).toBeGreaterThan(identicon.left + identicon.width);
       expect(slot.left + slot.width).toBeLessThan(SHARE_OG_IMAGE_WIDTH - 40);
@@ -138,8 +139,8 @@ describe("shareOgImage template", () => {
 
     const identiconPixel = await samplePng(
       png,
-      identiconSlot.left + 20,
-      identiconSlot.top + 20
+      identiconSlot.left + Math.round(identiconSlot.width / 2),
+      identiconSlot.top + Math.round(identiconSlot.height / 2)
     );
     expect(identiconPixel.g).toBeGreaterThan(identiconPixel.r);
     expect(identiconPixel.g).toBeGreaterThan(identiconPixel.b);

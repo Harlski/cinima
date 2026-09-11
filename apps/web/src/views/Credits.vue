@@ -1,5 +1,10 @@
 <template>
   <div class="credits">
+    <header class="credits-header">
+      <button type="button" class="back-button" aria-label="Back" @click="goBack">
+        <NqIcon name="arrow-left" :size="24" />
+      </button>
+    </header>
     <div v-if="loading" class="loading">
       <LoadingWait />
     </div>
@@ -25,7 +30,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import {
   achievementTitle,
   creditsCatalog,
@@ -33,6 +38,8 @@ import {
 } from "@cinima/shared";
 import { useApi } from "@/composables/useApi";
 import LoadingWait from "@/components/LoadingWait.vue";
+import NqIcon from "@/components/NqIcon.vue";
+import { creditsBackAction } from "@/lib/navBack";
 
 type EarnedRow = {
   kind: AchievementKind;
@@ -41,6 +48,7 @@ type EarnedRow = {
 };
 
 const route = useRoute();
+const router = useRouter();
 const { request } = useApi();
 const loading = ref(true);
 const earned = ref<EarnedRow[]>([]);
@@ -61,6 +69,14 @@ function formatWhen(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   return d.toISOString().slice(0, 10);
+}
+
+function goBack() {
+  if (creditsBackAction() === "history") {
+    router.back();
+    return;
+  }
+  void router.push({ name: "me" });
 }
 
 async function load() {
@@ -88,6 +104,26 @@ watch(wallet, load);
 .credits {
   min-height: 100%;
   padding-bottom: 2rem;
+}
+
+.credits-header {
+  display: flex;
+  align-items: center;
+  padding: 0.35rem 0 0;
+}
+
+.back-button {
+  padding: 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+}
+
+.back-button :deep(.nq-icon) {
+  width: 24px;
+  height: 24px;
 }
 
 .loading {

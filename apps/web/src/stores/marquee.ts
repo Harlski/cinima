@@ -6,6 +6,7 @@ import {
   dismissMarquee,
   emptyMarqueeQueue,
   enqueueMarquee,
+  clearMarqueeQueue,
 } from "@/lib/marqueeQueue";
 
 const AUTO_DISMISS_MS = 5000;
@@ -47,5 +48,10 @@ export const useMarqueeStore = defineStore("marquee", () => {
     armTimer();
   }
 
-  return { current, title, how, enqueue, dismiss };
+  function dismissAll() {
+    clearTimer();
+    queue.value = clearMarqueeQueue(queue.value);
+  }
+
+  return { current, title, how, enqueue, dismiss, dismissAll };
 });

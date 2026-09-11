@@ -101,10 +101,10 @@ export function shareOgPosterSlot(
   };
 }
 
-const IDENTICON_SIZE = 128;
-const IDENTICON_LEFT = 48;
-const IDENTICON_TOP = 80;
-const GRID_LEFT = 220;
+const IDENTICON_SIZE = 208;
+const IDENTICON_LEFT = 40;
+const IDENTICON_GRID_GAP = 28;
+const GRID_LEFT = IDENTICON_LEFT + IDENTICON_SIZE + IDENTICON_GRID_GAP;
 const GRID_TOP = 40;
 const GRID_GAP = 14;
 const GRID_POSTER_WIDTH = 152;
@@ -118,7 +118,7 @@ export function shareOgIdenticonSlot(): { width: number; height: number; left: n
     width: IDENTICON_SIZE,
     height: IDENTICON_SIZE,
     left: IDENTICON_LEFT,
-    top: IDENTICON_TOP,
+    top: Math.round((CONTENT_HEIGHT - IDENTICON_SIZE) / 2),
   };
 }
 
@@ -666,7 +666,7 @@ export async function composeIdenticonPosterGridOg(opts: {
   const hasPosters = posters.length > 0;
   const textX = hasPosters ? identiconSlot.left : identiconSlot.left + identiconSlot.width + 28;
   const headlineY = hasPosters
-    ? identiconSlot.top + identiconSlot.height + 44
+    ? identiconSlot.top + identiconSlot.height + 32
     : identiconSlot.top + Math.round(identiconSlot.height * 0.42);
   layers.push({
     input: identityOverlaySvg({
@@ -674,10 +674,10 @@ export async function composeIdenticonPosterGridOg(opts: {
       subline: opts.subline,
       textX,
       headlineY,
-      headlineSize: hasPosters ? 26 : 40,
-      maxChars: hasPosters ? 12 : 28,
+      headlineSize: hasPosters ? 34 : 40,
+      maxChars: hasPosters ? 11 : 28,
       maxLines: hasPosters ? 2 : 1,
-      sublineSize: hasPosters ? 16 : 22,
+      sublineSize: hasPosters ? 18 : 22,
     }),
     top: 0,
     left: 0,

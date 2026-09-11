@@ -109,7 +109,7 @@ The signal that a tap has landed while Cinima is still on the same screen talkin
 _Avoid_: toast, silent dimmed button, Following as a wait label, spinner-only on Continue / Enter / Skip
 
 **Guided tour**:
-An optional walkthrough of Watchlist, Search, community Recommends (always at least one title, a hardcoded fallback when nobody else has Recommended), Watchlist actions, a required Favorite, a required Recommend, taking that title off the profile, For You, and Find people (Creator profile). Offered once after Favorites onboarding clears; skippable anytime (a notice then points back to Me); replayable from Me. Distinct from Favorites onboarding and Handle onboarding.
+An optional walkthrough of Watchlist, Search, community Recommends (always at least one title, a hardcoded fallback when nobody else has Recommended), Watchlist actions, a required Favorite, a required Recommend, taking that title off the profile, For You, and Find people (Creator profile). Offered once after Favorites onboarding clears; skippable anytime (a notice then points back to Me); replayable from Me. Distinct from Favorites onboarding and Handle onboarding. Completing or skipping it is what opens Achievement earning for good (replay does not close the gate). Completing awards That's a wrap as the first Achievement, then any others already true from the tour.
 _Avoid_: product tour as a separate product term, tutorial modal stack, skippable Favorite or Recommend as the way to finish the walkthrough
 
 **Following strip**:
@@ -121,7 +121,7 @@ The Following strip entry (black-and-white hexagon with +) that opens a centered
 _Avoid_: user search, directory as a top-level tab, invite sheet
 
 **Search**:
-The signed-in tab for finding titles by typed query: results are title cards, and opening one is title detail (where Catalog data for that title is filled in). A search that does not finish is Accepted wait, then Retry, not "No results found".
+The signed-in tab for finding titles by typed query. Results are title cards; opening one is title detail, where Catalog data for that title is filled in. A search that does not finish is Accepted wait, then Retry, not "No results found".
 _Avoid_: user search, Find people, autocomplete as a separate product, observability as a product term
 
 **Thanks received**:
@@ -145,7 +145,7 @@ Creator-only Telegram notices of live usage (sign-in, search, title view, share 
 _Avoid_: webhook log, Slack alert, analytics ping, Studio notification
 
 **Achievement**:
-A named, once-earned credit for a Cinima action that teaches the product or rewards coming back. The catalog: Opening night (first Recommend), Full house (all movie and TV Recommend slots filled), Word of mouth (Title Share), What's next (Watchlist Share), Bravo (sent Thanks), Encore (received Thanks), High seas (ten unique title views), Season ticket (second distinct UTC day with Presence), That's a wrap (finished the Guided tour).
+A named, once-earned credit for a Cinima action that teaches the product or rewards coming back. None are awarded until the Guided tour is completed or skipped. When that gate opens, actions already taken count. The catalog: Opening night (first Recommend), Full house (all movie and TV Recommend slots filled), Word of mouth (Title Share), What's next (Watchlist Share), Bravo (sent Thanks), Encore (received Thanks), High seas (ten unique title views), Season ticket (second distinct UTC day with Presence), That's a wrap (finished the Guided tour).
 _Avoid_: badge as a separate product term, XP, streak freeze, daily quest, points economy
 
 **Achievement count**:
@@ -157,8 +157,8 @@ The Pay-only screen of the Achievement catalog for a Handle: earned rows with da
 _Avoid_: trophy case, badge wall, activity feed, heatmap, earned-only list
 
 **Marquee**:
-A solid bar that slides down from the Cinima brand header when the signed-in Handle earns an Achievement. Shows the Achievement name and what they did to unlock it. One at a time, queued, dismissible with X. Not shown on public web pages.
-_Avoid_: toast, modal, floating gold card, confetti blast, blocking dialog, slide-up above the tab bar
+A gold bar that slides down from the Cinima brand header when the signed-in Handle earns an Achievement. Dark type on gold; quiet Achievement eyebrow, then the name and how they earned it. One at a time, queued, dismissible with X, auto-dismiss after a short wait. Tapping it dismisses the bar, clears any remaining queue, and opens that Handle's Credits. Can show at the same time as Recommend cue. Not shown on public web pages.
+_Avoid_: toast, modal, floating gold card, confetti blast, blocking dialog, slide-up above the tab bar, surface-colored Achievement bar, gold glow, white type on gold
 
 **Recommend cue**:
 A solid bar that slides up above the tab bar after a new Recommend outside the Guided tour. Names the title and offers Share. Dismissing it does not share.

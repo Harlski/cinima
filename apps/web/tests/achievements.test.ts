@@ -4,7 +4,9 @@ import {
   HIGH_SEAS_UNIQUE_VIEWS,
   achievementHow,
   achievementTitle,
+  achievementsEligible,
   creditsCatalog,
+  orderEarnedAchievements,
   shouldAwardBravo,
   shouldAwardEncore,
   shouldAwardFullHouse,
@@ -49,11 +51,32 @@ describe("Achievement catalog", () => {
     expect(rows.find((row) => row.kind === "bravo")?.earnedAt).toBeNull();
   });
 
-  it("awards Opening night on the first Recommend only", () => {
+  it("withholds Achievements until the Guided tour is skipped or completed", () => {
+    expect(
+      achievementsEligible({ tourStatus: "never", alreadyHasAchievement: false })
+    ).toBe(false);
+    expect(
+      achievementsEligible({ tourStatus: "skipped", alreadyHasAchievement: false })
+    ).toBe(true);
+    expect(
+      achievementsEligible({ tourStatus: "completed", alreadyHasAchievement: false })
+    ).toBe(true);
+  });
+
+  it("treats a Handle that already has an Achievement as past the tour gate", () => {
+    expect(
+      achievementsEligible({ tourStatus: "never", alreadyHasAchievement: true })
+    ).toBe(true);
+  });
+
+  it("awards Opening night once they have Recommended, including after a withheld tour Recommend", () => {
     expect(shouldAwardOpeningNight({ alreadyEarned: false, recommendCountAfter: 1 })).toBe(
       true
     );
     expect(shouldAwardOpeningNight({ alreadyEarned: false, recommendCountAfter: 2 })).toBe(
+      true
+    );
+    expect(shouldAwardOpeningNight({ alreadyEarned: false, recommendCountAfter: 0 })).toBe(
       false
     );
     expect(shouldAwardOpeningNight({ alreadyEarned: true, recommendCountAfter: 1 })).toBe(
@@ -73,26 +96,34 @@ describe("Achievement catalog", () => {
     ).toBe(false);
   });
 
-  it("awards Word of mouth and What's next on the first share of that kind", () => {
-    expect(shouldAwardWordOfMouth({ alreadyEarned: false, isNewTitleShare: true })).toBe(
+  it("awards Word of mouth and What's next once a share of that kind exists", () => {
+    expect(shouldAwardWordOfMouth({ alreadyEarned: false, hasTitleShare: true })).toBe(
       true
     );
-    expect(shouldAwardWordOfMouth({ alreadyEarned: true, isNewTitleShare: true })).toBe(
+    expect(shouldAwardWordOfMouth({ alreadyEarned: true, hasTitleShare: true })).toBe(
       false
     );
-    expect(shouldAwardWhatsNext({ alreadyEarned: false, isNewWatchlistShare: true })).toBe(
+    expect(shouldAwardWhatsNext({ alreadyEarned: false, hasWatchlistShare: true })).toBe(
       true
     );
-    expect(shouldAwardWhatsNext({ alreadyEarned: false, isNewWatchlistShare: false })).toBe(
+    expect(shouldAwardWhatsNext({ alreadyEarned: false, hasWatchlistShare: false })).toBe(
       false
     );
   });
 
-  it("awards Bravo and Encore on the first Thanks each way", () => {
+  it("awards Bravo and Encore once Thanks has been sent or received", () => {
     expect(shouldAwardBravo({ alreadyEarned: false, thanksSentAfter: 1 })).toBe(true);
-    expect(shouldAwardBravo({ alreadyEarned: false, thanksSentAfter: 2 })).toBe(false);
+    expect(shouldAwardBravo({ alreadyEarned: false, thanksSentAfter: 2 })).toBe(true);
+    expect(shouldAwardBravo({ alreadyEarned: false, thanksSentAfter: 0 })).toBe(false);
     expect(shouldAwardEncore({ alreadyEarned: false, thanksReceivedAfter: 1 })).toBe(true);
     expect(shouldAwardEncore({ alreadyEarned: true, thanksReceivedAfter: 1 })).toBe(false);
+  });
+
+  it("puts That's a wrap first when the tour complete also unlocks other credits", () => {
+    expect(orderEarnedAchievements(["opening-night", "thats-a-wrap"])).toEqual([
+      "thats-a-wrap",
+      "opening-night",
+    ]);
   });
 
   it("awards High seas at ten unique title views", () => {

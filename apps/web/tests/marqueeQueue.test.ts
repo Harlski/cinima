@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  clearMarqueeQueue,
   currentMarquee,
   dismissMarquee,
   enqueueMarquee,
@@ -24,6 +25,14 @@ describe("Marquee queue", () => {
     q = enqueueMarquee(q, { kind: "opening-night" });
     q = enqueueMarquee(q, { kind: "opening-night" });
     q = dismissMarquee(q);
+    expect(currentMarquee(q)).toBeNull();
+  });
+
+  it("clears the rest of the queue when the current Marquee is tapped", () => {
+    let q = emptyMarqueeQueue();
+    q = enqueueMarquee(q, { kind: "opening-night" });
+    q = enqueueMarquee(q, { kind: "bravo" });
+    q = clearMarqueeQueue(q);
     expect(currentMarquee(q)).toBeNull();
   });
 });

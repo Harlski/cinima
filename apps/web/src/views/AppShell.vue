@@ -82,6 +82,7 @@ import NqIcon from "@/components/NqIcon.vue";
 import TourSpotlight from "@/components/TourSpotlight.vue";
 import { TOUR_SPOTLIGHT } from "@/lib/guidedTour";
 import { useMarqueeStore } from "@/stores/marquee";
+import { useGuidedTourStore } from "@/stores/guidedTour";
 import { USAGE_HEARTBEAT_MS } from "@/lib/studio";
 
 useViewportChromeLock();
@@ -139,6 +140,7 @@ onMounted(() => {
   watchlistStore.load();
   startHeartbeat();
   document.addEventListener("visibilitychange", sendHeartbeat);
+  void useGuidedTourStore().syncTourResolution();
 });
 
 onUnmounted(() => {

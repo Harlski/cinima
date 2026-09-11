@@ -7,6 +7,8 @@ const statements = [
     x_handle TEXT,
     lifetime_unlocked_at INTEGER,
     onboarding_skipped_at INTEGER,
+    guided_tour_skipped_at INTEGER,
+    guided_tour_completed_at INTEGER,
     created_at INTEGER NOT NULL
   )`,
   `CREATE TABLE IF NOT EXISTS sessions (
@@ -205,6 +207,16 @@ export async function migrate() {
   }
   try {
     await client.execute(`ALTER TABLE users ADD COLUMN onboarding_skipped_at INTEGER`);
+  } catch {
+    /* column already exists */
+  }
+  try {
+    await client.execute(`ALTER TABLE users ADD COLUMN guided_tour_skipped_at INTEGER`);
+  } catch {
+    /* column already exists */
+  }
+  try {
+    await client.execute(`ALTER TABLE users ADD COLUMN guided_tour_completed_at INTEGER`);
   } catch {
     /* column already exists */
   }

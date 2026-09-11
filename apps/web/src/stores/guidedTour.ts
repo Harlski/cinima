@@ -17,6 +17,7 @@ import {
   startTour,
   stepDiscoverTab,
   stepWantsCreatorFilter,
+  tourResolutionSyncPath,
   tourStepAt,
   type TourAction,
   type TourPersistedStatus,
@@ -80,7 +81,10 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
 
   function declineOffer() {
     runtime.value = dismissOffer(runtime.value);
-    if (persistDecline) persist("dismissed");
+    if (persistDecline) {
+      persist("dismissed");
+      void notifyTourSkipped();
+    }
     persistDecline = true;
     skipNotice.value = true;
   }
@@ -104,6 +108,12 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
     };
   }
 
+  async function enqueueEarned(data: { earnedAchievements?: AchievementKind[] }) {
+    if (data.earnedAchievements?.length) {
+      useMarqueeStore().enqueue(data.earnedAchievements);
+    }
+  }
+
   async function notifyTourCompleted() {
     persist("completed");
     try {
@@ -111,11 +121,37 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
         "/tour/complete",
         { method: "POST" }
       );
-      if (data.earnedAchievements?.length) {
-        useMarqueeStore().enqueue(data.earnedAchievements);
-      }
+      await enqueueEarned(data);
     } catch {
       // Award is best-effort; local completed status still sticks.
+    }
+  }
+
+  async function notifyTourSkipped() {
+    try {
+      const data = await request<{ earnedAchievements?: AchievementKind[] }>(
+        "/tour/skip",
+        { method: "POST" }
+      );
+      await enqueueEarned(data);
+    } catch {
+      // Gate sync is best-effort; local skipped status still sticks.
+    }
+  }
+
+  /** Push a local skip/complete onto the server so Achievement earning can open. */
+  async function syncTourResolution() {
+    const wallet = walletKey();
+    if (!wallet) return;
+    const path = tourResolutionSyncPath(loadTourPersistedStatus(wallet));
+    if (!path) return;
+    try {
+      const data = await request<{ earnedAchievements?: AchievementKind[] }>(path, {
+        method: "POST",
+      });
+      await enqueueEarned(data);
+    } catch {
+      // Best-effort; next session can retry.
     }
   }
 
@@ -129,6 +165,7 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
     runtime.value = skipTour(runtime.value);
     persist("dismissed");
     skipNotice.value = true;
+    void notifyTourSkipped();
   }
 
   function reportAction(action: TourAction, payload?: { titleId?: string }) {
@@ -192,5 +229,6 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
     armForForceOnboarding,
     markCompleted,
     dismissSkipNotice,
+    syncTourResolution,
   };
 });

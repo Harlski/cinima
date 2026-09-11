@@ -10,3 +10,9 @@ export function hasInAppHistoryBack(
         : null;
   return historyState?.back != null && historyState.back !== "";
 }
+
+export function creditsBackAction(
+  state?: { back?: unknown } | null
+): "history" | "me" {
+  return hasInAppHistoryBack(state) ? "history" : "me";
+}

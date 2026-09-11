@@ -25,6 +25,7 @@ import {
   skipTour,
   startTour,
   tourCoachPlacement,
+  tourResolutionSyncPath,
   TOUR_COMMUNITY_FALLBACK_TITLE,
   TOUR_COMMUNITY_FALLBACK_TITLE_ID,
   TOUR_SKIP_NOTICE_BODY,
@@ -584,6 +585,12 @@ describe("Guided tour persistence and force arm", () => {
     expect(
       shouldAutoOfferTour({ persisted: "completed", forceOffer: true })
     ).toBe(true);
+  });
+
+  it("syncs skipped and completed tours to the Achievement gate", () => {
+    expect(tourResolutionSyncPath("never")).toBeNull();
+    expect(tourResolutionSyncPath("dismissed")).toBe("/tour/skip");
+    expect(tourResolutionSyncPath("completed")).toBe("/tour/complete");
   });
 
   it("persists dismissed / completed per wallet", () => {

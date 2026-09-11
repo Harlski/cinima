@@ -8,6 +8,10 @@ export const users = sqliteTable("users", {
   lifetimeUnlockedAt: integer("lifetime_unlocked_at", { mode: "timestamp_ms" }),
   /** When set, Discover skips Favorites onboarding and uses popular overlap fallback */
   onboardingSkippedAt: integer("onboarding_skipped_at", { mode: "timestamp_ms" }),
+  /** Guided tour Not now / Skip tour. Opens Achievement earning. */
+  guidedTourSkippedAt: integer("guided_tour_skipped_at", { mode: "timestamp_ms" }),
+  /** Guided tour finished. Opens Achievement earning and awards That's a wrap. */
+  guidedTourCompletedAt: integer("guided_tour_completed_at", { mode: "timestamp_ms" }),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
 

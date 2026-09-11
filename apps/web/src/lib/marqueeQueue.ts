@@ -24,3 +24,8 @@ export function enqueueMarquee(queue: MarqueeQueue, item: MarqueeItem): MarqueeQ
 export function dismissMarquee(queue: MarqueeQueue): MarqueeQueue {
   return { items: queue.items.slice(1) };
 }
+
+export function clearMarqueeQueue(queue: MarqueeQueue): MarqueeQueue {
+  if (queue.items.length === 0) return queue;
+  return emptyMarqueeQueue();
+}

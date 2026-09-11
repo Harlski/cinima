@@ -1,6 +1,8 @@
 import { and, count, countDistinct, desc, eq, gt, isNotNull, sql } from "drizzle-orm";
 import {
   achievementTitle,
+  achievementsEligible,
+  orderEarnedAchievements,
   shouldAwardBravo,
   shouldAwardEncore,
   shouldAwardFullHouse,
@@ -11,9 +13,19 @@ import {
   shouldAwardWhatsNext,
   shouldAwardWordOfMouth,
   type AchievementKind,
+  type GuidedTourResolution,
 } from "@cinima/shared";
 import { db } from "../db/index.js";
-import { achievements, favorites, presenceDays, thanks, titles, usageEvents } from "../db/schema.js";
+import {
+  achievements,
+  favorites,
+  presenceDays,
+  shareLinks,
+  thanks,
+  titles,
+  usageEvents,
+  users,
+} from "../db/schema.js";
 
 export type AchievementDto = {
   kind: AchievementKind;
@@ -99,15 +111,43 @@ async function recommendCounts(wallet: string): Promise<{ total: number; movie: 
   return { total: movie + tv, movie, tv };
 }
 
-export async function evaluateAfterRecommend(
-  wallet: string,
-  atMs = Date.now()
-): Promise<AchievementKind[]> {
+function tourStatusFromUser(user: {
+  guidedTourSkippedAt: Date | null;
+  guidedTourCompletedAt: Date | null;
+}): GuidedTourResolution {
+  if (user.guidedTourCompletedAt) return "completed";
+  if (user.guidedTourSkippedAt) return "skipped";
+  return "never";
+}
+
+async function isEligible(wallet: string): Promise<boolean> {
+  const [user] = await db.select().from(users).where(eq(users.walletAddress, wallet)).limit(1);
+  if (!user) return false;
+  const n = await achievementCount(wallet);
+  return achievementsEligible({
+    tourStatus: tourStatusFromUser(user),
+    alreadyHasAchievement: n > 0,
+  });
+}
+
+async function hasShareKind(wallet: string, kind: "title" | "watchlist"): Promise<boolean> {
+  const [row] = await db
+    .select({ n: count() })
+    .from(shareLinks)
+    .where(and(eq(shareLinks.walletAddress, wallet), eq(shareLinks.kind, kind)));
+  return Number(row?.n || 0) > 0;
+}
+
+async function evaluatePending(wallet: string, atMs: number): Promise<AchievementKind[]> {
   const have = await earnedKinds(wallet);
   const recs = await recommendCounts(wallet);
   const earned: AchievementKind[] = [];
+
   if (
-    shouldAwardOpeningNight({ alreadyEarned: have.has("opening-night"), recommendCountAfter: recs.total })
+    shouldAwardOpeningNight({
+      alreadyEarned: have.has("opening-night"),
+      recommendCountAfter: recs.total,
+    })
   ) {
     if (await insertIfNew(wallet, "opening-night", atMs)) earned.push("opening-night");
   }
@@ -120,128 +160,168 @@ export async function evaluateAfterRecommend(
   ) {
     if (await insertIfNew(wallet, "full-house", atMs)) earned.push("full-house");
   }
-  return earned;
+  if (
+    shouldAwardWordOfMouth({
+      alreadyEarned: have.has("word-of-mouth"),
+      hasTitleShare: await hasShareKind(wallet, "title"),
+    })
+  ) {
+    if (await insertIfNew(wallet, "word-of-mouth", atMs)) earned.push("word-of-mouth");
+  }
+  if (
+    shouldAwardWhatsNext({
+      alreadyEarned: have.has("whats-next"),
+      hasWatchlistShare: await hasShareKind(wallet, "watchlist"),
+    })
+  ) {
+    if (await insertIfNew(wallet, "whats-next", atMs)) earned.push("whats-next");
+  }
+
+  const [sentRow] = await db
+    .select({ n: count() })
+    .from(thanks)
+    .where(eq(thanks.fromWallet, wallet));
+  if (
+    shouldAwardBravo({
+      alreadyEarned: have.has("bravo"),
+      thanksSentAfter: Number(sentRow?.n || 0),
+    })
+  ) {
+    if (await insertIfNew(wallet, "bravo", atMs)) earned.push("bravo");
+  }
+
+  const [receivedRow] = await db
+    .select({ n: count() })
+    .from(thanks)
+    .where(eq(thanks.toWallet, wallet));
+  if (
+    shouldAwardEncore({
+      alreadyEarned: have.has("encore"),
+      thanksReceivedAfter: Number(receivedRow?.n || 0),
+    })
+  ) {
+    if (await insertIfNew(wallet, "encore", atMs)) earned.push("encore");
+  }
+
+  const [viewRow] = await db
+    .select({ n: countDistinct(usageEvents.titleId) })
+    .from(usageEvents)
+    .where(and(eq(usageEvents.walletAddress, wallet), eq(usageEvents.kind, "view")));
+  if (
+    shouldAwardHighSeas({
+      alreadyEarned: have.has("high-seas"),
+      uniqueTitleViews: Number(viewRow?.n || 0),
+    })
+  ) {
+    if (await insertIfNew(wallet, "high-seas", atMs)) earned.push("high-seas");
+  }
+
+  const [presenceRow] = await db
+    .select({ n: count() })
+    .from(presenceDays)
+    .where(and(eq(presenceDays.walletAddress, wallet), gt(presenceDays.activeMs, 0)));
+  if (
+    shouldAwardSeasonTicket({
+      alreadyEarned: have.has("season-ticket"),
+      presenceDaysWithActivity: Number(presenceRow?.n || 0),
+    })
+  ) {
+    if (await insertIfNew(wallet, "season-ticket", atMs)) earned.push("season-ticket");
+  }
+
+  return orderEarnedAchievements(earned);
+}
+
+async function evaluateIfEligible(wallet: string, atMs: number): Promise<AchievementKind[]> {
+  if (!(await isEligible(wallet))) return [];
+  return evaluatePending(wallet, atMs);
+}
+
+export async function evaluateAfterRecommend(
+  wallet: string,
+  atMs = Date.now()
+): Promise<AchievementKind[]> {
+  return evaluateIfEligible(wallet, atMs);
 }
 
 export async function evaluateAfterTitleShare(
   wallet: string,
-  isNew: boolean,
+  _isNew: boolean,
   atMs = Date.now()
 ): Promise<AchievementKind[]> {
-  const have = await earnedKinds(wallet);
-  if (
-    shouldAwardWordOfMouth({ alreadyEarned: have.has("word-of-mouth"), isNewTitleShare: isNew }) &&
-    (await insertIfNew(wallet, "word-of-mouth", atMs))
-  ) {
-    return ["word-of-mouth"];
-  }
-  return [];
+  return evaluateIfEligible(wallet, atMs);
 }
 
 export async function evaluateAfterWatchlistShare(
   wallet: string,
-  isNew: boolean,
+  _isNew: boolean,
   atMs = Date.now()
 ): Promise<AchievementKind[]> {
-  const have = await earnedKinds(wallet);
-  if (
-    shouldAwardWhatsNext({ alreadyEarned: have.has("whats-next"), isNewWatchlistShare: isNew }) &&
-    (await insertIfNew(wallet, "whats-next", atMs))
-  ) {
-    return ["whats-next"];
-  }
-  return [];
+  return evaluateIfEligible(wallet, atMs);
 }
 
 export async function evaluateAfterThanksSent(
   wallet: string,
   atMs = Date.now()
 ): Promise<AchievementKind[]> {
-  const have = await earnedKinds(wallet);
-  const [row] = await db
-    .select({ n: count() })
-    .from(thanks)
-    .where(eq(thanks.fromWallet, wallet));
-  const sent = Number(row?.n || 0);
-  if (
-    shouldAwardBravo({ alreadyEarned: have.has("bravo"), thanksSentAfter: sent }) &&
-    (await insertIfNew(wallet, "bravo", atMs))
-  ) {
-    return ["bravo"];
-  }
-  return [];
+  return evaluateIfEligible(wallet, atMs);
 }
 
 export async function evaluateAfterThanksReceived(
   wallet: string,
   atMs = Date.now()
 ): Promise<AchievementKind[]> {
-  const have = await earnedKinds(wallet);
-  const [row] = await db
-    .select({ n: count() })
-    .from(thanks)
-    .where(eq(thanks.toWallet, wallet));
-  const received = Number(row?.n || 0);
-  if (
-    shouldAwardEncore({ alreadyEarned: have.has("encore"), thanksReceivedAfter: received }) &&
-    (await insertIfNew(wallet, "encore", atMs))
-  ) {
-    return ["encore"];
-  }
-  return [];
+  return evaluateIfEligible(wallet, atMs);
 }
 
 export async function evaluateAfterView(
   wallet: string,
   atMs = Date.now()
 ): Promise<AchievementKind[]> {
-  const have = await earnedKinds(wallet);
-  const [row] = await db
-    .select({ n: countDistinct(usageEvents.titleId) })
-    .from(usageEvents)
-    .where(and(eq(usageEvents.walletAddress, wallet), eq(usageEvents.kind, "view")));
-  const uniqueTitleViews = Number(row?.n || 0);
-  if (
-    shouldAwardHighSeas({ alreadyEarned: have.has("high-seas"), uniqueTitleViews }) &&
-    (await insertIfNew(wallet, "high-seas", atMs))
-  ) {
-    return ["high-seas"];
-  }
-  return [];
+  return evaluateIfEligible(wallet, atMs);
 }
 
 export async function evaluateAfterHeartbeat(
   wallet: string,
   atMs = Date.now()
 ): Promise<AchievementKind[]> {
-  const have = await earnedKinds(wallet);
-  const [row] = await db
-    .select({ n: count() })
-    .from(presenceDays)
-    .where(and(eq(presenceDays.walletAddress, wallet), gt(presenceDays.activeMs, 0)));
-  const presenceDaysWithActivity = Number(row?.n || 0);
-  if (
-    shouldAwardSeasonTicket({
-      alreadyEarned: have.has("season-ticket"),
-      presenceDaysWithActivity,
-    }) &&
-    (await insertIfNew(wallet, "season-ticket", atMs))
-  ) {
-    return ["season-ticket"];
-  }
-  return [];
+  return evaluateIfEligible(wallet, atMs);
+}
+
+export async function evaluateAfterTourSkip(
+  wallet: string,
+  atMs = Date.now()
+): Promise<AchievementKind[]> {
+  await db
+    .update(users)
+    .set({ guidedTourSkippedAt: new Date(atMs) })
+    .where(
+      and(
+        eq(users.walletAddress, wallet),
+        sql`${users.guidedTourSkippedAt} is null`,
+        sql`${users.guidedTourCompletedAt} is null`
+      )
+    );
+  return evaluateIfEligible(wallet, atMs);
 }
 
 export async function evaluateAfterTourComplete(
   wallet: string,
   atMs = Date.now()
 ): Promise<AchievementKind[]> {
+  await db
+    .update(users)
+    .set({ guidedTourCompletedAt: new Date(atMs) })
+    .where(and(eq(users.walletAddress, wallet), sql`${users.guidedTourCompletedAt} is null`));
+
   const have = await earnedKinds(wallet);
+  const earned: AchievementKind[] = [];
   if (
     shouldAwardThatsAWrap({ alreadyEarned: have.has("thats-a-wrap"), tourCompleted: true }) &&
     (await insertIfNew(wallet, "thats-a-wrap", atMs))
   ) {
-    return ["thats-a-wrap"];
+    earned.push("thats-a-wrap");
   }
-  return [];
+  earned.push(...(await evaluatePending(wallet, atMs)));
+  return orderEarnedAchievements(earned);
 }
