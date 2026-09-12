@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   doorAlarmLine,
   doorAlarmSenderFromEnv,
+  doorAlarmStatus,
   resetDoorAlarmSender,
   ringDoorAlarm,
   ringShareVisitDoorAlarm,
@@ -100,6 +101,132 @@ describe("Door alarm copy", () => {
       })
     ).toBe("someone's share was visited");
   });
+
+  it("names a Favorite", () => {
+    expect(
+      doorAlarmLine({
+        kind: "favorited",
+        handle: "alice",
+        walletAddress: "NQ05USAGETESTWALLET000000000000001",
+        title: "Fight Club",
+      })
+    ).toBe("alice Favorited Fight Club");
+  });
+
+  it("names a Recommend", () => {
+    expect(
+      doorAlarmLine({
+        kind: "recommended",
+        handle: "alice",
+        walletAddress: "NQ05USAGETESTWALLET000000000000001",
+        title: "Fight Club",
+      })
+    ).toBe("alice Recommended Fight Club");
+  });
+
+  it("names a Watchlist add", () => {
+    expect(
+      doorAlarmLine({
+        kind: "watchlisted",
+        handle: "alice",
+        walletAddress: "NQ05USAGETESTWALLET000000000000001",
+        title: "Fight Club",
+      })
+    ).toBe("alice added Fight Club to Watchlist");
+  });
+
+  it("names a Watchlist leave", () => {
+    expect(
+      doorAlarmLine({
+        kind: "left-watchlist",
+        handle: "alice",
+        walletAddress: "NQ05USAGETESTWALLET000000000000001",
+        title: "Fight Club",
+      })
+    ).toBe("alice left Fight Club on Watchlist");
+  });
+
+  it("names a Comment", () => {
+    expect(
+      doorAlarmLine({
+        kind: "commented",
+        handle: "alice",
+        walletAddress: "NQ05USAGETESTWALLET000000000000001",
+        title: "Fight Club",
+      })
+    ).toBe("alice commented on Fight Club");
+  });
+
+  it("names Thanks", () => {
+    expect(
+      doorAlarmLine({
+        kind: "thanked",
+        handle: "alice",
+        walletAddress: "NQ05USAGETESTWALLET000000000000001",
+        title: "Fight Club",
+      })
+    ).toBe("alice sent Thanks for Fight Club");
+  });
+
+  it("names Comment Thanks", () => {
+    expect(
+      doorAlarmLine({
+        kind: "comment-thanked",
+        handle: "alice",
+        walletAddress: "NQ05USAGETESTWALLET000000000000001",
+        title: "Fight Club",
+      })
+    ).toBe("alice sent Comment Thanks on Fight Club");
+  });
+
+  it("names Thank all", () => {
+    expect(
+      doorAlarmLine({
+        kind: "thanked-all",
+        handle: "alice",
+        walletAddress: "NQ05USAGETESTWALLET000000000000001",
+        title: "Fight Club",
+      })
+    ).toBe("alice thanked all on Fight Club");
+  });
+
+  it("names a Follow", () => {
+    expect(
+      doorAlarmLine({
+        kind: "followed",
+        handle: "alice",
+        walletAddress: "NQ05USAGETESTWALLET000000000000001",
+        followee: "bob",
+      })
+    ).toBe("alice followed bob");
+  });
+
+  it("names a Handle set", () => {
+    expect(
+      doorAlarmLine({
+        kind: "set-handle",
+        handle: "alice",
+        walletAddress: "NQ05USAGETESTWALLET000000000000001",
+      })
+    ).toBe("alice set their Handle");
+  });
+
+  it("names Guided tour complete and skip", () => {
+    expect(
+      doorAlarmLine({
+        kind: "tour-completed",
+        handle: "alice",
+        walletAddress: "NQ05USAGETESTWALLET000000000000001",
+      })
+    ).toBe("alice finished the Guided tour");
+    expect(
+      doorAlarmLine({
+        kind: "tour-skipped",
+        handle: "alice",
+        walletAddress: "NQ05USAGETESTWALLET000000000000001",
+      })
+    ).toBe("alice skipped the Guided tour");
+  });
 });
 
 describe("Door alarm sender", () => {
@@ -139,6 +266,34 @@ describe("Door alarm sender", () => {
         body: { chat_id: "123", text: 'alice searched "dune"' },
       },
     ]);
+  });
+
+  it("strips quotes from Telegram env", async () => {
+    const fetches: { url: string; body: unknown }[] = [];
+    const sender = doorAlarmSenderFromEnv(
+      { TELEGRAM_BOT_TOKEN: '"tok"', TELEGRAM_CHAT_ID: "'-123'" },
+      async (url, init) => {
+        fetches.push({
+          url: String(url),
+          body: JSON.parse(String(init?.body ?? "{}")),
+        });
+        return new Response("ok");
+      }
+    );
+    await sender.send("ping");
+    expect(fetches).toEqual([
+      {
+        url: "https://api.telegram.org/bottok/sendMessage",
+        body: { chat_id: "-123", text: "ping" },
+      },
+    ]);
+  });
+
+  it("reports armed vs silent from env", () => {
+    expect(doorAlarmStatus({})).toBe("silent");
+    expect(doorAlarmStatus({ TELEGRAM_BOT_TOKEN: "tok", TELEGRAM_CHAT_ID: "1" })).toBe(
+      "armed"
+    );
   });
 
   it("lets tests inject a capturing sender", () => {

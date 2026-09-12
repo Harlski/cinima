@@ -28,6 +28,7 @@ import {
   watchlistShareOgImageUrl,
   watchlistShareUrl,
   isCreatorWallet,
+  displayName,
 } from "@cinima/shared";
 import { db } from "./db/index.js";
 import * as schema from "./db/schema.js";
@@ -129,6 +130,7 @@ import {
 import { proxyStudio } from "./lib/studioProxy.js";
 import {
   queueCreatorPing,
+  queueCreatorSelfPing,
   queueRewardForThanks,
   queueRewardsForThanks,
 } from "./services/sends.js";
@@ -140,6 +142,11 @@ type Vars = {
 };
 
 const app = new Hono<{ Variables: Vars }>();
+
+async function doorAlarmTitle(titleId: string): Promise<string> {
+  const row = await db.query.titles.findFirst({ where: eq(schema.titles.id, titleId) });
+  return row?.title ?? titleId;
+}
 
 app.use(
   "*",
@@ -396,6 +403,11 @@ app.post("/api/me/handle", requirePay, requireAuth, async (c) => {
   const sessionUser = await sessionUserFor(user.walletAddress);
   const profileShare = await getOrCreateProfileShareLink(user.walletAddress, cleaned);
   prewarmProfileShareOgImage(cleaned);
+  ringDoorAlarm({
+    kind: "set-handle",
+    handle: cleaned,
+    walletAddress: user.walletAddress,
+  });
   if (profileShare.created) {
     ringDoorAlarm({
       kind: "shared-profile",
@@ -531,6 +543,12 @@ app.post("/api/favorites/:titleId", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
   await addFavorite(user.walletAddress, titleId);
   if (user.handle) refreshProfileShareOgImage(user.handle);
+  ringDoorAlarm({
+    kind: "favorited",
+    handle: user.handle,
+    walletAddress: user.walletAddress,
+    title: await doorAlarmTitle(titleId),
+  });
   return c.json({ ok: true, user: await sessionUserFor(user.walletAddress) });
 });
 
@@ -561,6 +579,12 @@ app.post("/api/recommends/:titleId", requirePay, requireAuth, async (c) => {
   }
   const earnedAchievements = await evaluateAfterRecommend(user.walletAddress);
   if (user.handle) refreshProfileShareOgImage(user.handle);
+  ringDoorAlarm({
+    kind: "recommended",
+    handle: user.handle,
+    walletAddress: user.walletAddress,
+    title: await doorAlarmTitle(titleId),
+  });
   return c.json({ ok: true, user: await sessionUserFor(user.walletAddress), earnedAchievements });
 });
 
@@ -591,6 +615,12 @@ app.post("/api/watchlist/:titleId", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
   await addToWatchlist(user.walletAddress, titleId);
   if (user.handle) refreshWatchlistShareOgImage(user.handle);
+  ringDoorAlarm({
+    kind: "watchlisted",
+    handle: user.handle,
+    walletAddress: user.walletAddress,
+    title: await doorAlarmTitle(titleId),
+  });
   return c.json({ ok: true });
 });
 
@@ -608,6 +638,14 @@ app.delete("/api/watchlist/:titleId", requirePay, requireAuth, async (c) => {
     const reason = parseLeaveReasonOrThrow(rawReason);
     const removed = await removeFromWatchlist(user.walletAddress, titleId, reason);
     if (user.handle) refreshWatchlistShareOgImage(user.handle);
+    if (removed) {
+      ringDoorAlarm({
+        kind: "left-watchlist",
+        handle: user.handle,
+        walletAddress: user.walletAddress,
+        title: await doorAlarmTitle(titleId),
+      });
+    }
     return c.json({ ok: true, removed });
   } catch (e) {
     if (e instanceof WatchlistError) {
@@ -635,6 +673,12 @@ app.post("/api/comments", requirePay, requireAuth, async (c) => {
 
   try {
     const comments = await createComment(user.walletAddress, body.titleId, body.body ?? "");
+    ringDoorAlarm({
+      kind: "commented",
+      handle: user.handle,
+      walletAddress: user.walletAddress,
+      title: await doorAlarmTitle(body.titleId),
+    });
     return c.json({ comments });
   } catch (e) {
     if (e instanceof CommentError) {
@@ -703,6 +747,15 @@ app.post("/api/comments/:id/thanks", requirePay, requireAuth, async (c) => {
       : [];
     if (result.created) {
       await evaluateAfterThanksReceived(result.comment.walletAddress);
+      const commentRow = await db.query.comments.findFirst({
+        where: eq(schema.comments.id, id),
+      });
+      ringDoorAlarm({
+        kind: "comment-thanked",
+        handle: user.handle,
+        walletAddress: user.walletAddress,
+        title: await doorAlarmTitle(commentRow?.titleId ?? ""),
+      });
     }
     return c.json({
       ok: true,
@@ -743,6 +796,12 @@ app.post("/api/thanks", requirePay, requireAuth, async (c) => {
       : [];
     if (result.created) {
       await evaluateAfterThanksReceived(body.toWallet);
+      ringDoorAlarm({
+        kind: "thanked",
+        handle: user.handle,
+        walletAddress: user.walletAddress,
+        title: await doorAlarmTitle(body.titleId),
+      });
     }
     return c.json({ ok: true, created: result.created, rewarded, earnedAchievements });
   } catch (err) {
@@ -765,6 +824,12 @@ app.post("/api/thanks/all", requirePay, requireAuth, async (c) => {
     ? await evaluateAfterThanksSent(user.walletAddress)
     : [];
   if (thanked.length) {
+    ringDoorAlarm({
+      kind: "thanked-all",
+      handle: user.handle,
+      walletAddress: user.walletAddress,
+      title: await doorAlarmTitle(body.titleId),
+    });
     await Promise.all(thanked.map((row) => evaluateAfterThanksReceived(row.toWallet)));
   }
   return c.json({
@@ -773,6 +838,15 @@ app.post("/api/thanks/all", requirePay, requireAuth, async (c) => {
     rewarded,
     earnedAchievements,
   });
+});
+
+app.post("/api/sends/self", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  if (!isCreatorWallet(user.walletAddress)) {
+    return c.json({ error: "not_found" }, 404);
+  }
+  const result = await queueCreatorSelfPing();
+  return c.json({ ok: true, queued: result.queued, memo: result.memo });
 });
 
 app.post("/api/sends", requirePay, requireAuth, async (c) => {
@@ -825,7 +899,18 @@ app.get("/api/users/:wallet/credits", requirePay, requireAuth, async (c) => {
 
 app.post("/api/users/:wallet/follow", requirePay, requireAuth, async (c) => {
   try {
-    await followUser(c.get("user").walletAddress, c.req.param("wallet"));
+    const user = c.get("user");
+    const followeeWallet = normalizeWallet(c.req.param("wallet"));
+    await followUser(user.walletAddress, followeeWallet);
+    const followee = await db.query.users.findFirst({
+      where: eq(schema.users.walletAddress, followeeWallet),
+    });
+    ringDoorAlarm({
+      kind: "followed",
+      handle: user.handle,
+      walletAddress: user.walletAddress,
+      followee: displayName(followee?.handle ?? null, followeeWallet),
+    });
     return c.json({ ok: true, following: true });
   } catch (e) {
     return c.json({ error: e instanceof Error ? e.message : "follow_failed" }, 400);
@@ -1302,6 +1387,11 @@ app.post("/api/tour/skip", requirePay, requireAuth, async (c) => {
   const earned = await evaluateAfterTourSkip(user.walletAddress);
   const unseen = await takeUnseenAchievements(user.walletAddress);
   const earnedAchievements = [...new Set([...earned, ...unseen])];
+  ringDoorAlarm({
+    kind: "tour-skipped",
+    handle: user.handle,
+    walletAddress: user.walletAddress,
+  });
   return c.json({ ok: true, earnedAchievements });
 });
 
@@ -1310,6 +1400,11 @@ app.post("/api/tour/complete", requirePay, requireAuth, async (c) => {
   const earned = await evaluateAfterTourComplete(user.walletAddress);
   const unseen = await takeUnseenAchievements(user.walletAddress);
   const earnedAchievements = [...new Set([...earned, ...unseen])];
+  ringDoorAlarm({
+    kind: "tour-completed",
+    handle: user.handle,
+    walletAddress: user.walletAddress,
+  });
   return c.json({ ok: true, earnedAchievements });
 });
 

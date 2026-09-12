@@ -84,6 +84,9 @@ export function creatorPingMemo(message: string): string {
   return truncateMemo(`Cinima.app - ${body}`);
 }
 
+/** Creator Ping the Creator queues to their own wallet from Studio. */
+export const CREATOR_TEST_PING_MESSAGE = "Sender test";
+
 export type SystemPingSkipReason =
   | "creator"
   | "tour"

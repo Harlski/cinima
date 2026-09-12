@@ -18,6 +18,17 @@ function envString(name: string, fallback = ""): string {
   return process.env[name] || fallback;
 }
 
+function envCred(name: string): string {
+  let s = envString(name).trim();
+  if (
+    (s.startsWith('"') && s.endsWith('"') && s.length >= 2) ||
+    (s.startsWith("'") && s.endsWith("'") && s.length >= 2)
+  ) {
+    s = s.slice(1, -1).trim();
+  }
+  return s;
+}
+
 /** Lazy env reads so dotenv (via `./load-env`) can run before values are consumed. */
 export const config = {
   get port() {
@@ -73,10 +84,10 @@ export const config = {
     return envString("API_ORIGIN", envString("VITE_API_BASE", "https://api.cinima.app"));
   },
   get telegramBotToken() {
-    return envString("TELEGRAM_BOT_TOKEN");
+    return envCred("TELEGRAM_BOT_TOKEN");
   },
   get telegramChatId() {
-    return envString("TELEGRAM_CHAT_ID");
+    return envCred("TELEGRAM_CHAT_ID");
   },
   prices: {
     unlockNim: UNLOCK_NIM,

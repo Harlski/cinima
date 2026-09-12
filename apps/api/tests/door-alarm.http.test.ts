@@ -11,6 +11,7 @@ delete process.env.TELEGRAM_BOT_TOKEN;
 delete process.env.TELEGRAM_CHAT_ID;
 
 const WALLET = "NQ05DOORALARMTESTWALLET00000000001";
+const PEER = "NQ05DOORALARMTESTWALLETPEER000001";
 const TOKEN = "test-session-token-door-alarm";
 const TITLE_ID = "tmdb:movie:550";
 
@@ -32,12 +33,20 @@ describe("Door alarm HTTP write path", () => {
     const schema = await import("../src/db/schema.js");
     const now = new Date();
 
-    await db.insert(schema.users).values({
-      walletAddress: WALLET,
-      handle: "alice",
-      lifetimeUnlockedAt: null,
-      createdAt: now,
-    });
+    await db.insert(schema.users).values([
+      {
+        walletAddress: WALLET,
+        handle: "alice",
+        lifetimeUnlockedAt: null,
+        createdAt: now,
+      },
+      {
+        walletAddress: PEER,
+        handle: "bob",
+        lifetimeUnlockedAt: null,
+        createdAt: now,
+      },
+    ]);
     await db.insert(schema.sessions).values({
       token: TOKEN,
       walletAddress: WALLET,
@@ -199,6 +208,8 @@ describe("Door alarm HTTP write path", () => {
       })
     );
     expect(add.status).toBe(200);
+    expect(lines).toEqual(["alice added Fight Club to Watchlist"]);
+    lines.length = 0;
 
     const first = await app.fetch(
       new Request("http://test/api/share/watchlist", {
@@ -217,6 +228,91 @@ describe("Door alarm HTTP write path", () => {
     );
     expect(second.status).toBe(200);
     expect(lines).toEqual(["alice shared their Watchlist"]);
+  });
+
+  it("rings after a Favorite and Recommend", async () => {
+    const fav = await app.fetch(
+      new Request(`http://test/api/favorites/${encodeURIComponent(TITLE_ID)}`, {
+        method: "POST",
+        headers,
+      })
+    );
+    expect(fav.status).toBe(200);
+    expect(lines).toEqual(["alice Favorited Fight Club"]);
+
+    const rec = await app.fetch(
+      new Request(`http://test/api/recommends/${encodeURIComponent(TITLE_ID)}`, {
+        method: "POST",
+        headers,
+      })
+    );
+    expect(rec.status).toBe(200);
+    expect(lines).toEqual(["alice Favorited Fight Club", "alice Recommended Fight Club"]);
+  });
+
+  it("rings after a Watchlist leave", async () => {
+    await app.fetch(
+      new Request(`http://test/api/watchlist/${encodeURIComponent(TITLE_ID)}`, {
+        method: "POST",
+        headers,
+      })
+    );
+    lines.length = 0;
+    const res = await app.fetch(
+      new Request(`http://test/api/watchlist/${encodeURIComponent(TITLE_ID)}`, {
+        method: "DELETE",
+        headers,
+        body: JSON.stringify({}),
+      })
+    );
+    expect(res.status).toBe(200);
+    expect(lines).toEqual(["alice left Fight Club on Watchlist"]);
+  });
+
+  it("rings after a Comment", async () => {
+    const res = await app.fetch(
+      new Request("http://test/api/comments", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ titleId: TITLE_ID, body: "great movie" }),
+      })
+    );
+    expect(res.status).toBe(200);
+    expect(lines).toEqual(["alice commented on Fight Club"]);
+  });
+
+  it("rings after a Follow", async () => {
+    const res = await app.fetch(
+      new Request(`http://test/api/users/${encodeURIComponent(PEER)}/follow`, {
+        method: "POST",
+        headers,
+      })
+    );
+    expect(res.status).toBe(200);
+    expect(lines).toEqual(["alice followed bob"]);
+  });
+
+  it("rings after a Handle set", async () => {
+    const res = await app.fetch(
+      new Request("http://test/api/me/handle", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ handle: "alice" }),
+      })
+    );
+    expect(res.status).toBe(200);
+    expect(lines[0]).toBe("alice set their Handle");
+  });
+
+  it("rings after Guided tour complete", async () => {
+    const res = await app.fetch(
+      new Request("http://test/api/tour/complete", {
+        method: "POST",
+        headers,
+      })
+    );
+    expect(res.status).toBe(200);
+    expect(lines).toEqual(["alice finished the Guided tour"]);
   });
 
   it("still returns 200 when the Door alarm sender throws", async () => {

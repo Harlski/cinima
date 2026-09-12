@@ -7,6 +7,7 @@ import {
   SEND_MEMO_MAX_BYTES,
   SYSTEM_PING_LAPSE_MS,
   SYSTEM_PING_MIN_NEW_USERS,
+  CREATOR_TEST_PING_MESSAGE,
   creatorPingMemo,
   decideSystemPing,
   isQuiet,
@@ -62,6 +63,11 @@ describe("Send memos", () => {
 
   it("prefixes a Creator Ping", () => {
     expect(creatorPingMemo("come back")).toBe("Cinima.app - come back");
+  });
+
+  it("names the Creator self Ping as a Sender test", () => {
+    expect(CREATOR_TEST_PING_MESSAGE).toBe("Sender test");
+    expect(creatorPingMemo(CREATOR_TEST_PING_MESSAGE)).toBe("Cinima.app - Sender test");
   });
 
   it("fits Nimiq extra data", () => {

@@ -272,6 +272,29 @@ describe("Sends", () => {
     expect(queued).toBe(0);
   });
 
+  it("lets the Creator enqueue a Ping to themselves", async () => {
+    const res = await app.fetch(
+      new Request("http://test/api/sends/self", {
+        method: "POST",
+        headers: creatorHeaders,
+      })
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { queued: boolean; memo: string };
+    expect(body.queued).toBe(true);
+    expect(body.memo).toBe("Cinima.app - Sender test");
+  });
+
+  it("hides the Creator self Ping from a non-Creator", async () => {
+    const res = await app.fetch(
+      new Request("http://test/api/sends/self", {
+        method: "POST",
+        headers,
+      })
+    );
+    expect(res.status).toBe(404);
+  });
+
   it("lets the Creator enqueue a Ping", async () => {
     const res = await app.fetch(
       new Request("http://test/api/sends", {

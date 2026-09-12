@@ -219,14 +219,25 @@
             Message
             <input v-model="pingMessage" class="nq-input" autocomplete="off" />
           </label>
-          <button
-            type="submit"
-            class="nq-pill-blue"
-            :disabled="pinging || !pingWallet.trim() || !pingMessage.trim()"
-            :aria-busy="pinging"
-          >
-            {{ acceptedWaitLabel("Send", pinging) }}
-          </button>
+          <div class="ping-actions">
+            <button
+              type="submit"
+              class="nq-pill-blue"
+              :disabled="pingBusy !== null || !pingWallet.trim() || !pingMessage.trim()"
+              :aria-busy="pingBusy === 'send'"
+            >
+              {{ acceptedWaitLabel("Send", pingBusy === "send") }}
+            </button>
+            <button
+              type="button"
+              class="nq-pill-blue"
+              :disabled="pingBusy !== null"
+              :aria-busy="pingBusy === 'self'"
+              @click="pingMe"
+            >
+              {{ acceptedWaitLabel("Ping me", pingBusy === "self") }}
+            </button>
+          </div>
           <p v-if="pingError" class="empty">{{ pingError }}</p>
           <p v-else-if="pingMemo" class="empty">Queued: {{ pingMemo }}</p>
         </form>
@@ -291,7 +302,7 @@ const loadError = ref<string | null>(null);
 const loadDetail = ref<string | null>(null);
 const pingWallet = ref("");
 const pingMessage = ref("");
-const pinging = ref(false);
+const pingBusy = ref<"send" | "self" | null>(null);
 const pingError = ref<string | null>(null);
 const pingMemo = ref<string | null>(null);
 
@@ -346,26 +357,44 @@ onMounted(() => {
   void loadStudio();
 });
 
-async function sendPing() {
-  pinging.value = true;
+async function queuePing(toWallet: string, message: string, kind: "send" | "self") {
+  pingBusy.value = kind;
   pingError.value = null;
   pingMemo.value = null;
   try {
     const result = await request<{ queued: boolean; memo: string }>("/sends", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        toWallet: pingWallet.value.trim(),
-        message: pingMessage.value.trim(),
-      }),
+      body: JSON.stringify({ toWallet, message }),
     });
     pingMemo.value = result.memo;
-    pingMessage.value = "";
+    if (kind === "send") pingMessage.value = "";
     await loadStudio();
   } catch (err) {
     pingError.value = err instanceof Error ? err.message : "Could not queue Ping.";
   } finally {
-    pinging.value = false;
+    pingBusy.value = null;
+  }
+}
+
+async function sendPing() {
+  await queuePing(pingWallet.value.trim(), pingMessage.value.trim(), "send");
+}
+
+async function pingMe() {
+  pingBusy.value = "self";
+  pingError.value = null;
+  pingMemo.value = null;
+  try {
+    const result = await request<{ queued: boolean; memo: string }>("/sends/self", {
+      method: "POST",
+    });
+    pingMemo.value = result.memo;
+    await loadStudio();
+  } catch (err) {
+    pingError.value = err instanceof Error ? err.message : "Could not queue Ping.";
+  } finally {
+    pingBusy.value = null;
   }
 }
 </script>
@@ -501,6 +530,12 @@ h1 {
   gap: 0.25rem;
   font-size: 0.82rem;
   color: var(--text-secondary);
+}
+
+.ping-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .nq-input {

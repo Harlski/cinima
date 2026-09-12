@@ -8,6 +8,7 @@ const ACCEPTED_WAIT_LABELS: Record<string, string> = {
   "Thank all": "Thanking…",
   Remove: "Removing…",
   Send: "Sending…",
+  "Ping me": "Pinging…",
 };
 
 /** Follow/Following keep their idle label: Following already means the person is followed. */

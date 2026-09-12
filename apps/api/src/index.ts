@@ -12,6 +12,7 @@ import { seedTitles } from "./seed/seed-titles.js";
 import { prefetchPopularCatalog } from "./services/catalog.js";
 import { seedDemoSocialGraph } from "./services/demoSocial.js";
 import { startSenderLoop } from "./services/sends.js";
+import { doorAlarmStatus } from "./services/doorAlarm.js";
 
 async function main() {
   await migrate();
@@ -49,6 +50,7 @@ async function main() {
   console.log(
     `[cinima-api] http://${hostname}:${config.port} demo=${config.demoMode} tmdb=${config.tmdbApiKey ? "on" : "off"}`
   );
+  console.log(`[door-alarm] ${doorAlarmStatus()}`);
   serve({ fetch: app.fetch, port: config.port, hostname });
   if (config.studioInline) {
     serve({ fetch: studioApp.fetch, port: config.studioPort, hostname });

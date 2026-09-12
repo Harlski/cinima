@@ -1,4 +1,4 @@
-import { isCreatorWallet } from "@cinima/shared";
+import { CREATOR_TEST_PING_MESSAGE, CREATOR_WALLET, isCreatorWallet } from "@cinima/shared";
 
 export function studioEntryVisible(wallet: string | null | undefined): boolean {
   return !!wallet && isCreatorWallet(wallet);
@@ -47,4 +47,9 @@ export function studioProfileLocation(
   const w = String(wallet ?? "").trim();
   if (!w) return null;
   return { name: "user", params: { wallet: w } };
+}
+
+/** One-click Creator Ping to the Creator wallet. */
+export function creatorSelfPingRequest(): { toWallet: string; message: string } {
+  return { toWallet: CREATOR_WALLET, message: CREATOR_TEST_PING_MESSAGE };
 }

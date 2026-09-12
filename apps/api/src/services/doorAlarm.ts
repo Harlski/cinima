@@ -12,7 +12,19 @@ export type DoorAlarmEvent =
   | ({ kind: "shared-title"; title: string } & DoorAlarmActor)
   | ({ kind: "shared-profile" } & DoorAlarmActor)
   | ({ kind: "shared-watchlist" } & DoorAlarmActor)
-  | ({ kind: "share-visit" } & DoorAlarmActor);
+  | ({ kind: "share-visit" } & DoorAlarmActor)
+  | ({ kind: "favorited"; title: string } & DoorAlarmActor)
+  | ({ kind: "recommended"; title: string } & DoorAlarmActor)
+  | ({ kind: "watchlisted"; title: string } & DoorAlarmActor)
+  | ({ kind: "left-watchlist"; title: string } & DoorAlarmActor)
+  | ({ kind: "commented"; title: string } & DoorAlarmActor)
+  | ({ kind: "thanked"; title: string } & DoorAlarmActor)
+  | ({ kind: "comment-thanked"; title: string } & DoorAlarmActor)
+  | ({ kind: "thanked-all"; title: string } & DoorAlarmActor)
+  | ({ kind: "followed"; followee: string } & DoorAlarmActor)
+  | ({ kind: "set-handle" } & DoorAlarmActor)
+  | ({ kind: "tour-completed" } & DoorAlarmActor)
+  | ({ kind: "tour-skipped" } & DoorAlarmActor);
 
 export type DoorAlarmSender = {
   send(line: string): void | Promise<void>;
@@ -24,6 +36,23 @@ type DoorAlarmEnv = {
 };
 
 type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
+
+export function trimTelegramCred(v?: string): string {
+  let s = (v ?? "").trim();
+  if (
+    (s.startsWith('"') && s.endsWith('"') && s.length >= 2) ||
+    (s.startsWith("'") && s.endsWith("'") && s.length >= 2)
+  ) {
+    s = s.slice(1, -1).trim();
+  }
+  return s;
+}
+
+export function doorAlarmStatus(env: DoorAlarmEnv = process.env): "armed" | "silent" {
+  const token = trimTelegramCred(env.TELEGRAM_BOT_TOKEN);
+  const chatId = trimTelegramCred(env.TELEGRAM_CHAT_ID);
+  return token && chatId ? "armed" : "silent";
+}
 
 export function doorAlarmLine(event: DoorAlarmEvent): string {
   const who = displayName(event.handle, event.walletAddress ?? "") || "someone";
@@ -42,6 +71,30 @@ export function doorAlarmLine(event: DoorAlarmEvent): string {
       return `${who} shared their Watchlist`;
     case "share-visit":
       return `${who}'s share was visited`;
+    case "favorited":
+      return `${who} Favorited ${event.title}`;
+    case "recommended":
+      return `${who} Recommended ${event.title}`;
+    case "watchlisted":
+      return `${who} added ${event.title} to Watchlist`;
+    case "left-watchlist":
+      return `${who} left ${event.title} on Watchlist`;
+    case "commented":
+      return `${who} commented on ${event.title}`;
+    case "thanked":
+      return `${who} sent Thanks for ${event.title}`;
+    case "comment-thanked":
+      return `${who} sent Comment Thanks on ${event.title}`;
+    case "thanked-all":
+      return `${who} thanked all on ${event.title}`;
+    case "followed":
+      return `${who} followed ${event.followee}`;
+    case "set-handle":
+      return `${who} set their Handle`;
+    case "tour-completed":
+      return `${who} finished the Guided tour`;
+    case "tour-skipped":
+      return `${who} skipped the Guided tour`;
   }
 }
 
@@ -75,26 +128,30 @@ export function doorAlarmSenderFromEnv(
   env: DoorAlarmEnv = process.env,
   fetchImpl: FetchLike = fetch
 ): DoorAlarmSender {
-  const token = env.TELEGRAM_BOT_TOKEN?.trim();
-  const chatId = env.TELEGRAM_CHAT_ID?.trim();
+  const token = trimTelegramCred(env.TELEGRAM_BOT_TOKEN);
+  const chatId = trimTelegramCred(env.TELEGRAM_CHAT_ID);
   if (!token || !chatId) return silentDoorAlarmSender();
   return telegramDoorAlarmSender(token, chatId, fetchImpl);
 }
 
-let currentSender: DoorAlarmSender = doorAlarmSenderFromEnv();
+let injectedSender: DoorAlarmSender | null = null;
 
 export function setDoorAlarmSender(sender: DoorAlarmSender): void {
-  currentSender = sender;
+  injectedSender = sender;
 }
 
 export function resetDoorAlarmSender(): void {
-  currentSender = doorAlarmSenderFromEnv();
+  injectedSender = null;
+}
+
+function activeSender(): DoorAlarmSender {
+  return injectedSender ?? doorAlarmSenderFromEnv();
 }
 
 export function ringDoorAlarm(event: DoorAlarmEvent): void {
   try {
     const line = doorAlarmLine(event);
-    const result = currentSender.send(line);
+    const result = activeSender().send(line);
     if (result != null && typeof result.then === "function") {
       void result.catch((err: unknown) => {
         console.warn("[door-alarm] send failed", err);

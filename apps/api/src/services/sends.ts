@@ -2,6 +2,7 @@ import { and, asc, desc, eq, gte, gt, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import {
   CREATOR_WALLET,
+  CREATOR_TEST_PING_MESSAGE,
   PING_LUNA,
   REWARD_LUNA,
   creatorPingMemo,
@@ -189,6 +190,14 @@ export async function queueCreatorPing(opts: {
     at: opts.at,
   });
   return { queued: result.queued, memo };
+}
+
+export async function queueCreatorSelfPing(at?: Date): Promise<{ queued: boolean; memo: string }> {
+  return queueCreatorPing({
+    toWallet: CREATOR_WALLET,
+    message: CREATOR_TEST_PING_MESSAGE,
+    at,
+  });
 }
 
 export async function lastPresenceAt(wallet: string): Promise<Date | null> {

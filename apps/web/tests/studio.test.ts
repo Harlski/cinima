@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { CREATOR_WALLET, CREATOR_WALLET_DISPLAY } from "@cinima/shared";
+import { CREATOR_TEST_PING_MESSAGE, CREATOR_WALLET, CREATOR_WALLET_DISPLAY } from "@cinima/shared";
 import {
+  creatorSelfPingRequest,
   decideStudioOpen,
   formatActiveMs,
   formatShareVisitCounts,
@@ -51,6 +52,15 @@ describe("Share visit counts", () => {
     expect(
       formatShareVisitCounts({ webCount: 3, payCount: 1, payCtaCount: 2 })
     ).toBe("3 web · 1 pay · 2 Pay intent");
+  });
+});
+
+describe("Creator self Ping", () => {
+  it("queues a Sender test to the Creator wallet", () => {
+    expect(creatorSelfPingRequest()).toEqual({
+      toWallet: CREATOR_WALLET,
+      message: CREATOR_TEST_PING_MESSAGE,
+    });
   });
 });
 
