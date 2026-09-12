@@ -1,4 +1,5 @@
-import { client } from "./index.js";
+import { client, databaseUrl } from "./index.js";
+import { applySqliteSharingPragmas } from "./sqlite.js";
 
 const statements = [
   `CREATE TABLE IF NOT EXISTS users (
@@ -151,6 +152,7 @@ const statements = [
 ];
 
 export async function migrate() {
+  await applySqliteSharingPragmas(client, databaseUrl);
   for (const sql of statements) {
     await client.execute(sql);
   }

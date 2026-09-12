@@ -53,3 +53,48 @@ export function studioProfileLocation(
 export function creatorSelfPingRequest(): { toWallet: string; message: string } {
   return { toWallet: CREATOR_WALLET, message: CREATOR_TEST_PING_MESSAGE };
 }
+
+export type PingHandleOption = {
+  walletAddress: string;
+  handle: string | null;
+};
+
+/** Rank Handle matches for the Studio Ping picker. Prefix beats contains. */
+export function suggestPingHandles(
+  people: PingHandleOption[],
+  query: string,
+  selectedWallets: readonly string[],
+  limit = 8
+): PingHandleOption[] {
+  const q = String(query ?? "")
+    .replace(/^@/, "")
+    .trim()
+    .toLowerCase();
+  if (!q) return [];
+  const selected = new Set(selectedWallets);
+  return people
+    .filter((p) => {
+      if (selected.has(p.walletAddress)) return false;
+      const handle = String(p.handle ?? "").toLowerCase();
+      return handle.includes(q);
+    })
+    .sort((a, b) => {
+      const ah = String(a.handle ?? "").toLowerCase();
+      const bh = String(b.handle ?? "").toLowerCase();
+      const aPrefix = ah.startsWith(q) ? 0 : 1;
+      const bPrefix = bh.startsWith(q) ? 0 : 1;
+      if (aPrefix !== bPrefix) return aPrefix - bPrefix;
+      return ah.localeCompare(bh);
+    })
+    .slice(0, limit);
+}
+
+export function creatorPingBody(
+  selected: { walletAddress: string }[],
+  message: string
+): { toWallets: string[]; message: string } {
+  return {
+    toWallets: selected.map((p) => p.walletAddress),
+    message,
+  };
+}

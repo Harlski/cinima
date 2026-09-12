@@ -29,6 +29,9 @@ describe("Sends", () => {
   let planSystemPings: typeof import("../src/services/sends.js").planSystemPings;
   let listRecentSends: typeof import("../src/services/sends.js").listRecentSends;
   let createMemoryChain: typeof import("../src/services/sendsChain.js").createMemoryChain;
+  let setDoorAlarmSender: (typeof import("../src/services/doorAlarm.js"))["setDoorAlarmSender"];
+  let resetDoorAlarmSender: (typeof import("../src/services/doorAlarm.js"))["resetDoorAlarmSender"];
+  const doorLines: string[] = [];
 
   const headers = {
     Authorization: `Bearer ${TOKEN}`,
@@ -51,6 +54,9 @@ describe("Sends", () => {
     planSystemPings = sends.planSystemPings;
     listRecentSends = sends.listRecentSends;
     createMemoryChain = (await import("../src/services/sendsChain.js")).createMemoryChain;
+    const doorAlarm = await import("../src/services/doorAlarm.js");
+    setDoorAlarmSender = doorAlarm.setDoorAlarmSender;
+    resetDoorAlarmSender = doorAlarm.resetDoorAlarmSender;
     const now = new Date();
     await db.insert(schema.users).values([
       { walletAddress: ME, handle: "meuser", lifetimeUnlockedAt: null, createdAt: now },
@@ -119,6 +125,8 @@ describe("Sends", () => {
 
   afterEach(() => {
     setSendChain(null);
+    doorLines.length = 0;
+    resetDoorAlarmSender();
   });
 
   async function thank(titleId: string) {
@@ -144,6 +152,30 @@ describe("Sends", () => {
       luna: REWARD_LUNA,
       memo: "meuser thanked you on Cinima",
     });
+  });
+
+  it("rings Door alarm when a Ping broadcasts", async () => {
+    setDoorAlarmSender({
+      send(line) {
+        doorLines.push(line);
+      },
+    });
+    const chain = createMemoryChain();
+    setSendChain(chain);
+    const queued = await app.fetch(
+      new Request("http://test/api/sends", {
+        method: "POST",
+        headers: creatorHeaders,
+        body: JSON.stringify({ handle: "peera", message: "come back" }),
+      })
+    );
+    expect(queued.status).toBe(200);
+    expect(doorLines).toEqual([]);
+    const processed = await processQueue();
+    expect(processed.sent).toBeGreaterThan(0);
+    expect(doorLines.some((line) => line === "Ping sent to peera: Cinima.app - come back")).toBe(
+      true
+    );
   });
 
   it("keeps the sixth Thanks social-only", async () => {
@@ -304,9 +336,53 @@ describe("Sends", () => {
       })
     );
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { queued: boolean; memo: string };
+    const body = (await res.json()) as { queued: boolean; queuedCount: number; memo: string };
     expect(body.queued).toBe(true);
+    expect(body.queuedCount).toBe(1);
     expect(body.memo).toBe("Cinima.app - come back");
+  });
+
+  it("lets the Creator enqueue a Ping by Handle", async () => {
+    const res = await app.fetch(
+      new Request("http://test/api/sends", {
+        method: "POST",
+        headers: creatorHeaders,
+        body: JSON.stringify({ handle: "peera", message: "hello peera" }),
+      })
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { queuedCount: number; memo: string };
+    expect(body.queuedCount).toBe(1);
+    expect(body.memo).toBe("Cinima.app - hello peera");
+  });
+
+  it("lets the Creator enqueue one Ping to many Handles", async () => {
+    const res = await app.fetch(
+      new Request("http://test/api/sends", {
+        method: "POST",
+        headers: creatorHeaders,
+        body: JSON.stringify({ handles: ["meuser", "peera"], message: "watch this" }),
+      })
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { queued: boolean; queuedCount: number; memo: string };
+    expect(body.queued).toBe(true);
+    expect(body.queuedCount).toBe(2);
+    expect(body.memo).toBe("Cinima.app - watch this");
+  });
+
+  it("suggests Handles as the Creator types", async () => {
+    const res = await app.fetch(
+      new Request("http://test/api/sends/handles?q=peera", { headers: creatorHeaders })
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { handles: { handle: string; walletAddress: string }[] };
+    expect(body.handles).toEqual([{ handle: "peera", walletAddress: PEER }]);
+  });
+
+  it("hides Handle suggestions from a non-Creator", async () => {
+    const res = await app.fetch(new Request("http://test/api/sends/handles?q=peer", { headers }));
+    expect(res.status).toBe(404);
   });
 
   it("hides Creator Ping from a non-Creator", async () => {

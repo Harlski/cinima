@@ -181,7 +181,7 @@ An automatic Ping after seven days without Presence, at most one per Handle per 
 _Avoid_: blast, campaign, Door alarm, Creator Ping
 
 **Creator Ping**:
-A Ping the Creator enqueues by choosing a Handle and a memo, or Ping me to themselves from Studio. Shown as "Cinima.app - {message}". Ping me uses "Cinima.app - Sender test". Not blocked by Quiet.
+A Ping the Creator enqueues by choosing one or more Handles and a memo, or Ping me to themselves from Studio. Shown as "Cinima.app - {message}". Ping me uses "Cinima.app - Sender test". Not blocked by Quiet.
 _Avoid_: admin send, blast, System Ping, notification
 
 **Creator**:
@@ -197,7 +197,7 @@ A human opening a Short Share, Public Profile, Title Share, or Watchlist Share. 
 _Avoid_: page view of Landing, crawler hit, impression, click as a generic term
 
 **Door alarm**:
-Creator-only Telegram notices of live usage: sign-in, search, title view, Favorite, Recommend, Watchlist add and leave, Comment, Thanks, Comment Thanks, Thank all, Follow, Handle, Guided tour complete or skip, share created, and Share visit. A pager, not a dashboard; Studio remains the pull read. Not part of the public product.
+Creator-only Telegram notices of live usage: sign-in, search, title view, Favorite, Recommend, Watchlist add and leave, Comment, Thanks, Comment Thanks, Thank all, Follow, Handle, Guided tour complete or skip, share created, Share visit, and a Send after it broadcasts (Reward or Ping). A pager, not a dashboard; Studio remains the pull read. Not part of the public product.
 _Avoid_: webhook log, Slack alert, analytics ping, Studio notification
 
 **Achievement**:

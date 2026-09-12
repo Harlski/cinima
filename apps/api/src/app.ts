@@ -21,6 +21,8 @@ import {
   type FindPeopleResponse,
   type WatchlistResponse,
   type ShareLinkCreated,
+  type CreatorPingRequest,
+  type PingHandleMatch,
   profileShareOgImageUrl,
   shortShareUrl,
   titleShareOgImageUrl,
@@ -129,10 +131,12 @@ import {
 } from "./services/achievements.js";
 import { proxyStudio } from "./lib/studioProxy.js";
 import {
-  queueCreatorPing,
+  queueCreatorPings,
   queueCreatorSelfPing,
   queueRewardForThanks,
   queueRewardsForThanks,
+  resolveCreatorPingTargets,
+  searchPingHandles,
 } from "./services/sends.js";
 
 type Vars = {
@@ -846,7 +850,17 @@ app.post("/api/sends/self", requirePay, requireAuth, async (c) => {
     return c.json({ error: "not_found" }, 404);
   }
   const result = await queueCreatorSelfPing();
-  return c.json({ ok: true, queued: result.queued, memo: result.memo });
+  return c.json({ ok: true, queued: result.queued, queuedCount: result.queued ? 1 : 0, memo: result.memo });
+});
+
+app.get("/api/sends/handles", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  if (!isCreatorWallet(user.walletAddress)) {
+    return c.json({ error: "not_found" }, 404);
+  }
+  const q = String(c.req.query("q") ?? "");
+  const handles: PingHandleMatch[] = await searchPingHandles(q);
+  return c.json({ handles });
 });
 
 app.post("/api/sends", requirePay, requireAuth, async (c) => {
@@ -854,16 +868,30 @@ app.post("/api/sends", requirePay, requireAuth, async (c) => {
   if (!isCreatorWallet(user.walletAddress)) {
     return c.json({ error: "not_found" }, 404);
   }
-  const body = await c.req.json<{ toWallet?: string; message?: string }>();
-  const toWallet = String(body.toWallet ?? "").trim();
+  const body = await c.req.json<CreatorPingRequest>();
   const message = String(body.message ?? "").trim();
-  if (!toWallet || !message) return c.json({ error: "missing_fields" }, 400);
-  const target = await db.query.users.findFirst({
-    where: eq(schema.users.walletAddress, normalizeWallet(toWallet)),
+  if (!message) return c.json({ error: "missing_fields" }, 400);
+  let toWallets: string[];
+  try {
+    toWallets = await resolveCreatorPingTargets({
+      toWallet: body.toWallet,
+      toWallets: body.toWallets,
+      handle: body.handle,
+      handles: body.handles,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "not_found";
+    if (code === "missing_fields") return c.json({ error: "missing_fields" }, 400);
+    if (code === "too_many") return c.json({ error: "too_many" }, 400);
+    return c.json({ error: "not_found" }, 404);
+  }
+  const result = await queueCreatorPings({ toWallets, message });
+  return c.json({
+    ok: true,
+    queued: result.queued > 0,
+    queuedCount: result.queued,
+    memo: result.memo,
   });
-  if (!target) return c.json({ error: "not_found" }, 404);
-  const result = await queueCreatorPing({ toWallet, message });
-  return c.json({ ok: true, queued: result.queued, memo: result.memo });
 });
 
 app.get("/api/users/:wallet", requirePay, requireAuth, async (c) => {

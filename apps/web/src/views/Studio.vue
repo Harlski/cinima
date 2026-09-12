@@ -212,8 +212,41 @@
         </p>
         <form class="ping-form" @submit.prevent="sendPing">
           <label>
-            Handle wallet
-            <input v-model="pingWallet" class="nq-input" autocomplete="off" />
+            Handle
+            <div class="handle-picker">
+              <ul v-if="pingSelected.length" class="handle-chips">
+                <li v-for="person in pingSelected" :key="person.walletAddress" class="handle-chip">
+                  <Identicon :address="person.walletAddress" :size="28" :alt="person.handle || ''" />
+                  <span>{{ person.handle || label(person) }}</span>
+                  <button
+                    type="button"
+                    class="handle-chip-remove"
+                    :aria-label="`Remove ${person.handle || 'Handle'}`"
+                    @click="removePingHandle(person.walletAddress)"
+                  >
+                    ×
+                  </button>
+                </li>
+              </ul>
+              <input
+                v-model="pingQuery"
+                class="nq-input"
+                autocomplete="off"
+                aria-autocomplete="list"
+                :aria-expanded="pingSuggestions.length > 0"
+                placeholder="Type a Handle"
+                @keydown.enter.prevent="pickFirstPingSuggestion"
+                @keydown.escape="pingSuggestions = []"
+              />
+              <ul v-if="pingSuggestions.length" class="handle-suggest" role="listbox">
+                <li v-for="person in pingSuggestions" :key="person.walletAddress" role="option">
+                  <button type="button" class="handle-suggest-btn" @click="selectPingHandle(person)">
+                    <Identicon :address="person.walletAddress" :size="32" :alt="person.handle || ''" />
+                    <span>{{ person.handle }}</span>
+                  </button>
+                </li>
+              </ul>
+            </div>
           </label>
           <label>
             Message
@@ -223,7 +256,7 @@
             <button
               type="submit"
               class="nq-pill-blue"
-              :disabled="pingBusy !== null || !pingWallet.trim() || !pingMessage.trim()"
+              :disabled="pingBusy !== null || pingSelected.length === 0 || !pingMessage.trim()"
               :aria-busy="pingBusy === 'send'"
             >
               {{ acceptedWaitLabel("Send", pingBusy === "send") }}
@@ -278,19 +311,28 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, ref, watch } from "vue";
 import { RouterLink, useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
 import { useAuthStore } from "@/stores/auth";
+import Identicon from "@/components/Identicon.vue";
 import LoadingWait from "@/components/LoadingWait.vue";
 import { acceptedWaitLabel } from "@/lib/acceptedWait";
 import {
+  creatorPingBody,
   decideStudioOpen,
   formatActiveMs,
   formatShareVisitCounts,
   studioProfileLocation,
+  suggestPingHandles,
 } from "@/lib/studio";
-import { displayName, LUNA_PER_NIM, type StudioPersonRef, type StudioSnapshot } from "@cinima/shared";
+import {
+  displayName,
+  LUNA_PER_NIM,
+  type PingHandleMatch,
+  type StudioPersonRef,
+  type StudioSnapshot,
+} from "@cinima/shared";
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -300,11 +342,14 @@ const loading = ref(true);
 const snapshot = ref<StudioSnapshot | null>(null);
 const loadError = ref<string | null>(null);
 const loadDetail = ref<string | null>(null);
-const pingWallet = ref("");
+const pingQuery = ref("");
+const pingSelected = ref<PingHandleMatch[]>([]);
+const pingSuggestions = ref<PingHandleMatch[]>([]);
 const pingMessage = ref("");
 const pingBusy = ref<"send" | "self" | null>(null);
 const pingError = ref<string | null>(null);
 const pingMemo = ref<string | null>(null);
+let pingSuggestTimer: ReturnType<typeof setTimeout> | null = null;
 
 function label(row: StudioPersonRef): string {
   return displayName(row.handle, row.walletAddress);
@@ -357,28 +402,76 @@ onMounted(() => {
   void loadStudio();
 });
 
-async function queuePing(toWallet: string, message: string, kind: "send" | "self") {
-  pingBusy.value = kind;
+watch(pingQuery, (query) => {
+  const selected = pingSelected.value.map((p) => p.walletAddress);
+  pingSuggestions.value = suggestPingHandles(snapshot.value?.people ?? [], query, selected).filter(
+    (p): p is PingHandleMatch => !!p.handle
+  );
+  if (pingSuggestTimer) clearTimeout(pingSuggestTimer);
+  const q = query.trim();
+  if (!q) {
+    pingSuggestions.value = [];
+    return;
+  }
+  pingSuggestTimer = setTimeout(() => {
+    void fetchPingHandles(q);
+  }, 150);
+});
+
+async function fetchPingHandles(query: string) {
+  try {
+    const data = await request<{ handles: PingHandleMatch[] }>(
+      `/sends/handles?q=${encodeURIComponent(query)}`
+    );
+    if (pingQuery.value.trim() !== query) return;
+    const selected = new Set(pingSelected.value.map((p) => p.walletAddress));
+    pingSuggestions.value = data.handles.filter((p) => !selected.has(p.walletAddress));
+  } catch {
+    /* keep local suggestions */
+  }
+}
+
+function selectPingHandle(person: PingHandleMatch) {
+  if (pingSelected.value.some((p) => p.walletAddress === person.walletAddress)) return;
+  pingSelected.value = [...pingSelected.value, person];
+  pingQuery.value = "";
+  pingSuggestions.value = [];
+}
+
+function removePingHandle(wallet: string) {
+  pingSelected.value = pingSelected.value.filter((p) => p.walletAddress !== wallet);
+}
+
+function pickFirstPingSuggestion() {
+  const first = pingSuggestions.value[0];
+  if (first) {
+    selectPingHandle(first);
+    return;
+  }
+  if (pingSelected.value.length && pingMessage.value.trim()) {
+    void sendPing();
+  }
+}
+
+async function sendPing() {
+  pingBusy.value = "send";
   pingError.value = null;
   pingMemo.value = null;
   try {
     const result = await request<{ queued: boolean; memo: string }>("/sends", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ toWallet, message }),
+      body: JSON.stringify(creatorPingBody(pingSelected.value, pingMessage.value.trim())),
     });
     pingMemo.value = result.memo;
-    if (kind === "send") pingMessage.value = "";
+    pingMessage.value = "";
+    pingSelected.value = [];
     await loadStudio();
   } catch (err) {
     pingError.value = err instanceof Error ? err.message : "Could not queue Ping.";
   } finally {
     pingBusy.value = null;
   }
-}
-
-async function sendPing() {
-  await queuePing(pingWallet.value.trim(), pingMessage.value.trim(), "send");
 }
 
 async function pingMe() {
@@ -530,6 +623,86 @@ h1 {
   gap: 0.25rem;
   font-size: 0.82rem;
   color: var(--text-secondary);
+}
+
+.handle-picker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.handle-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.handle-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.4rem 0.2rem 0.25rem;
+  border-radius: 999px;
+  border: 1px solid var(--border, #ccc);
+  background: var(--surface, #fff);
+  color: inherit;
+  font-size: 0.85rem;
+}
+
+.handle-chip :deep(.identicon) {
+  flex-shrink: 0;
+}
+
+.handle-chip-remove {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 0.15rem;
+}
+
+.handle-suggest {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem;
+  position: absolute;
+  z-index: 4;
+  top: 100%;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--border, #ccc);
+  background: var(--surface, #fff);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.handle-suggest-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: 0.35rem 0.4rem;
+  border-radius: 0.3rem;
+  cursor: pointer;
+}
+
+.handle-suggest-btn:hover,
+.handle-suggest-btn:focus-visible {
+  background: var(--bg-secondary, #f3f4f6);
 }
 
 .ping-actions {

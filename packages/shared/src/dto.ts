@@ -415,12 +415,21 @@ export type StudioSnapshot = {
 };
 
 export type CreatorPingRequest = {
-  toWallet: string;
   message: string;
+  toWallet?: string;
+  toWallets?: string[];
+  handle?: string;
+  handles?: string[];
 };
 
 export type CreatorPingResponse = {
   ok: true;
   queued: boolean;
+  queuedCount: number;
   memo: string;
+};
+
+export type PingHandleMatch = {
+  walletAddress: string;
+  handle: string;
 };

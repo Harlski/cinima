@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { CREATOR_TEST_PING_MESSAGE, CREATOR_WALLET, CREATOR_WALLET_DISPLAY } from "@cinima/shared";
 import {
+  creatorPingBody,
   creatorSelfPingRequest,
   decideStudioOpen,
   formatActiveMs,
   formatShareVisitCounts,
   studioEntryVisible,
   studioProfileLocation,
+  suggestPingHandles,
 } from "../src/lib/studio";
 
 describe("Studio entry", () => {
@@ -60,6 +62,41 @@ describe("Creator self Ping", () => {
     expect(creatorSelfPingRequest()).toEqual({
       toWallet: CREATOR_WALLET,
       message: CREATOR_TEST_PING_MESSAGE,
+    });
+  });
+});
+
+describe("Studio Ping Handles", () => {
+  const people = [
+    { walletAddress: "NQ05A", handle: "alice" },
+    { walletAddress: "NQ05B", handle: "alicia" },
+    { walletAddress: "NQ05C", handle: "bob" },
+    { walletAddress: "NQ05D", handle: null },
+  ];
+
+  it("suggests Handles as the Creator types", () => {
+    expect(suggestPingHandles(people, "al", []).map((p) => p.handle)).toEqual([
+      "alice",
+      "alicia",
+    ]);
+  });
+
+  it("omits already selected Handles", () => {
+    expect(suggestPingHandles(people, "al", ["NQ05A"]).map((p) => p.handle)).toEqual(["alicia"]);
+  });
+
+  it("builds a bulk Creator Ping body", () => {
+    expect(
+      creatorPingBody(
+        [
+          { walletAddress: "NQ05A" },
+          { walletAddress: "NQ05C" },
+        ],
+        "watch this"
+      )
+    ).toEqual({
+      toWallets: ["NQ05A", "NQ05C"],
+      message: "watch this",
     });
   });
 });

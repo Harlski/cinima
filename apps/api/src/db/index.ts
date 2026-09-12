@@ -25,8 +25,10 @@ function resolveAuthToken(): string | undefined {
   return token || undefined;
 }
 
+export const databaseUrl = resolveUrl();
+
 export const client = createClient({
-  url: resolveUrl(),
+  url: databaseUrl,
   authToken: resolveAuthToken(),
 });
 export const db = drizzle(client, { schema });

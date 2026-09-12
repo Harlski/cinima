@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, gt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, gt, inArray, isNotNull, like, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import {
   CREATOR_WALLET,
@@ -16,8 +16,10 @@ import {
   watchlistPingMemo,
   type StudioSendRow,
   type StudioSenderStatus,
+  type PingHandleMatch,
 } from "@cinima/shared";
 import { db } from "../db/index.js";
+import { retryOnSqliteBusy } from "../db/sqlite.js";
 import {
   presenceDays,
   senderHeartbeat,
@@ -29,6 +31,7 @@ import {
 } from "../db/schema.js";
 import { config } from "../lib/config.js";
 import { utcDayKey } from "./usage.js";
+import { ringDoorAlarm } from "./doorAlarm.js";
 import {
   createMemoryChain,
   createNimiqChain,
@@ -191,6 +194,96 @@ export async function queueCreatorPing(opts: {
     at: opts.at,
   });
   return { queued: result.queued, memo };
+}
+
+const MAX_CREATOR_PING_TARGETS = 50;
+const HANDLE_SUGGEST_LIMIT = 8;
+
+export async function queueCreatorPings(opts: {
+  toWallets: string[];
+  message: string;
+  at?: Date;
+}): Promise<{ queued: number; memo: string }> {
+  const wallets = [...new Set(opts.toWallets.map((w) => normalizeWallet(w)).filter(Boolean))];
+  if (wallets.length === 0) return { queued: 0, memo: creatorPingMemo(opts.message) };
+  if (wallets.length > MAX_CREATOR_PING_TARGETS) throw new Error("too_many");
+  let queued = 0;
+  let memo = creatorPingMemo(opts.message);
+  for (const toWallet of wallets) {
+    const result = await queueCreatorPing({ toWallet, message: opts.message, at: opts.at });
+    memo = result.memo;
+    if (result.queued) queued += 1;
+  }
+  return { queued, memo };
+}
+
+export async function searchPingHandles(query: string): Promise<PingHandleMatch[]> {
+  const q = String(query ?? "")
+    .replace(/^@/, "")
+    .trim()
+    .toLowerCase();
+  if (!q) return [];
+  const rows = await db
+    .select({
+      walletAddress: users.walletAddress,
+      handle: users.handle,
+    })
+    .from(users)
+    .where(and(isNotNull(users.handle), like(users.handle, `%${q}%`)))
+    .orderBy(users.handle)
+    .limit(HANDLE_SUGGEST_LIMIT);
+  return rows
+    .filter((r): r is { walletAddress: string; handle: string } => !!r.handle)
+    .map((r) => ({ walletAddress: r.walletAddress, handle: r.handle }));
+}
+
+export async function resolveCreatorPingTargets(opts: {
+  toWallet?: string;
+  toWallets?: string[];
+  handle?: string;
+  handles?: string[];
+}): Promise<string[]> {
+  const wallets = [
+    opts.toWallet,
+    ...(opts.toWallets ?? []),
+  ]
+    .map((w) => normalizeWallet(String(w ?? "")))
+    .filter(Boolean);
+  const handles = [opts.handle, ...(opts.handles ?? [])]
+    .map((h) =>
+      String(h ?? "")
+        .replace(/^@/, "")
+        .trim()
+        .toLowerCase()
+    )
+    .filter(Boolean);
+  const uniqueHandles = [...new Set(handles)];
+  if (uniqueHandles.length > 0) {
+    const found = await db
+      .select({
+        walletAddress: users.walletAddress,
+        handle: users.handle,
+      })
+      .from(users)
+      .where(inArray(users.handle, uniqueHandles));
+    const byHandle = new Map(
+      found.filter((r) => r.handle).map((r) => [r.handle as string, r.walletAddress])
+    );
+    for (const handle of uniqueHandles) {
+      const wallet = byHandle.get(handle);
+      if (!wallet) throw new Error("not_found");
+      wallets.push(normalizeWallet(wallet));
+    }
+  }
+  const unique = [...new Set(wallets)];
+  if (unique.length === 0) throw new Error("missing_fields");
+  if (unique.length > MAX_CREATOR_PING_TARGETS) throw new Error("too_many");
+  const existing = await db
+    .select({ walletAddress: users.walletAddress })
+    .from(users)
+    .where(inArray(users.walletAddress, unique));
+  if (existing.length !== unique.length) throw new Error("not_found");
+  return unique;
 }
 
 export async function queueCreatorSelfPing(at?: Date): Promise<{ queued: boolean; memo: string }> {
@@ -377,6 +470,17 @@ async function completeSend(row: typeof sends.$inferSelect, txHash: string, at: 
   if (row.thanksId) {
     await db.update(thanks).set({ tipTxHash: txHash }).where(eq(thanks.id, row.thanksId));
   }
+  const [recipient] = await db
+    .select({ handle: users.handle, walletAddress: users.walletAddress })
+    .from(users)
+    .where(eq(users.walletAddress, row.toWallet))
+    .limit(1);
+  ringDoorAlarm({
+    kind: row.kind === "reward" ? "sent-reward" : "sent-ping",
+    handle: recipient?.handle ?? null,
+    walletAddress: row.toWallet,
+    memo: row.memo,
+  });
 }
 
 async function failOrRequeue(row: typeof sends.$inferSelect, error: string) {
@@ -441,8 +545,10 @@ export function startSenderLoop(): void {
   if (senderLoop) return;
   const tick = async () => {
     try {
-      await planSystemPings();
-      await processQueue();
+      await retryOnSqliteBusy(async () => {
+        await planSystemPings();
+        await processQueue();
+      });
     } catch (err) {
       console.warn("[sender] tick failed", err);
     }

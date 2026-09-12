@@ -227,6 +227,28 @@ describe("Door alarm copy", () => {
       })
     ).toBe("alice skipped the Guided tour");
   });
+
+  it("names a Reward after it broadcasts", () => {
+    expect(
+      doorAlarmLine({
+        kind: "sent-reward",
+        handle: "alice",
+        walletAddress: "NQ05USAGETESTWALLET000000000000001",
+        memo: "bob thanked you on Cinima",
+      })
+    ).toBe("Reward sent to alice");
+  });
+
+  it("names a Ping and its memo after it broadcasts", () => {
+    expect(
+      doorAlarmLine({
+        kind: "sent-ping",
+        handle: "alice",
+        walletAddress: "NQ05USAGETESTWALLET000000000000001",
+        memo: "Cinima.app - come back",
+      })
+    ).toBe("Ping sent to alice: Cinima.app - come back");
+  });
 });
 
 describe("Door alarm sender", () => {

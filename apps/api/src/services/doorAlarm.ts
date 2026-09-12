@@ -24,7 +24,9 @@ export type DoorAlarmEvent =
   | ({ kind: "followed"; followee: string } & DoorAlarmActor)
   | ({ kind: "set-handle" } & DoorAlarmActor)
   | ({ kind: "tour-completed" } & DoorAlarmActor)
-  | ({ kind: "tour-skipped" } & DoorAlarmActor);
+  | ({ kind: "tour-skipped" } & DoorAlarmActor)
+  | ({ kind: "sent-reward"; memo: string } & DoorAlarmActor)
+  | ({ kind: "sent-ping"; memo: string } & DoorAlarmActor);
 
 export type DoorAlarmSender = {
   send(line: string): void | Promise<void>;
@@ -95,6 +97,10 @@ export function doorAlarmLine(event: DoorAlarmEvent): string {
       return `${who} finished the Guided tour`;
     case "tour-skipped":
       return `${who} skipped the Guided tour`;
+    case "sent-reward":
+      return `Reward sent to ${who}`;
+    case "sent-ping":
+      return `Ping sent to ${who}: ${event.memo}`;
   }
 }
 
