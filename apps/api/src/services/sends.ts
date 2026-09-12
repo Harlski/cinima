@@ -56,6 +56,7 @@ export async function getSendChain(): Promise<ChainAdapter> {
     resolvedChain = await createNimiqChain({
       privateKey: key,
       network: config.nimiqNetwork,
+      rpcUrl: config.nimiqRpcUrl,
     });
     return resolvedChain;
   }

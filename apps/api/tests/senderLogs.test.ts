@@ -88,6 +88,18 @@ describe("Sender logs", () => {
     );
   });
 
+  it("names the RPC when the Sender broadcasts through it", () => {
+    expect(
+      senderConfiguredLine({
+        network: "mainalbatross",
+        address: "NQ86 2H86 83VU NQHB JTGT 7CF6 H1G6 U48C EDH9",
+        rpc: "https://rpc.nimiqwatch.com",
+      })
+    ).toBe(
+      "[cinima-sender] configured network=mainalbatross address=NQ86 2H86 83VU NQHB JTGT 7CF6 H1G6 U48C EDH9 rpc=https://rpc.nimiqwatch.com"
+    );
+  });
+
   it("announces when consensus is first established", () => {
     expect(senderConsensusLine()).toBe("[cinima-sender] consensus established");
   });

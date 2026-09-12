@@ -44,8 +44,13 @@ export function filterNimiqConsoleChunk(chunk: string): string | null {
   return out;
 }
 
-export function senderConfiguredLine(opts: { network: string; address: string }): string {
-  return `[cinima-sender] configured network=${opts.network} address=${opts.address}`;
+export function senderConfiguredLine(opts: {
+  network: string;
+  address: string;
+  rpc?: string;
+}): string {
+  const base = `[cinima-sender] configured network=${opts.network} address=${opts.address}`;
+  return opts.rpc ? `${base} rpc=${opts.rpc}` : base;
 }
 
 export function senderConsensusLine(): string {
