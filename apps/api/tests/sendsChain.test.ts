@@ -67,11 +67,18 @@ describe("Nimiq RPC chain", () => {
       luna: 10,
       memo: "Cinima.app - Sender test",
     });
-
     expect(result.txHash).toBe("aa".repeat(32));
     const sendCall = rpc.mock.calls.find((c) => c[0] === "sendRawTransaction");
     expect(sendCall?.[1]?.[0]).toMatch(/^[0-9a-f]+$/i);
     expect(String(sendCall?.[1]?.[0]).length).toBeGreaterThan(64);
+
+    await chain.send({
+      to: RECIPIENT,
+      luna: 10,
+      memo: "Cinima.app - second",
+    });
+    expect(rpc.mock.calls.filter((c) => c[0] === "getBlockNumber")).toHaveLength(1);
+    expect(rpc.mock.calls.filter((c) => c[0] === "sendRawTransaction")).toHaveLength(2);
   }, 15_000);
 
   it("refuses to send when the Sender wallet is empty", async () => {

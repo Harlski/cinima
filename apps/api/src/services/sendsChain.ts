@@ -78,6 +78,8 @@ export async function createNimiqChain(opts: {
 
   let mutex: Promise<void> = Promise.resolve();
   let consensusLogged = false;
+  let cachedHeight: { atMs: number; height: number } | null = null;
+  const HEIGHT_CACHE_MS = 5_000;
   const markReady = () => {
     if (consensusLogged) return;
     consensusLogged = true;
@@ -101,6 +103,19 @@ export async function createNimiqChain(opts: {
     return BigInt(balance as number | string | bigint);
   };
 
+  const headHeight = async (): Promise<number> => {
+    const now = Date.now();
+    if (cachedHeight && now - cachedHeight.atMs < HEIGHT_CACHE_MS) {
+      return cachedHeight.height;
+    }
+    const height = Number(await rpc("getBlockNumber"));
+    if (!Number.isFinite(height) || height <= 0) {
+      throw new Error("rpc_invalid_height");
+    }
+    cachedHeight = { atMs: now, height };
+    return height;
+  };
+
   return {
     configured: () => true,
     async balanceLuna() {
@@ -111,10 +126,7 @@ export async function createNimiqChain(opts: {
         const balance = await readBalance();
         const need = BigInt(tx.luna);
         if (need > balance) throw new Error("insufficient_balance");
-        const height = Number(await rpc("getBlockNumber"));
-        if (!Number.isFinite(height) || height <= 0) {
-          throw new Error("rpc_invalid_height");
-        }
+        const height = await headHeight();
         const built = Nimiq.TransactionBuilder.newBasicWithData(
           keyPair.toAddress(),
           Nimiq.Address.fromUserFriendlyAddress(tx.to),

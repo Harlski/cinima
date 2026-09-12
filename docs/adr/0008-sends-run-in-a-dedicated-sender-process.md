@@ -4,7 +4,7 @@ Outgoing NIM (Rewards and Pings) must not be signed on the public API: that proc
 
 The public API and Studio only enqueue Sends into the shared SQLite queue. A Sender process owns the signer, drains the queue, and plans System Pings. The private key lives only on that process. Local `pnpm dev` may run the Sender in-process (same pattern as Studio inline); Docker runs a third container and blanks the key on API and Studio.
 
-The Sender signs locally with `@nimiq/core` and broadcasts through `NIMIQ_RPC_URL`. It does not run a Nimiq P2P light client: Docker hosts often never reach consensus, so the drain loop would stall with a stale heartbeat.
+The Sender signs locally with `@nimiq/core` and broadcasts through `NIMIQ_RPC_URL`. It does not run a Nimiq P2P light client and does not wait for consensus per Send: each broadcast is a short HTTP RPC. The signer stays loaded in the Sender process. The drain loop checks the queue every few seconds; System Ping planning stays on a slower timer.
 
 API, Studio, and Sender share one SQLite file. Each process sets WAL and a busy timeout so a Sender SELECT is not `SQLITE_BUSY` the moment the API holds an exclusive lock.
 

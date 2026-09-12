@@ -40,8 +40,11 @@ import {
 } from "./sendsChain.js";
 
 const MAX_ATTEMPTS = 8;
-const PROCESS_BATCH = 10;
+const PROCESS_BATCH = 25;
 const HEARTBEAT_ID = 1;
+const DRAIN_INTERVAL_MS = 2_000;
+const PLAN_INTERVAL_MS = 60_000;
+const HEARTBEAT_INTERVAL_MS = 30_000;
 
 let chainOverride: ChainAdapter | null = null;
 let resolvedChain: ChainAdapter | null = null;
@@ -431,6 +434,14 @@ async function writeHeartbeat(chain: ChainAdapter, at = new Date()): Promise<voi
       target: senderHeartbeat.id,
       set: { configured, balanceLuna, updatedAt: at },
     });
+  lastHeartbeatAt = Date.now();
+}
+
+let lastHeartbeatAt = 0;
+
+async function writeHeartbeatDue(chain: ChainAdapter, force: boolean): Promise<void> {
+  if (!force && Date.now() - lastHeartbeatAt < HEARTBEAT_INTERVAL_MS) return;
+  await writeHeartbeat(chain);
 }
 
 export async function readSenderStatus(): Promise<StudioSenderStatus> {
@@ -502,8 +513,10 @@ async function failOrRequeue(row: typeof sends.$inferSelect, error: string) {
 
 export async function processQueue(limit = PROCESS_BATCH): Promise<{ sent: number; failed: number }> {
   const chain = await getSendChain();
-  await writeHeartbeat(chain);
-  if (!chain.configured()) return { sent: 0, failed: 0 };
+  if (!chain.configured()) {
+    await writeHeartbeatDue(chain, true);
+    return { sent: 0, failed: 0 };
+  }
 
   const queued = await db
     .select()
@@ -511,6 +524,11 @@ export async function processQueue(limit = PROCESS_BATCH): Promise<{ sent: numbe
     .where(eq(sends.status, "queued"))
     .orderBy(asc(sends.id))
     .limit(limit);
+
+  if (queued.length === 0) {
+    await writeHeartbeatDue(chain, false);
+    return { sent: 0, failed: 0 };
+  }
 
   let sent = 0;
   let failed = 0;
@@ -522,14 +540,6 @@ export async function processQueue(limit = PROCESS_BATCH): Promise<{ sent: numbe
       .returning();
     if (!claimed[0]) continue;
     try {
-      const balance = await chain.balanceLuna();
-      if (balance < BigInt(row.luna)) {
-        await db
-          .update(sends)
-          .set({ status: "queued", error: "insufficient_balance" })
-          .where(eq(sends.id, row.id));
-        continue;
-      }
       const result = await chain.send({
         to: row.toWallet,
         luna: row.luna,
@@ -539,6 +549,13 @@ export async function processQueue(limit = PROCESS_BATCH): Promise<{ sent: numbe
       sent += 1;
     } catch (err) {
       const message = err instanceof Error ? err.message : "send_failed";
+      if (message === "insufficient_balance") {
+        await db
+          .update(sends)
+          .set({ status: "queued", error: "insufficient_balance" })
+          .where(eq(sends.id, row.id));
+        break;
+      }
       await failOrRequeue(row, message);
       if (row.attempts + 1 >= MAX_ATTEMPTS) failed += 1;
     }
@@ -547,26 +564,43 @@ export async function processQueue(limit = PROCESS_BATCH): Promise<{ sent: numbe
   return { sent, failed };
 }
 
-let senderLoop: ReturnType<typeof setInterval> | null = null;
+let drainLoop: ReturnType<typeof setInterval> | null = null;
+let planLoop: ReturnType<typeof setInterval> | null = null;
+let draining = false;
 
 export function startSenderLoop(): void {
-  if (senderLoop) return;
-  const tick = async () => {
+  if (drainLoop || planLoop) return;
+  const drain = async () => {
+    if (draining) return;
+    draining = true;
     try {
-      await retryOnSqliteBusy(async () => {
-        await planSystemPings();
-        await processQueue();
-      });
+      await retryOnSqliteBusy(() => processQueue());
     } catch (err) {
       console.warn("[sender] tick failed", err);
+    } finally {
+      draining = false;
     }
   };
-  void tick();
-  senderLoop = setInterval(() => void tick(), 60_000);
+  const plan = async () => {
+    try {
+      await retryOnSqliteBusy(() => planSystemPings());
+    } catch (err) {
+      console.warn("[sender] plan failed", err);
+    }
+  };
+  void plan().then(() => drain());
+  drainLoop = setInterval(() => void drain(), DRAIN_INTERVAL_MS);
+  planLoop = setInterval(() => void plan(), PLAN_INTERVAL_MS);
 }
 
 export function stopSenderLoop(): void {
-  if (!senderLoop) return;
-  clearInterval(senderLoop);
-  senderLoop = null;
+  if (drainLoop) {
+    clearInterval(drainLoop);
+    drainLoop = null;
+  }
+  if (planLoop) {
+    clearInterval(planLoop);
+    planLoop = null;
+  }
+  draining = false;
 }
