@@ -203,10 +203,11 @@ export async function queueCreatorPings(opts: {
   toWallets: string[];
   message: string;
   at?: Date;
+  unlimited?: boolean;
 }): Promise<{ queued: number; memo: string }> {
   const wallets = [...new Set(opts.toWallets.map((w) => normalizeWallet(w)).filter(Boolean))];
   if (wallets.length === 0) return { queued: 0, memo: creatorPingMemo(opts.message) };
-  if (wallets.length > MAX_CREATOR_PING_TARGETS) throw new Error("too_many");
+  if (!opts.unlimited && wallets.length > MAX_CREATOR_PING_TARGETS) throw new Error("too_many");
   let queued = 0;
   let memo = creatorPingMemo(opts.message);
   for (const toWallet of wallets) {
@@ -242,7 +243,14 @@ export async function resolveCreatorPingTargets(opts: {
   toWallets?: string[];
   handle?: string;
   handles?: string[];
-}): Promise<string[]> {
+  everyone?: boolean;
+}): Promise<{ wallets: string[]; unlimited: boolean }> {
+  if (opts.everyone) {
+    const rows = await db.select({ walletAddress: users.walletAddress }).from(users);
+    const wallets = [...new Set(rows.map((r) => normalizeWallet(r.walletAddress)).filter(Boolean))];
+    if (wallets.length === 0) throw new Error("missing_fields");
+    return { wallets, unlimited: true };
+  }
   const wallets = [
     opts.toWallet,
     ...(opts.toWallets ?? []),
@@ -283,7 +291,7 @@ export async function resolveCreatorPingTargets(opts: {
     .from(users)
     .where(inArray(users.walletAddress, unique));
   if (existing.length !== unique.length) throw new Error("not_found");
-  return unique;
+  return { wallets: unique, unlimited: false };
 }
 
 export async function queueCreatorSelfPing(at?: Date): Promise<{ queued: boolean; memo: string }> {

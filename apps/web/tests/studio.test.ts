@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { CREATOR_TEST_PING_MESSAGE, CREATOR_WALLET, CREATOR_WALLET_DISPLAY } from "@cinima/shared";
 import {
+  creatorEveryonePingBody,
   creatorPingBody,
   creatorSelfPingRequest,
   decideStudioOpen,
+  everyoneCommandVisible,
   formatActiveMs,
   formatShareVisitCounts,
   studioEntryVisible,
@@ -98,6 +100,21 @@ describe("Studio Ping Handles", () => {
       toWallets: ["NQ05A", "NQ05C"],
       message: "watch this",
     });
+  });
+
+  it("builds an Everyone Creator Ping body", () => {
+    expect(creatorEveryonePingBody("watch this")).toEqual({
+      everyone: true,
+      message: "watch this",
+    });
+  });
+
+  it("shows the Everyone command as the Creator types it", () => {
+    expect(everyoneCommandVisible("eve")).toBe(true);
+    expect(everyoneCommandVisible("Everyone")).toBe(true);
+    expect(everyoneCommandVisible("e")).toBe(false);
+    expect(everyoneCommandVisible("alice")).toBe(false);
+    expect(everyoneCommandVisible("")).toBe(false);
   });
 });
 

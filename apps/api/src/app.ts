@@ -872,20 +872,24 @@ app.post("/api/sends", requirePay, requireAuth, async (c) => {
   const message = String(body.message ?? "").trim();
   if (!message) return c.json({ error: "missing_fields" }, 400);
   let toWallets: string[];
+  let unlimited = false;
   try {
-    toWallets = await resolveCreatorPingTargets({
+    const resolved = await resolveCreatorPingTargets({
       toWallet: body.toWallet,
       toWallets: body.toWallets,
       handle: body.handle,
       handles: body.handles,
+      everyone: body.everyone === true,
     });
+    toWallets = resolved.wallets;
+    unlimited = resolved.unlimited;
   } catch (err) {
     const code = err instanceof Error ? err.message : "not_found";
     if (code === "missing_fields") return c.json({ error: "missing_fields" }, 400);
     if (code === "too_many") return c.json({ error: "too_many" }, 400);
     return c.json({ error: "not_found" }, 404);
   }
-  const result = await queueCreatorPings({ toWallets, message });
+  const result = await queueCreatorPings({ toWallets, message, unlimited });
   return c.json({
     ok: true,
     queued: result.queued > 0,

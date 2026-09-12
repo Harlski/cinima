@@ -181,7 +181,7 @@ An automatic Ping after seven days without Presence, at most one per Handle per 
 _Avoid_: blast, campaign, Door alarm, Creator Ping
 
 **Creator Ping**:
-A Ping the Creator enqueues by choosing one or more Handles and a memo, or Ping me to themselves from Studio. Shown as "Cinima.app - {message}". Ping me uses "Cinima.app - Sender test". Not blocked by Quiet.
+A Ping the Creator enqueues by choosing one or more Handles and a memo, Everyone for all Handles, or Ping me to themselves from Studio. Shown as "Cinima.app - {message}". Ping me uses "Cinima.app - Sender test". Not blocked by Quiet.
 _Avoid_: admin send, blast, System Ping, notification
 
 **Creator**:

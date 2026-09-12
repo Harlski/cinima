@@ -8,6 +8,7 @@ const ACCEPTED_WAIT_LABELS: Record<string, string> = {
   "Thank all": "Thanking…",
   Remove: "Removing…",
   Send: "Sending…",
+  Everyone: "Sending…",
   "Ping me": "Pinging…",
 };
 

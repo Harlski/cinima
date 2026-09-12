@@ -98,3 +98,18 @@ export function creatorPingBody(
     message,
   };
 }
+
+/** Studio command: Ping every Handle with the same memo. */
+export function creatorEveryonePingBody(message: string): { everyone: true; message: string } {
+  return { everyone: true, message };
+}
+
+/** Typeahead shows Everyone when the query is a prefix of the command. */
+export function everyoneCommandVisible(query: string): boolean {
+  const q = String(query ?? "")
+    .replace(/^@/, "")
+    .trim()
+    .toLowerCase();
+  if (q.length < 3) return false;
+  return "everyone".startsWith(q);
+}

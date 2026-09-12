@@ -14,6 +14,7 @@ describe("accepted wait labels", () => {
     expect(acceptedWaitLabel("Thank all", false)).toBe("Thank all");
     expect(acceptedWaitLabel("Remove", false)).toBe("Remove");
     expect(acceptedWaitLabel("Send", false)).toBe("Send");
+    expect(acceptedWaitLabel("Everyone", false)).toBe("Everyone");
     expect(acceptedWaitLabel("Ping me", false)).toBe("Ping me");
     expect(acceptedWaitLabel("Follow", false)).toBe("Follow");
   });
@@ -27,6 +28,7 @@ describe("accepted wait labels", () => {
     expect(acceptedWaitLabel("Thank all", true)).toBe("Thanking…");
     expect(acceptedWaitLabel("Remove", true)).toBe("Removing…");
     expect(acceptedWaitLabel("Send", true)).toBe("Sending…");
+    expect(acceptedWaitLabel("Everyone", true)).toBe("Sending…");
     expect(acceptedWaitLabel("Ping me", true)).toBe("Pinging…");
   });
 

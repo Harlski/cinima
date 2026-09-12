@@ -371,6 +371,22 @@ describe("Sends", () => {
     expect(body.memo).toBe("Cinima.app - watch this");
   });
 
+  it("lets the Creator enqueue a Ping to Everyone", async () => {
+    const people = await db.select({ walletAddress: schema.users.walletAddress }).from(schema.users);
+    const res = await app.fetch(
+      new Request("http://test/api/sends", {
+        method: "POST",
+        headers: creatorHeaders,
+        body: JSON.stringify({ everyone: true, message: "hello all" }),
+      })
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { queued: boolean; queuedCount: number; memo: string };
+    expect(body.queued).toBe(true);
+    expect(body.queuedCount).toBe(people.length);
+    expect(body.memo).toBe("Cinima.app - hello all");
+  });
+
   it("suggests Handles as the Creator types", async () => {
     const res = await app.fetch(
       new Request("http://test/api/sends/handles?q=peera", { headers: creatorHeaders })

@@ -420,6 +420,7 @@ export type CreatorPingRequest = {
   toWallets?: string[];
   handle?: string;
   handles?: string[];
+  everyone?: boolean;
 };
 
 export type CreatorPingResponse = {

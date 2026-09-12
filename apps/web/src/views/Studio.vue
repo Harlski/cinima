@@ -238,7 +238,16 @@
                 @keydown.enter.prevent="pickFirstPingSuggestion"
                 @keydown.escape="pingSuggestions = []"
               />
-              <ul v-if="pingSuggestions.length" class="handle-suggest" role="listbox">
+              <ul
+                v-if="pingSuggestions.length || showEveryoneCommand"
+                class="handle-suggest"
+                role="listbox"
+              >
+                <li v-if="showEveryoneCommand" role="option">
+                  <button type="button" class="handle-suggest-btn" @click="pingEveryone">
+                    Everyone
+                  </button>
+                </li>
                 <li v-for="person in pingSuggestions" :key="person.walletAddress" role="option">
                   <button type="button" class="handle-suggest-btn" @click="selectPingHandle(person)">
                     <Identicon :address="person.walletAddress" :size="32" :alt="person.handle || ''" />
@@ -260,6 +269,15 @@
               :aria-busy="pingBusy === 'send'"
             >
               {{ acceptedWaitLabel("Send", pingBusy === "send") }}
+            </button>
+            <button
+              type="button"
+              class="nq-pill-blue"
+              :disabled="pingBusy !== null || !pingMessage.trim()"
+              :aria-busy="pingBusy === 'everyone'"
+              @click="pingEveryone"
+            >
+              {{ acceptedWaitLabel("Everyone", pingBusy === "everyone") }}
             </button>
             <button
               type="button"
@@ -311,7 +329,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { RouterLink, useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
 import { useAuthStore } from "@/stores/auth";
@@ -319,8 +337,10 @@ import Identicon from "@/components/Identicon.vue";
 import LoadingWait from "@/components/LoadingWait.vue";
 import { acceptedWaitLabel } from "@/lib/acceptedWait";
 import {
+  creatorEveryonePingBody,
   creatorPingBody,
   decideStudioOpen,
+  everyoneCommandVisible,
   formatActiveMs,
   formatShareVisitCounts,
   studioProfileLocation,
@@ -346,7 +366,7 @@ const pingQuery = ref("");
 const pingSelected = ref<PingHandleMatch[]>([]);
 const pingSuggestions = ref<PingHandleMatch[]>([]);
 const pingMessage = ref("");
-const pingBusy = ref<"send" | "self" | null>(null);
+const pingBusy = ref<"send" | "self" | "everyone" | null>(null);
 const pingError = ref<string | null>(null);
 const pingMemo = ref<string | null>(null);
 let pingSuggestTimer: ReturnType<typeof setTimeout> | null = null;
@@ -358,6 +378,8 @@ function label(row: StudioPersonRef): string {
 function profileTo(wallet: string) {
   return studioProfileLocation(wallet);
 }
+
+const showEveryoneCommand = computed(() => everyoneCommandVisible(pingQuery.value));
 
 function when(iso: string): string {
   const d = new Date(iso);
@@ -443,6 +465,10 @@ function removePingHandle(wallet: string) {
 }
 
 function pickFirstPingSuggestion() {
+  if (showEveryoneCommand.value) {
+    void pingEveryone();
+    return;
+  }
   const first = pingSuggestions.value[0];
   if (first) {
     selectPingHandle(first);
@@ -466,6 +492,35 @@ async function sendPing() {
     pingMemo.value = result.memo;
     pingMessage.value = "";
     pingSelected.value = [];
+    await loadStudio();
+  } catch (err) {
+    pingError.value = err instanceof Error ? err.message : "Could not queue Ping.";
+  } finally {
+    pingBusy.value = null;
+  }
+}
+
+async function pingEveryone() {
+  const message = pingMessage.value.trim();
+  if (!message) {
+    pingError.value = "Add a message to Ping Everyone.";
+    return;
+  }
+  pingBusy.value = "everyone";
+  pingError.value = null;
+  pingMemo.value = null;
+  try {
+    const result = await request<{ queued: boolean; queuedCount?: number; memo: string }>("/sends", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(creatorEveryonePingBody(message)),
+    });
+    pingMemo.value =
+      result.queuedCount != null ? `Queued ${result.queuedCount}: ${result.memo}` : result.memo;
+    pingMessage.value = "";
+    pingQuery.value = "";
+    pingSelected.value = [];
+    pingSuggestions.value = [];
     await loadStudio();
   } catch (err) {
     pingError.value = err instanceof Error ? err.message : "Could not queue Ping.";
