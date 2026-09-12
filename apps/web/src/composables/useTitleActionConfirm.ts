@@ -52,7 +52,7 @@ export function useTitleActionConfirm() {
     const { kind, titleName: name } = pendingConfirm.value;
     if (kind === "unfavorite") return removeFromFavoritesMessage(name);
     if (kind === "favorite-after-leave") return favoriteAfterWatchlistLeaveMessage(name);
-    return removeFromWatchlistMessage(name);
+    return removeFromWatchlistMessage(pendingConfirm.value.title ? null : name);
   });
 
   function cancelConfirm() {

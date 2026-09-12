@@ -31,6 +31,7 @@ describe("Cue lab", () => {
       "tour-skip-notice",
       "tour-start",
       "confirm",
+      "watchlist-leave",
       "pay-only-gate",
       "pay-title",
       "share-sheet",

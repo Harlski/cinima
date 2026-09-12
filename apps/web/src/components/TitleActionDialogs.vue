@@ -2,6 +2,7 @@
   <WatchlistLeaveDialog
     v-if="pending?.kind === 'watchlist'"
     :message="message"
+    :title="pending.title"
     :reason="reason"
     @update:reason="$emit('update:reason', $event)"
     @cancel="$emit('cancel')"
@@ -16,13 +17,13 @@
 </template>
 
 <script setup lang="ts">
-import type { WatchlistLeaveReason } from "@cinima/shared";
+import type { TitleSummary, WatchlistLeaveReason } from "@cinima/shared";
 import type { TitleActionConfirmKind } from "@/composables/useTitleActionConfirm";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import WatchlistLeaveDialog from "@/components/WatchlistLeaveDialog.vue";
 
 defineProps<{
-  pending: { kind: TitleActionConfirmKind } | null;
+  pending: { kind: TitleActionConfirmKind; title?: TitleSummary } | null;
   message: string;
   reason: WatchlistLeaveReason | null;
 }>();

@@ -21,6 +21,7 @@ export const CUE_LAB_OVERLAYS = [
   { id: "tour-skip-notice", label: "Tour skipped notice", group: "Guided tour" },
   { id: "tour-start", label: "Start tour", group: "Guided tour" },
   { id: "confirm", label: "Confirm dialog", group: "Modals" },
+  { id: "watchlist-leave", label: "Watchlist leave", group: "Modals" },
   { id: "pay-only-gate", label: "Pay-only gate", group: "Modals" },
   { id: "pay-title", label: "Title gate", group: "Modals" },
   { id: "share-sheet", label: "Share sheet", group: "Modals" },

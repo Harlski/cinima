@@ -71,6 +71,16 @@
       @confirm="confirmOpen = false"
     />
 
+    <WatchlistLeaveDialog
+      v-if="leaveOpen"
+      :message="leaveMessage"
+      :title="sampleTitle"
+      :reason="leaveReason"
+      @update:reason="leaveReason = $event"
+      @cancel="leaveOpen = false"
+      @confirm="leaveOpen = false"
+    />
+
     <PayOnlyGateModal
       v-if="payGateOpen"
       :already-installed-url="payUrl"
@@ -98,8 +108,14 @@
 
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from "vue";
-import { achievementTitle, CREATOR_WALLET_DISPLAY, type AchievementKind } from "@cinima/shared";
+import {
+  achievementTitle,
+  CREATOR_WALLET_DISPLAY,
+  type AchievementKind,
+  type WatchlistLeaveReason,
+} from "@cinima/shared";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
+import WatchlistLeaveDialog from "@/components/WatchlistLeaveDialog.vue";
 import PayOnlyGateModal from "@/components/PayOnlyGateModal.vue";
 import PayTitleModal from "@/components/PayTitleModal.vue";
 import RecommendCue from "@/components/RecommendCue.vue";
@@ -116,6 +132,7 @@ import {
 } from "@/lib/guidedTour";
 import { payOpenHttpsUrl } from "@/lib/payLinks";
 import { siteOrigin } from "@/lib/siteMeta";
+import { removeFromWatchlistMessage } from "@/lib/titleActionLabels";
 import { WELCOME_HOLD_MS, welcomeMessage } from "@/lib/welcome";
 import { useAuthStore } from "@/stores/auth";
 import { useGuidedTourStore } from "@/stores/guidedTour";
@@ -131,11 +148,14 @@ const sampleTitle = TOUR_COMMUNITY_FALLBACK_TITLE;
 const payUrl = payOpenHttpsUrl();
 const shareUrl = `${siteOrigin}/ada/t/movie/550`;
 const confirmMessage = "Remove Fight Club from Favorites?";
+const leaveMessage = removeFromWatchlistMessage();
 
 const recommendCueOpen = ref(false);
 const welcomeOpen = ref(false);
 const welcomeReturning = ref(false);
 const confirmOpen = ref(false);
+const leaveOpen = ref(false);
+const leaveReason = ref<WatchlistLeaveReason | null>(null);
 const payGateOpen = ref(false);
 const payTitleOpen = ref(false);
 const shareOpen = ref(false);
@@ -163,6 +183,8 @@ function closeLocalOverlays() {
   recommendCueOpen.value = false;
   welcomeOpen.value = false;
   confirmOpen.value = false;
+  leaveOpen.value = false;
+  leaveReason.value = null;
   payGateOpen.value = false;
   payTitleOpen.value = false;
   shareOpen.value = false;
@@ -230,6 +252,11 @@ function previewOverlay(id: CueLabOverlayId) {
   }
   if (id === "confirm") {
     confirmOpen.value = true;
+    return;
+  }
+  if (id === "watchlist-leave") {
+    leaveReason.value = null;
+    leaveOpen.value = true;
     return;
   }
   if (id === "pay-only-gate") {

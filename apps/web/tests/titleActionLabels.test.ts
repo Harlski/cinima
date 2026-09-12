@@ -26,4 +26,8 @@ describe("Watchlist leave copy", () => {
     expect(removeFromWatchlistMessage("Inception")).toBe("Remove Inception from Watchlist?");
     expect(favoriteAfterWatchlistLeaveMessage("Inception")).toBe("Favorite Inception?");
   });
+
+  it("omits the Title name when the leave dialog already shows a title card", () => {
+    expect(removeFromWatchlistMessage()).toBe("Remove from Watchlist?");
+  });
 });

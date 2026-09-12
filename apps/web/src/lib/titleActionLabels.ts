@@ -4,8 +4,9 @@ export function watchlistButtonLabel(watchlisted: boolean): string {
   return watchlisted ? "In Watchlist" : "Add to Watchlist";
 }
 
-export function removeFromWatchlistMessage(titleName: string): string {
-  return `Remove ${titleName} from Watchlist?`;
+export function removeFromWatchlistMessage(titleName?: string | null): string {
+  const name = titleName?.trim();
+  return name ? `Remove ${name} from Watchlist?` : "Remove from Watchlist?";
 }
 
 export function removeFromFavoritesMessage(titleName: string): string {
