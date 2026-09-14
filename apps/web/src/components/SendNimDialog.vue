@@ -255,7 +255,7 @@ async function onSend() {
   place-items: center;
   padding: 1.25rem;
   padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
-  background: color-mix(in oklch, var(--colors-neutral) 28%, transparent);
+  background: transparent;
 }
 
 .send-nim-dialog {
@@ -410,7 +410,7 @@ async function onSend() {
 .send-nim-note-list {
   position: absolute;
   z-index: 5;
-  top: calc(100% + 0.25rem);
+  bottom: calc(100% + 0.25rem);
   left: 0;
   right: 0;
   list-style: none;

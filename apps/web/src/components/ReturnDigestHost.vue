@@ -170,7 +170,7 @@ onUnmounted(clearTimers);
   place-items: center;
   padding: 1.25rem;
   padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
-  background: color-mix(in oklch, var(--colors-neutral) 40%, transparent);
+  background: transparent;
 }
 
 .digest-panel {

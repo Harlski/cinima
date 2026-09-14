@@ -123,7 +123,7 @@ defineEmits<{
     calc(var(--vv-offset-top, 0px) + var(--app-brand-row, 2.75rem) + 0.75rem)
     1.25rem
     calc(var(--bottom-tabs-inset, 5.5rem) + 0.75rem);
-  background: color-mix(in oklch, var(--colors-neutral) 28%, transparent);
+  background: transparent;
   box-sizing: border-box;
 }
 

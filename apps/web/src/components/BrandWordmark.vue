@@ -53,7 +53,7 @@ const sizeClass = computed(() => `brand-wordmark--${props.size}`);
 .brand-wordmark {
   display: inline-flex;
   align-items: baseline;
-  font-family: var(--font, "Mulish", system-ui, sans-serif);
+  font-family: var(--font, "Muli", "Mulish", system-ui, sans-serif);
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1;

@@ -217,7 +217,7 @@ function onTriggerKeydown(event: KeyboardEvent) {
   place-items: center;
   padding: 1.25rem;
   padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
-  background: color-mix(in oklch, var(--colors-neutral) 28%, transparent);
+  background: transparent;
 }
 
 .confirm-dialog {
@@ -367,7 +367,7 @@ function onTriggerKeydown(event: KeyboardEvent) {
 .reason-list {
   position: absolute;
   z-index: 3;
-  top: 0;
+  bottom: calc(100% + 0.25rem);
   left: 0;
   right: 0;
   list-style: none;

@@ -217,9 +217,7 @@ watch(
   display: grid;
   place-items: center;
   padding: 1.25rem;
-  background: color-mix(in oklch, var(--colors-neutral) 40%, transparent);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: transparent;
 }
 
 .tour-offer-card {
@@ -232,25 +230,6 @@ watch(
   padding: 1.35rem 1.25rem 1.2rem;
   text-align: center;
   background: var(--bg-surface, var(--colors-neutral-50));
-}
-
-.tour-offer-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  border-radius: inherit;
-  background-image: url("../assets/hex-pattern.svg");
-  background-repeat: repeat;
-  background-size: 5.25rem 4.5rem;
-  background-position: 0 0;
-  opacity: 0.07;
-}
-
-.tour-offer-card > * {
-  position: relative;
-  z-index: 1;
 }
 
 .tour-offer-card h2 {
@@ -272,9 +251,7 @@ watch(
   display: grid;
   place-items: center;
   padding: 1.25rem;
-  background: color-mix(in oklch, var(--colors-neutral) 40%, transparent);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: transparent;
 }
 
 .tour-done-card {
@@ -287,26 +264,10 @@ watch(
   padding: 1.35rem 1.25rem 1.2rem;
   text-align: center;
   background: var(--bg-surface, var(--colors-neutral-50));
-  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.45);
-}
-
-.tour-done-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  border-radius: inherit;
-  background-image: url("../assets/hex-pattern.svg");
-  background-repeat: repeat;
-  background-size: 5.25rem 4.5rem;
-  background-position: 0 0;
-  opacity: 0.07;
-}
-
-.tour-done-card > * {
-  position: relative;
-  z-index: 1;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.2),
+    0 0 18px rgba(255, 255, 255, 0.42),
+    0 0 44px rgba(255, 255, 255, 0.2);
 }
 
 .tour-done-card h2 {

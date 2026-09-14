@@ -32,4 +32,11 @@ describe("index.html site metadata", () => {
     expect(html).toContain(`name="theme-color" content="${SITE_THEME_COLOR}"`);
     expect(html).toContain('rel="manifest" href="/site.webmanifest"');
   });
+
+  it("preloads self-hosted Muli and does not fetch Google Fonts", () => {
+    const html = readFileSync(path.resolve(__dirname, "../index.html"), "utf8");
+    expect(html).toContain('href="/fonts/mulish-latin-wght-normal.woff2"');
+    expect(html).not.toContain("fonts.googleapis.com");
+    expect(html).not.toContain("fonts.gstatic.com");
+  });
 });

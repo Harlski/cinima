@@ -569,7 +569,7 @@ const activeRow = computed(() => p.rows[selectedRowIdx.value]);
   overflow: auto;
   background: #0a0a0f;
   color: #fff;
-  font-family: Mulish, ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font);
 }
 
 .lab-header {

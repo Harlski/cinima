@@ -5,7 +5,7 @@
 
 :root {
   color-scheme: dark;
-  --nq-font-sans: "Mulish", ui-sans-serif, system-ui, sans-serif;
+  --nq-font-sans: "Muli", "Mulish", ui-sans-serif, system-ui, sans-serif;
   --nq-ease: cubic-bezier(0.25, 0, 0, 1);
   --bg-primary: var(--colors-neutral-0);
   --bg-surface: var(--colors-neutral-50);
@@ -34,6 +34,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    font-family: inherit;
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
@@ -73,6 +74,7 @@ body {
 
 html {
   color-scheme: dark;
+  font-family: var(--font);
 }
 
 body {
@@ -92,6 +94,7 @@ body {
   width: 100%;
   overflow: hidden;
   overscroll-behavior: none;
+  font-family: var(--font);
 }
 
 .app-column {
@@ -291,6 +294,90 @@ a.nq-pill-orange:hover {
     transform: translateY(0);
     opacity: 1;
   }
+}
+
+.confirm-modal,
+.send-nim-modal,
+.peek-modal,
+.x-modal,
+.favoriters-modal,
+.find-modal,
+.share-modal,
+.pay-only-modal,
+.gate-modal,
+.digest-modal,
+.tour-offer,
+.tour-done {
+  background: transparent;
+}
+
+.confirm-modal > .nq-card,
+.send-nim-modal > .nq-card,
+.peek-modal > .nq-card,
+.x-modal > .nq-card,
+.favoriters-modal > .nq-card,
+.find-modal > .nq-card,
+.share-modal > .nq-card,
+.pay-only-modal > .nq-card,
+.gate-modal > .nq-card,
+.digest-modal > .digest-panel,
+.tour-offer > .tour-offer-card,
+.tour-done > .tour-done-card {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.2),
+    0 0 18px rgba(255, 255, 255, 0.42),
+    0 0 44px rgba(255, 255, 255, 0.2);
+}
+
+.confirm-modal > .nq-card::before,
+.send-nim-modal > .nq-card::before,
+.peek-modal > .nq-card::before,
+.x-modal > .nq-card::before,
+.favoriters-modal > .nq-card::before,
+.find-modal > .nq-card::before,
+.share-modal > .nq-card::before,
+.pay-only-modal > .nq-card::before,
+.gate-modal > .nq-card::before,
+.digest-modal > .digest-panel::before,
+.tour-offer > .tour-offer-card::before,
+.tour-done > .tour-done-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background-color: color-mix(in oklch, var(--gold) 8%, transparent);
+  background-image: url("./hex-pattern.svg");
+  background-repeat: repeat;
+  background-size: 5.25rem 4.5rem;
+  background-position: 50% 0;
+  opacity: 0.4;
+  mix-blend-mode: screen;
+  mask-image:
+    radial-gradient(ellipse 80% 70% at 12% 8%, #000 0%, transparent 72%),
+    radial-gradient(ellipse 70% 55% at 96% 28%, #000 0%, transparent 68%),
+    radial-gradient(ellipse 90% 60% at 48% 108%, #000 0%, transparent 74%);
+  -webkit-mask-image:
+    radial-gradient(ellipse 80% 70% at 12% 8%, #000 0%, transparent 72%),
+    radial-gradient(ellipse 70% 55% at 96% 28%, #000 0%, transparent 68%),
+    radial-gradient(ellipse 90% 60% at 48% 108%, #000 0%, transparent 74%);
+}
+
+.confirm-modal > .nq-card > *,
+.send-nim-modal > .nq-card > *,
+.peek-modal > .nq-card > *,
+.x-modal > .nq-card > *,
+.favoriters-modal > .nq-card > *,
+.find-modal > .nq-card > *,
+.share-modal > .nq-card > *,
+.pay-only-modal > .nq-card > *,
+.gate-modal > .nq-card > *,
+.digest-modal > .digest-panel > *,
+.tour-offer > .tour-offer-card > *,
+.tour-done > .tour-done-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .fade-enter-active,

@@ -602,7 +602,7 @@ onUnmounted(() => {
   display: grid;
   place-items: center;
   padding: 1.25rem;
-  background: color-mix(in oklch, var(--colors-neutral) 28%, transparent);
+  background: transparent;
 }
 
 .x-dialog {
