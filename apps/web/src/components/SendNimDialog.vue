@@ -67,7 +67,7 @@
                 @click.stop="chooseNote(note.id)"
               >
                 <span>{{ note.label }}</span>
-                <span class="send-nim-cost">{{ costLabel }}</span>
+                <span class="send-nim-cost">{{ userSendNoteCostLabel(note.id) }}</span>
               </li>
             </ul>
           </div>
@@ -106,9 +106,9 @@
 import { computed, ref, useId, watch } from "vue";
 import { storeToRefs } from "pinia";
 import {
-  USER_SEND_COST_LABEL,
   USER_SEND_CTA,
   USER_SEND_NOTES,
+  userSendNoteCostLabel,
   userSendNoteLabel,
   type UserSendNoteId,
 } from "@cinima/shared";
@@ -121,9 +121,9 @@ const store = useUserSendStore();
 const { pending, busy, error, noteId } = storeToRefs(store);
 
 const userSendCta = USER_SEND_CTA;
-const costLabel = USER_SEND_COST_LABEL;
 const cancelledCopy = PAY_CANCELLED_MESSAGE;
 const notes = USER_SEND_NOTES;
+const costLabel = computed(() => userSendNoteCostLabel(noteId.value));
 const infoCopy =
   "If this Handle has notifications enabled, they may see this message.";
 
@@ -390,6 +390,8 @@ async function onSend() {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
+  max-height: min(16rem, 45vh);
+  overflow-y: auto;
   border-radius: 0.5rem;
   border: 1.5px solid var(--border);
   background: var(--bg-primary);

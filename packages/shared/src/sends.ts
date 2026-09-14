@@ -77,8 +77,10 @@ export const USER_SEND_CTA = "Send Custom Message";
 
 /** Cost shown on the message picker. Paid from the thanker's wallet. */
 export const USER_SEND_COST_LABEL = `${USER_SEND_NIM} NIM`;
+export const USER_SEND_FREE_LABEL = "Free";
 
 export const USER_SEND_NOTES = [
+  { id: "thanks", label: "Thanks" },
   { id: "thanks-rec", label: "Thanks for the rec" },
   { id: "loved-take", label: "Loved this take" },
   { id: "watchlist", label: "Going on my Watchlist" },
@@ -88,14 +90,27 @@ export const USER_SEND_NOTES = [
 
 export type UserSendNoteId = (typeof USER_SEND_NOTES)[number]["id"];
 
-export const DEFAULT_USER_SEND_NOTE_ID: UserSendNoteId = "thanks-rec";
+export const DEFAULT_USER_SEND_NOTE_ID: UserSendNoteId = "thanks";
 
 export function isUserSendNoteId(value: string): value is UserSendNoteId {
   return USER_SEND_NOTES.some((note) => note.id === value);
 }
 
-export function defaultUserSendNoteId(kind: "title" | "comment"): UserSendNoteId {
-  return kind === "comment" ? "loved-take" : DEFAULT_USER_SEND_NOTE_ID;
+export function defaultUserSendNoteId(_kind?: "title" | "comment"): UserSendNoteId {
+  return DEFAULT_USER_SEND_NOTE_ID;
+}
+
+/** Demo / missing-memo fallback for a paid User Send. */
+export function defaultPaidUserSendNoteId(kind: "title" | "comment"): UserSendNoteId {
+  return kind === "comment" ? "loved-take" : "thanks-rec";
+}
+
+export function userSendNoteLuna(id: UserSendNoteId): number {
+  return id === "thanks" ? 0 : USER_SEND_LUNA;
+}
+
+export function userSendNoteCostLabel(id: UserSendNoteId): string {
+  return userSendNoteLuna(id) > 0 ? USER_SEND_COST_LABEL : USER_SEND_FREE_LABEL;
 }
 
 export function userSendNoteLabel(id: UserSendNoteId): string {
@@ -117,10 +132,10 @@ export function isUserSendMemo(memo: string): boolean {
   return USER_SEND_NOTES.some((note) => userSendMemoForNote(note.id) === text);
 }
 
-/** Persist a catalog note; demo hashes fall back to the kind default. */
+/** Persist a catalog note; demo hashes fall back to a paid note for that kind. */
 export function userSendMemoOrDefault(memo: string, kind: "title" | "comment"): string {
   if (isUserSendMemo(memo)) return memo;
-  return userSendMemoForNote(defaultUserSendNoteId(kind));
+  return userSendMemoForNote(defaultPaidUserSendNoteId(kind));
 }
 
 /** Me Guestbook heading: cinema guestbook as a Handle's received history. */

@@ -7,6 +7,7 @@ import {
   parseMemo,
 } from "@cinima/shared";
 import { config } from "../lib/config.js";
+import { nimiqRpcCall } from "../lib/nimiqRpc.js";
 
 export type VerifiedTx = {
   hash: string;
@@ -139,46 +140,59 @@ export async function verifyUserSend(opts: {
   };
 }
 
-async function fetchTx(
-  hash: string
-): Promise<{ from: string; to: string; valueLuna: number; memo: string } | null> {
-  // NimiqWatch-style REST; degrade gracefully if unavailable
+type ChainTx = { from: string; to: string; valueLuna: number; memo: string };
+
+function pickAddress(raw: unknown): string {
+  if (typeof raw === "string") return raw;
+  if (raw && typeof raw === "object" && "address" in raw) {
+    return String((raw as { address: unknown }).address ?? "");
+  }
+  return "";
+}
+
+/** NimiqWatch wraps txs as `{ data, metadata }`; Albatross memos live in recipientData. */
+export function readChainTx(raw: unknown): ChainTx | null {
+  if (!raw || typeof raw !== "object") return null;
+  let rec = raw as Record<string, unknown>;
+  const nested = rec.data;
+  if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+    const inner = nested as Record<string, unknown>;
+    if (
+      inner.to != null ||
+      inner.toAddress != null ||
+      inner.to_address != null ||
+      inner.recipient != null ||
+      inner.from != null
+    ) {
+      rec = inner;
+    }
+  }
+  const to = pickAddress(rec.to_address ?? rec.toAddress ?? rec.to ?? rec.recipient);
+  const from = pickAddress(rec.from_address ?? rec.fromAddress ?? rec.from ?? rec.sender);
+  if (!to) return null;
+  return {
+    from,
+    to,
+    valueLuna: Number(rec.value ?? rec.amount ?? 0),
+    memo: decodeMemo(
+      rec.recipientData ?? rec.recipient_data ?? rec.data ?? rec.extraData ?? rec.message ?? ""
+    ),
+  };
+}
+
+async function fetchTx(hash: string): Promise<ChainTx | null> {
   try {
     const res = await fetch(`${config.nimiqRpcUrl.replace(/\/$/, "")}/tx/${hash}`);
     if (res.ok) {
-      const data = (await res.json()) as Record<string, unknown>;
-      return {
-        from: String(data.from_address ?? data.from ?? data.sender ?? ""),
-        to: String(data.to_address ?? data.to ?? data.recipient ?? ""),
-        valueLuna: Number(data.value ?? data.amount ?? 0),
-        memo: decodeMemo(data.data ?? data.extraData ?? data.message ?? ""),
-      };
+      const parsed = readChainTx(await res.json());
+      if (parsed) return parsed;
     }
   } catch {
     /* fall through */
   }
 
   try {
-    const res = await fetch(config.nimiqRpcUrl, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "getTransactionByHash",
-        params: [hash],
-      }),
-    });
-    if (!res.ok) return null;
-    const body = (await res.json()) as { result?: Record<string, unknown> };
-    const r = body.result;
-    if (!r) return null;
-    return {
-      from: String(r.from ?? r.sender ?? ""),
-      to: String(r.to ?? r.recipient ?? ""),
-      valueLuna: Number(r.value ?? 0),
-      memo: decodeMemo(r.data ?? r.extraData ?? ""),
-    };
+    return readChainTx(await nimiqRpcCall(config.nimiqRpcUrl, "getTransactionByHash", [hash]));
   } catch {
     return null;
   }

@@ -31,6 +31,8 @@ import {
   userSendMemo,
   userSendMemoForNote,
   userSendMemoOrDefault,
+  userSendNoteCostLabel,
+  userSendNoteLuna,
   USER_SEND_NOTES,
   watchlistPingMemo,
 } from "@cinima/shared";
@@ -62,18 +64,29 @@ describe("Send memos", () => {
   });
 
   it("names a picked note on a User Send", () => {
-    expect(userSendMemo("Thanks for the rec")).toBe("Thanks for the rec");
+    expect(userSendMemo("Thanks")).toBe("Thanks");
+    expect(userSendMemoForNote("thanks")).toBe("Thanks");
     expect(userSendMemoForNote("thanks-rec")).toBe("Thanks for the rec");
     expect(userSendMemoForNote("loved-take")).toBe("Loved this take");
+    expect(isUserSendMemo("Thanks")).toBe(true);
     expect(isUserSendMemo("Thanks for the rec")).toBe(true);
     expect(isUserSendMemo("Loved this take")).toBe(true);
     expect(isUserSendMemo("alice thanked you on Cinima")).toBe(false);
     expect(isUserSendMemo("alice sent 1 NIM on Cinima")).toBe(false);
     expect(USER_SEND_LUNA).toBe(100_000);
     expect(USER_SEND_COST_LABEL).toBe("1 NIM");
-    expect(USER_SEND_NOTES).toHaveLength(5);
-    expect(defaultUserSendNoteId("title")).toBe("thanks-rec");
-    expect(defaultUserSendNoteId("comment")).toBe("loved-take");
+    expect(USER_SEND_NOTES[0]).toEqual({ id: "thanks", label: "Thanks" });
+    expect(USER_SEND_NOTES).toHaveLength(6);
+    expect(defaultUserSendNoteId("title")).toBe("thanks");
+    expect(defaultUserSendNoteId("comment")).toBe("thanks");
+    expect(userSendNoteLuna("thanks")).toBe(0);
+    expect(userSendNoteCostLabel("thanks")).toBe("Free");
+    expect(userSendNoteLuna("thanks-rec")).toBe(USER_SEND_LUNA);
+    expect(userSendNoteCostLabel("loved-take")).toBe("1 NIM");
+    for (const note of USER_SEND_NOTES) {
+      if (note.id === "thanks") continue;
+      expect(userSendNoteLuna(note.id)).toBe(USER_SEND_LUNA);
+    }
     expect(userSendMemoOrDefault("demo-user-send", "title")).toBe("Thanks for the rec");
     expect(userSendMemoOrDefault("demo-user-send", "comment")).toBe("Loved this take");
     expect(userSendMemoOrDefault("Thanks for the rec", "comment")).toBe("Thanks for the rec");

@@ -3,7 +3,9 @@ import { ref } from "vue";
 import {
   USER_SEND_LUNA,
   defaultUserSendNoteId,
+  formatWallet,
   userSendMemoForNote,
+  userSendNoteLuna,
   type UserSendNoteId,
 } from "@cinima/shared";
 import {
@@ -63,7 +65,7 @@ export const useUserSendStore = defineStore("userSend", () => {
     }
     if (!isNimiqPay()) throw new Error("Open Cinima inside Nimiq Pay to Send");
     return sendPayTransaction({
-      recipient: toWallet,
+      recipient: formatWallet(toWallet),
       valueLuna: USER_SEND_LUNA,
       data: memo,
     });
@@ -72,7 +74,7 @@ export const useUserSendStore = defineStore("userSend", () => {
   async function confirm(): Promise<boolean> {
     const current = pending.value;
     if (!current || busy.value) return false;
-    if (previewing.value) {
+    if (previewing.value || userSendNoteLuna(noteId.value) <= 0) {
       pending.value = null;
       previewing.value = false;
       error.value = null;
