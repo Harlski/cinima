@@ -265,12 +265,14 @@ import {
 import type { TitleSummary } from "@cinima/shared";
 import PosterImg from "@/components/PosterImg.vue";
 import { useTitleActionConfirm } from "@/composables/useTitleActionConfirm";
+import { useTitleFlightStore } from "@/stores/titleFlight";
 
 const route = useRoute();
 const router = useRouter();
 const favoritesStore = useFavoritesStore();
 const watchlistStore = useWatchlistStore();
 const catalogStore = useCatalogStore();
+const titleFlight = useTitleFlightStore();
 const {
   pendingConfirm,
   confirmMessage,
@@ -533,20 +535,37 @@ function findTitle(titleId: string): TitleSummary | Pick<TitleSummary, "title"> 
   );
 }
 
-const toggleFavorite = async (titleId: string) => {
+const toggleFavorite = async (titleId: string, origin?: MouseEvent) => {
+  const found = findTitle(titleId);
   await requestToggleFavorite(titleId, {
-    title: findTitle(titleId),
+    title: found,
     isFavorited: favoritesStore.isFavorite(titleId),
+    onAdded: () => {
+      if (found) {
+        titleFlight.play({
+          kind: "favorite",
+          title: found,
+          origin: origin ?? null,
+        });
+      }
+    },
   });
 };
 
-const toggleWatchlist = async (title: TitleSummary) => {
+const toggleWatchlist = async (title: TitleSummary, origin?: MouseEvent) => {
   if (!watchlistStore.isOnWatchlist(title.id)) {
     await catalogStore.recordSearchOpen(title.id);
   }
   await requestToggleWatchlist(title.id, {
     title,
     isWatchlisted: watchlistStore.isOnWatchlist(title.id),
+    onAdded: () => {
+      titleFlight.play({
+        kind: "watchlist",
+        title,
+        origin: origin ?? null,
+      });
+    },
   });
 };
 

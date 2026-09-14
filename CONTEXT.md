@@ -229,8 +229,12 @@ A gold bar that slides down from the Cinima brand header when the signed-in Hand
 _Avoid_: toast, modal, floating gold card, confetti blast, blocking dialog, slide-up above the tab bar, surface-colored Achievement bar, gold glow, white type on gold
 
 **Recommend cue**:
-A solid bar that slides up above the tab bar after a new Recommend outside the Guided tour. Names the title and offers Share. Dismissing it does not share.
+A solid bar that slides up above the tab bar after a new Recommend outside the Guided tour. Names the title and offers Share. Dismissing it does not share. Waits until Title flight has landed.
 _Avoid_: auto-opening Title Share, modal, Marquee
+
+**Title flight**:
+The poster of a newly Watchlisted, Favorited, or Recommended Title flying to the tab that now holds it: Watchlist tab for a Watchlist add, Me for Favorite and Recommend. Recommend stages the gold hexagon and outer glow on the poster before that fly. Not a navigation. Skip during Favorites onboarding and the Guided tour.
+_Avoid_: toast, confetti, Return digest, Recommend cue, Marquee, opening the destination tab
 
 **Presence**:
 Time a signed-in Handle spent with Cinima in the foreground, counted in Studio. Distinct from a wallet session token.

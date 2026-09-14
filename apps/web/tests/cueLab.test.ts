@@ -7,6 +7,8 @@ import {
   cueLabProfileHeaderVariant,
   cueLabReturnDigest,
   cueLabSendPreview,
+  cueLabTitleFlightFrom,
+  cueLabTitleFlightKind,
   CUE_LAB_SEND_TX_HASH,
   digestContinueGoesToDiscover,
 } from "../src/lib/cueLab";
@@ -42,6 +44,9 @@ describe("Cue lab", () => {
     expect(cueLabOverlayIds()).toEqual([
       "recommend-cue",
       "return-digest",
+      "title-flight-watchlist",
+      "title-flight-favorite",
+      "title-flight-recommend",
       "profile-header-solid",
       "profile-header-fade",
       "profile-header-bleed",
@@ -93,6 +98,19 @@ describe("Cue lab", () => {
     expect(digestContinueGoesToDiscover("discover")).toBe(false);
     expect(digestContinueGoesToDiscover("me")).toBe(true);
     expect(digestContinueGoesToDiscover("title")).toBe(true);
+  });
+
+  it("maps Cue lab Title flight buttons onto Watchlist, Favorite, and Recommend", () => {
+    expect(cueLabTitleFlightKind("title-flight-watchlist")).toBe("watchlist");
+    expect(cueLabTitleFlightKind("title-flight-favorite")).toBe("favorite");
+    expect(cueLabTitleFlightKind("title-flight-recommend")).toBe("recommend");
+    expect(cueLabTitleFlightKind("return-digest")).toBe(null);
+    expect(cueLabTitleFlightFrom({ width: 400, height: 800 })).toEqual({
+      left: 160,
+      top: 300,
+      width: 80,
+      height: 120,
+    });
   });
 
   it("maps Profile header Cue lab buttons onto layouts", () => {

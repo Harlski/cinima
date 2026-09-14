@@ -15,14 +15,14 @@
     </div>
 
     <div v-else-if="title" class="content">
-      <div class="poster-section">
+      <div class="poster-section" data-flight-origin>
         <GoldGlowShell v-if="title.recommended" radius="12px" class="poster-glow">
-          <div class="poster">
+          <div class="poster" data-flight-poster>
             <PosterImg v-if="title.posterUrl" :src="title.posterUrl" :alt="title.title" />
             <div v-else class="poster-placeholder">{{ title.title }}</div>
           </div>
         </GoldGlowShell>
-        <div v-else class="poster">
+        <div v-else class="poster" data-flight-poster>
           <PosterImg v-if="title.posterUrl" :src="title.posterUrl" :alt="title.title" />
           <div v-else class="poster-placeholder">{{ title.title }}</div>
         </div>
@@ -68,7 +68,7 @@
             <TourSpotlight :id="TOUR_SPOTLIGHT.titleWatchlist" radius="999px">
               <button
                 type="button"
-                @click="toggleWatchlist"
+                @click="toggleWatchlist($event)"
                 class="nq-pill-stretch"
                 :class="title.watchlisted ? 'nq-pill-gold' : 'nq-pill-secondary'"
                 :data-tour="TOUR_SPOTLIGHT.titleWatchlist"
@@ -80,7 +80,7 @@
             <TourSpotlight :id="TOUR_SPOTLIGHT.titleFavorite" radius="999px">
               <button
                 type="button"
-                @click="toggleFavorite"
+                @click="toggleFavorite($event)"
                 class="nq-pill-stretch"
                 :class="title.favorited ? 'nq-pill-blue' : 'nq-pill-secondary'"
                 :data-tour="TOUR_SPOTLIGHT.titleFavorite"
@@ -99,7 +99,7 @@
                 class="nq-pill-stretch"
                 :class="title.recommended ? 'nq-pill-gold' : 'nq-pill-secondary'"
                 :data-tour="TOUR_SPOTLIGHT.titleRecommend"
-                @click="toggleRecommend"
+                @click="toggleRecommend($event)"
               >
                 {{ title.recommended ? "Recommended ★" : "Recommend ★" }}
               </button>
@@ -371,9 +371,11 @@ import TmdbAttribution from "@/components/TmdbAttribution.vue";
 import TourSpotlight from "@/components/TourSpotlight.vue";
 import { useTitleActionConfirm } from "@/composables/useTitleActionConfirm";
 import { shouldOfferRecommendCue, TOUR_SPOTLIGHT } from "@/lib/guidedTour";
+import { recommendCueDelayMs } from "@/lib/titleFlight";
 import { watchlistButtonLabel } from "@/lib/titleActionLabels";
 import { useGuidedTourStore } from "@/stores/guidedTour";
 import { useMarqueeStore } from "@/stores/marquee";
+import { useTitleFlightStore } from "@/stores/titleFlight";
 import { useUserSendStore } from "@/stores/userSend";
 import { formatTitleRating, hasTitleRating } from "@/lib/titleRating";
 import { acceptedWaitLabel } from "@/lib/acceptedWait";
@@ -385,6 +387,7 @@ const authStore = useAuthStore();
 const favoritesStore = useFavoritesStore();
 const catalogStore = useCatalogStore();
 const tour = useGuidedTourStore();
+const titleFlight = useTitleFlightStore();
 const {
   pendingConfirm,
   confirmMessage,
@@ -425,6 +428,26 @@ const favoritersOpen = ref(false);
 const tastePeopleTab = ref<TastePeopleTab>("recommends");
 const shareOpen = ref(false);
 const recommendCueOpen = ref(false);
+let recommendCueTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearRecommendCueTimer() {
+  if (recommendCueTimer == null) return;
+  window.clearTimeout(recommendCueTimer);
+  recommendCueTimer = null;
+}
+
+function offerRecommendCue(flew: boolean) {
+  clearRecommendCueTimer();
+  const delay = flew ? recommendCueDelayMs() : 0;
+  if (delay === 0) {
+    recommendCueOpen.value = true;
+    return;
+  }
+  recommendCueTimer = window.setTimeout(() => {
+    recommendCueOpen.value = true;
+    recommendCueTimer = null;
+  }, delay);
+}
 const composerEl = ref<HTMLElement | null>(null);
 const composerDocked = ref(false);
 const composerSpacerHeight = ref("0px");
@@ -505,26 +528,38 @@ const loadSuggesters = async () => {
   }
 };
 
-const toggleFavorite = async () => {
+const toggleFavorite = async (origin?: MouseEvent) => {
   if (!title.value) return;
   await requestToggleFavorite(title.value.id, {
     title: title.value,
     isFavorited: title.value.favorited,
     onAdded: () => {
-      if (title.value) title.value.favorited = true;
+      if (!title.value) return;
+      title.value.favorited = true;
       tour.reportAction("favorite");
+      titleFlight.play({
+        kind: "favorite",
+        title: title.value,
+        origin: origin ?? null,
+      });
     },
   });
 };
 
-const toggleWatchlist = async () => {
+const toggleWatchlist = async (origin?: MouseEvent) => {
   if (!title.value) return;
   await requestToggleWatchlist(title.value.id, {
     title: title.value,
     isWatchlisted: title.value.watchlisted,
     onAdded: () => {
-      if (title.value) title.value.watchlisted = true;
+      if (!title.value) return;
+      title.value.watchlisted = true;
       tour.reportAction("watchlist-add");
+      titleFlight.play({
+        kind: "watchlist",
+        title: title.value,
+        origin: origin ?? null,
+      });
     },
   });
 };
@@ -536,6 +571,7 @@ const onConfirmAction = async () => {
       title.value.favorited = false;
       title.value.recommended = false;
       recommendCueOpen.value = false;
+      clearRecommendCueTimer();
       tour.reportAction("unfavorite");
     },
     onRemoveFromWatchlist: () => {
@@ -545,7 +581,7 @@ const onConfirmAction = async () => {
   });
 };
 
-const toggleRecommend = async () => {
+const toggleRecommend = async (origin?: MouseEvent) => {
   if (!title.value?.favorited) return;
   const wasRecommended = title.value.recommended;
   try {
@@ -557,13 +593,18 @@ const toggleRecommend = async () => {
     await favoritesStore.setRecommend(title.value.id);
     title.value.recommended = true;
     tour.reportAction("recommend");
+    const flew = titleFlight.play({
+      kind: "recommend",
+      title: title.value,
+      origin: origin ?? null,
+    });
     if (
       shouldOfferRecommendCue({
         tourActive: tour.active,
         wasRecommended,
       })
     ) {
-      recommendCueOpen.value = true;
+      offerRecommendCue(flew);
     }
   } catch (err) {
     console.error("Recommend failed:", err);
@@ -813,6 +854,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (composerBlurTimer !== undefined) window.clearTimeout(composerBlurTimer);
+  clearRecommendCueTimer();
 });
 </script>
 

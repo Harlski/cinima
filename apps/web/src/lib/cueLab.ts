@@ -9,6 +9,7 @@ import {
   isProfileHeaderVariantId,
   type ProfileHeaderVariantId,
 } from "./profileHeaderLab";
+import type { TitleFlightBox, TitleFlightKind } from "./titleFlight";
 
 /** Signed-in AppShell only; never on Landing or public share pages. */
 export function cueLabEntryVisible(opts: { inAppShell: boolean }): boolean {
@@ -23,6 +24,9 @@ export function cueLabMarqueeKinds(): AchievementKind[] {
 export const CUE_LAB_OVERLAYS = [
   { id: "recommend-cue", label: "Recommend cue", group: "Cues" },
   { id: "return-digest", label: "Return digest", group: "Cues" },
+  { id: "title-flight-watchlist", label: "Title flight · Watchlist", group: "Cues" },
+  { id: "title-flight-favorite", label: "Title flight · Favorite", group: "Cues" },
+  { id: "title-flight-recommend", label: "Title flight · Recommend", group: "Cues" },
   { id: "profile-header-solid", label: "Solid card", group: "Profile header" },
   { id: "profile-header-fade", label: "Fade into Recommends", group: "Profile header" },
   { id: "profile-header-bleed", label: "Bleed, no card", group: "Profile header" },
@@ -121,4 +125,28 @@ export function digestContinueGoesToDiscover(
   routeName: string | symbol | null | undefined
 ): boolean {
   return routeName !== "discover" && routeName !== "cue-lab";
+}
+
+export function cueLabTitleFlightKind(
+  overlayId: CueLabOverlayId | string
+): TitleFlightKind | null {
+  if (overlayId === "title-flight-watchlist") return "watchlist";
+  if (overlayId === "title-flight-favorite") return "favorite";
+  if (overlayId === "title-flight-recommend") return "recommend";
+  return null;
+}
+
+/** Centered poster box so Cue lab Title flights have somewhere to leave from. */
+export function cueLabTitleFlightFrom(viewport: {
+  width: number;
+  height: number;
+}): TitleFlightBox {
+  const width = 80;
+  const height = 120;
+  return {
+    left: (viewport.width - width) / 2,
+    top: (viewport.height - height) / 2 - 40,
+    width,
+    height,
+  };
 }

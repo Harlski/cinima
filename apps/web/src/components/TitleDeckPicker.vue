@@ -1,10 +1,11 @@
 <template>
   <div class="picker" :style="pickerStyle">
     <div v-if="selected" class="detail">
-      <div class="poster-section">
+      <div class="poster-section" data-flight-origin>
         <button
           type="button"
           class="poster poster-press"
+          data-flight-poster
           :aria-label="`Open ${selected.title.title}`"
           @click="openSelected"
         >
@@ -68,7 +69,7 @@
                 class="nq-pill-stretch"
                 :class="primaryActionActive ? 'nq-pill-gold' : 'nq-pill-secondary'"
                 :data-tour="TOUR_SPOTLIGHT.deckWatchlist"
-                @click="onPrimaryAction"
+                @click="onPrimaryAction($event)"
               >
                 {{ primaryActionLabel }}
               </button>
@@ -83,7 +84,7 @@
                 class="nq-pill-stretch"
                 :class="secondaryActionActive ? 'nq-pill-blue' : 'nq-pill-secondary'"
                 :data-tour="TOUR_SPOTLIGHT.deckFavorite"
-                @click="onSecondaryAction"
+                @click="onSecondaryAction($event)"
               >
                 {{ secondaryActionLabel }}
               </button>
@@ -211,8 +212,8 @@ const props = withDefaults(
 const emit = defineEmits<{
   open: [titleId: string];
   "open-overview": [titleId: string];
-  "primary-action": [titleId: string];
-  "secondary-action": [titleId: string];
+  "primary-action": [titleId: string, origin: MouseEvent];
+  "secondary-action": [titleId: string, origin: MouseEvent];
   refresh: [];
   select: [titleId: string];
 }>();
@@ -312,14 +313,14 @@ function openSelectedOverview() {
   if (titleId) emit("open-overview", titleId);
 }
 
-function onPrimaryAction() {
+function onPrimaryAction(origin: MouseEvent) {
   const titleId = selected.value?.title.id;
-  if (titleId) emit("primary-action", titleId);
+  if (titleId) emit("primary-action", titleId, origin);
 }
 
-function onSecondaryAction() {
+function onSecondaryAction(origin: MouseEvent) {
   const titleId = selected.value?.title.id;
-  if (titleId) emit("secondary-action", titleId);
+  if (titleId) emit("secondary-action", titleId, origin);
 }
 
 async function snapToIndex(

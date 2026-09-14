@@ -254,6 +254,7 @@ import {
 import { useCommunityRecommends } from "@/composables/useCommunityRecommends";
 import { useTitleActionConfirm } from "@/composables/useTitleActionConfirm";
 import { useMarqueeStore } from "@/stores/marquee";
+import { useTitleFlightStore } from "@/stores/titleFlight";
 import { useUserSendStore } from "@/stores/userSend";
 
 defineOptions({ name: "Discover" });
@@ -264,6 +265,7 @@ const { request } = useApi();
 const authStore = useAuthStore();
 const favoritesStore = useFavoritesStore();
 const watchlistStore = useWatchlistStore();
+const titleFlight = useTitleFlightStore();
 const tour = useGuidedTourStore();
 const tourFeedTabGlow = computed(
   () =>
@@ -702,18 +704,28 @@ watch(
 );
 
 
-const toggleFavorite = async (titleId: string) => {
+const toggleFavorite = async (titleId: string, origin?: MouseEvent) => {
   const suggestion = suggestions.value.find((s) => s.title.id === titleId);
   await requestToggleFavorite(titleId, {
     title: suggestion?.title,
     isFavorited: favoritesStore.isFavorite(titleId),
     onAdded: () => {
       favoriteCount.value = favoritesStore.count;
+      if (suggestion?.title) {
+        titleFlight.play({
+          kind: "favorite",
+          title: suggestion.title,
+          origin: origin ?? null,
+        });
+      }
     },
   });
 };
 
-const toggleWatchlist = async (titleOrId: string | TitleSummary) => {
+const toggleWatchlist = async (
+  titleOrId: string | TitleSummary,
+  origin?: MouseEvent
+) => {
   const title =
     typeof titleOrId === "string"
       ? suggestions.value.find((s) => s.title.id === titleOrId)?.title
@@ -722,6 +734,15 @@ const toggleWatchlist = async (titleOrId: string | TitleSummary) => {
   await requestToggleWatchlist(titleId, {
     title,
     isWatchlisted: watchlistStore.isOnWatchlist(titleId),
+    onAdded: () => {
+      if (title) {
+        titleFlight.play({
+          kind: "watchlist",
+          title,
+          origin: origin ?? null,
+        });
+      }
+    },
   });
 };
 

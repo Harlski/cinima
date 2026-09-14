@@ -29,8 +29,13 @@
           to="/my-list"
           class="tab"
           :data-tour="TOUR_SPOTLIGHT.tabWatchlist"
+          data-flight-target="watchlist"
         >
-          <NqIcon name="tickets" :size="24" />
+          <NqIcon
+            name="tickets"
+            :size="24"
+            :class="{ 'tab-icon--flight-arrive': watchlistTabHint }"
+          />
           <span>Watchlist</span>
         </RouterLink>
       </TourSpotlight>
@@ -48,10 +53,10 @@
         <NqIcon name="bell" :size="24" />
         <span>Activity</span>
       </RouterLink>
-      <RouterLink to="/me" class="tab tab--me" data-digest-target="me">
+      <RouterLink to="/me" class="tab tab--me" data-digest-target="me" data-flight-target="me">
         <Identicon
           class="tab-identicon"
-          :class="{ 'tab-identicon--digest-arrive': meTabHint }"
+          :class="{ 'tab-identicon--digest-arrive': meTabHint || titleFlightMeHint }"
           :address="walletAddress"
           :size="26"
           alt="Me"
@@ -64,6 +69,7 @@
     <MarqueeHost />
     <SendNimDialog />
     <ReturnDigestHost />
+    <TitleFlightHost />
   </div>
 </template>
 
@@ -84,11 +90,13 @@ import Identicon from "@/components/Identicon.vue";
 import MarqueeHost from "@/components/MarqueeHost.vue";
 import ReturnDigestHost from "@/components/ReturnDigestHost.vue";
 import SendNimDialog from "@/components/SendNimDialog.vue";
+import TitleFlightHost from "@/components/TitleFlightHost.vue";
 import NqIcon from "@/components/NqIcon.vue";
 import TourSpotlight from "@/components/TourSpotlight.vue";
 import { TOUR_SPOTLIGHT } from "@/lib/guidedTour";
 import { useMarqueeStore } from "@/stores/marquee";
 import { useReturnDigestStore } from "@/stores/returnDigest";
+import { useTitleFlightStore } from "@/stores/titleFlight";
 import { useGuidedTourStore } from "@/stores/guidedTour";
 import { USAGE_HEARTBEAT_MS } from "@/lib/studio";
 
@@ -101,6 +109,9 @@ const authStore = useAuthStore();
 const { request } = useApi();
 const walletAddress = computed(() => authStore.user?.walletAddress || "");
 const { meTabHint } = storeToRefs(useReturnDigestStore());
+const { watchlistTabHint, meTabHint: titleFlightMeHint } = storeToRefs(
+  useTitleFlightStore()
+);
 
 function sendHeartbeat() {
   if (!authStore.token || !authStore.user) return;
@@ -282,7 +293,8 @@ onUnmounted(() => {
   border-radius: 50%;
 }
 
-.tab-identicon--digest-arrive {
+.tab-identicon--digest-arrive,
+.tab-icon--flight-arrive {
   animation: digest-me-pulse 0.55s ease;
 }
 
@@ -337,7 +349,8 @@ onUnmounted(() => {
     transition: none;
   }
 
-  .tab-identicon--digest-arrive {
+  .tab-identicon--digest-arrive,
+  .tab-icon--flight-arrive {
     animation: none;
   }
 }

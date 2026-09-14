@@ -9,7 +9,7 @@
     <div class="content">
       <h1>Cue lab</h1>
       <p class="lede">
-        Preview Marquee, Recommend cue, Return digest, profile headers, Guided tour,
+        Preview Marquee, Recommend cue, Return digest, Title flight, profile headers, Guided tour,
         Welcome, and product modals without walking the product flow. Previews are
         local; they do not award Achievements or Send NIM.
       </p>
@@ -41,7 +41,7 @@
         <h2>{{ group.group }}</h2>
         <p v-if="group.group === 'Cues'" class="hint">
           Recommend cue slides up above the tab bar. Return digest is the panel on
-          return Presence.
+          return Presence. Title flight sends a poster to Watchlist or Me.
         </p>
         <p v-if="group.group === 'Profile header'" class="hint">
           Throwaway Me layouts on a fixture Handle. Arrow keys and the bar flip
@@ -143,6 +143,8 @@ import {
   cueLabProfileHeaderVariant,
   cueLabReturnDigest,
   cueLabSendPreview,
+  cueLabTitleFlightFrom,
+  cueLabTitleFlightKind,
   CUE_LAB_SEND_TX_HASH,
   type CueLabOverlayId,
 } from "@/lib/cueLab";
@@ -162,6 +164,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useGuidedTourStore } from "@/stores/guidedTour";
 import { useMarqueeStore } from "@/stores/marquee";
 import { useReturnDigestStore } from "@/stores/returnDigest";
+import { useTitleFlightStore } from "@/stores/titleFlight";
 import { useUserSendStore } from "@/stores/userSend";
 
 const route = useRoute();
@@ -171,6 +174,7 @@ const tour = useGuidedTourStore();
 const auth = useAuthStore();
 const userSend = useUserSendStore();
 const returnDigest = useReturnDigestStore();
+const titleFlight = useTitleFlightStore();
 
 const headerVariant = computed<ProfileHeaderVariantId | null>(() => {
   const raw = route.query.profileHeader;
@@ -239,6 +243,7 @@ function closeLocalOverlays() {
   shareOpen.value = false;
   userSend.cancel();
   returnDigest.dismiss();
+  titleFlight.clear();
 }
 
 function showWelcome(returning: boolean) {
@@ -254,6 +259,7 @@ onUnmounted(() => {
   clearWelcomeTimer();
   userSend.cancel();
   returnDigest.dismiss();
+  titleFlight.clear();
 });
 
 function previewMarquee(kind: AchievementKind) {
@@ -290,6 +296,19 @@ function previewOverlay(id: CueLabOverlayId) {
     returnDigest.apply(cueLabReturnDigest(), {
       onboarding: false,
       tourActive: false,
+    });
+    return;
+  }
+  const flightKind = cueLabTitleFlightKind(id);
+  if (flightKind) {
+    titleFlight.play({
+      kind: flightKind,
+      title: sampleTitle,
+      from: cueLabTitleFlightFrom({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      }),
+      force: true,
     });
     return;
   }

@@ -12,8 +12,8 @@
     :secondary-action-active="favorited"
     @open="$emit('open', $event)"
     @open-overview="$emit('open-overview', $event)"
-    @primary-action="$emit('toggle-watchlist', $event)"
-    @secondary-action="$emit('toggle-favorite', $event)"
+    @primary-action="(id, origin) => $emit('toggle-watchlist', id, origin)"
+    @secondary-action="(id, origin) => $emit('toggle-favorite', id, origin)"
     @select="selectedTitleId = $event"
     @refresh="refresh"
   />
@@ -37,8 +37,8 @@ const props = defineProps<{
 defineEmits<{
   open: [titleId: string];
   "open-overview": [titleId: string];
-  "toggle-favorite": [titleId: string];
-  "toggle-watchlist": [titleId: string];
+  "toggle-favorite": [titleId: string, origin: MouseEvent];
+  "toggle-watchlist": [titleId: string, origin: MouseEvent];
 }>();
 
 function toDeckItems(suggestions: OverlapSuggestion[]): DeckItem[] {

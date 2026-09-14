@@ -1,11 +1,12 @@
 <template>
   <div
     class="title-card"
+    data-flight-origin
     :class="
       variant === 'horizontal' ? 'title-card--horizontal' : 'title-card--poster'
     "
   >
-    <div class="card-poster poster-press" @click="$emit('click')">
+    <div class="card-poster poster-press" data-flight-poster @click="$emit('click')">
       <PosterImg v-if="title.posterUrl" :src="title.posterUrl" :alt="title.title" />
       <div v-else class="poster-placeholder">
         {{ variant === "horizontal" ? title.title.charAt(0) : title.title }}
@@ -31,7 +32,7 @@
         class="watchlist-button"
         :class="{ watchlisted }"
         :aria-label="watchlisted ? watchlistRemoveAriaLabel() : watchlistAddAriaLabel()"
-        @click.stop="$emit('toggle-watchlist', title)"
+        @click.stop="$emit('toggle-watchlist', title, $event)"
       >
         <NqIcon name="plus-circle" :size="20" />
       </button>
@@ -41,7 +42,7 @@
         class="favorite-button"
         :class="{ favorited }"
         :aria-label="favorited ? 'Remove favorite' : 'Add favorite'"
-        @click.stop="$emit('toggle-favorite', title.id)"
+        @click.stop="$emit('toggle-favorite', title.id, $event)"
       >
         <NqIcon name="heart" :size="20" />
       </button>
@@ -72,8 +73,8 @@ const props = withDefaults(
 
 defineEmits<{
   click: [];
-  "toggle-favorite": [titleId: string];
-  "toggle-watchlist": [title: TitleSummary];
+  "toggle-favorite": [titleId: string, origin: MouseEvent];
+  "toggle-watchlist": [title: TitleSummary, origin: MouseEvent];
 }>();
 
 const mediaLabel = computed(() => {

@@ -135,6 +135,7 @@ import { useTitleActionConfirm } from "@/composables/useTitleActionConfirm";
 import { watchlistButtonLabel } from "@/lib/titleActionLabels";
 import { useAuthStore } from "@/stores/auth";
 import { useGuidedTourStore } from "@/stores/guidedTour";
+import { useTitleFlightStore } from "@/stores/titleFlight";
 
 defineOptions({ name: "MyList" });
 
@@ -142,6 +143,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 const favoritesStore = useFavoritesStore();
 const watchlistStore = useWatchlistStore();
+const titleFlight = useTitleFlightStore();
 const tour = useGuidedTourStore();
 const {
   pendingConfirm,
@@ -251,24 +253,38 @@ async function ensureLoaded() {
   }
 }
 
-const toggleWatchlist = async (titleId: string) => {
+const toggleWatchlist = async (titleId: string, origin?: MouseEvent) => {
   const item = titles.value.find((t) => t.id === titleId);
   await requestToggleWatchlist(titleId, {
     title: item,
     isWatchlisted: watchlistStore.isOnWatchlist(titleId),
     onAdded: () => {
       syncSelection();
+      if (item) {
+        titleFlight.play({
+          kind: "watchlist",
+          title: item,
+          origin: origin ?? null,
+        });
+      }
     },
   });
 };
 
-const toggleFavorite = async (titleId: string) => {
+const toggleFavorite = async (titleId: string, origin?: MouseEvent) => {
   const item = titles.value.find((t) => t.id === titleId);
   await requestToggleFavorite(titleId, {
     title: item,
     isFavorited: favoritesStore.isFavorite(titleId),
     onAdded: () => {
       if (titleId === tour.tourTitleId) tour.reportAction("favorite");
+      if (item) {
+        titleFlight.play({
+          kind: "favorite",
+          title: item,
+          origin: origin ?? null,
+        });
+      }
     },
   });
 };
