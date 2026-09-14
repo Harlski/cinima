@@ -19,6 +19,7 @@ import {
   RECEIVED_LIST_HEADING,
   USER_SEND_LUNA,
   USER_SEND_COST_LABEL,
+  USER_SEND_SUB,
   capDigestThankers,
   creatorPingMemo,
   decideSystemPing,
@@ -72,6 +73,12 @@ describe("Send memos", () => {
     expect(rewardMemo("alice")).toBe("alice thanked you on Cinima");
     expect(rewardMemoFor("alice", "NQ05THANKSTESTWALLETME00000000001")).toBe(
       "alice thanked you on Cinima"
+    );
+  });
+
+  it("says Thanks already landed and the NIM goes to them, not Cinima", () => {
+    expect(USER_SEND_SUB).toBe(
+      "You already thanked them. This NIM goes to them, not Cinima."
     );
   });
 

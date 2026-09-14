@@ -102,6 +102,11 @@ export const USER_SEND_LUNA = REWARD_LUNA;
 
 /** UI label for an optional User Send. */
 export const USER_SEND_CTA = "Send Custom Message";
+/** Compact follow-up after Thanks on comment rows. */
+export const USER_SEND_SHORT_CTA = "Message";
+/** Dialog line under the CTA: Thanks already landed; NIM goes to the thankee. */
+export const USER_SEND_SUB =
+  "You already thanked them. This NIM goes to them, not Cinima.";
 
 /** Cost shown on the message picker. Paid from the thanker's wallet. */
 export const USER_SEND_COST_LABEL = `${USER_SEND_NIM} NIM`;

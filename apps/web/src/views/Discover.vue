@@ -94,19 +94,15 @@
         <div v-else-if="commentFeed.length === 0" class="feed-empty">
           No comments yet
         </div>
-        <div v-else class="feed-list">
-          <CommentFeedCard
-            v-for="item in commentFeed"
-            :key="item.id"
-            :item="item"
-            :own="item.walletAddress === authStore.user?.walletAddress"
-            :thank-busy="thankBusyId === item.id"
-            @open-user="goToUser"
-            @open-title="goToTitle"
-            @thank="thankComment(item)"
-            @send="offerCommentSend(item)"
-          />
-        </div>
+        <CommentFeedGrouped
+          :items="commentFeed"
+          :own-wallet="authStore.user?.walletAddress ?? null"
+          :thank-busy-id="thankBusyId"
+          @open-user="goToUser"
+          @open-title="goToTitle"
+          @thank="thankComment"
+          @send="offerCommentSend"
+        />
       </section>
     </div>
 
@@ -231,7 +227,7 @@ import {
 import { preloadImages } from "@/lib/preloadImages";
 import { useAuthStore } from "@/stores/auth";
 import CommunityRecommends from "@/components/CommunityRecommends.vue";
-import CommentFeedCard from "@/components/CommentFeedCard.vue";
+import CommentFeedGrouped from "@/components/CommentFeedGrouped.vue";
 import FindPeopleSheet from "@/components/FindPeopleSheet.vue";
 import FolloweePeekSheet from "@/components/FolloweePeekSheet.vue";
 import TitleActionDialogs from "@/components/TitleActionDialogs.vue";
@@ -996,11 +992,5 @@ onMounted(() => {
   color: var(--text-secondary);
   font-size: 0.9rem;
   line-height: 1.4;
-}
-
-.feed-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
 }
 </style>

@@ -4,7 +4,7 @@
       type="button"
       class="back-button"
       aria-label="Back"
-      :hidden="composerDocked || recommendCueOpen"
+      :hidden="recommendCueOpen || commentSheetOpen"
       @click="goBack"
     >
       <NqIcon name="arrow-left" :size="24" />
@@ -227,7 +227,7 @@
                 v-if="!comment.deleted && editingCommentId !== comment.id"
                 class="comment-actions"
               >
-                <CommentThanksButton
+                <CommentThanksActions
                   :own="isOwnComment(comment)"
                   :deleted="comment.deleted"
                   :thanked="comment.thanked"
@@ -258,39 +258,14 @@
           </article>
         </div>
 
-        <div
-          v-if="composerDocked"
-          class="comment-composer-spacer"
-          :style="{ height: composerSpacerHeight }"
-          aria-hidden="true"
+        <CommentComposer
+          :text="commentText"
+          :posting="posting"
+          :title-name="title.title"
+          @update:text="commentText = $event"
+          @update:open="commentSheetOpen = $event"
+          @submit="postComment"
         />
-        <form
-          ref="composerEl"
-          class="comment-composer nq-card"
-          :class="{ 'comment-composer--docked': composerDocked }"
-          @submit.prevent="postComment"
-        >
-          <Identicon :address="meWallet" :size="36" alt="" />
-          <div class="composer-main">
-            <textarea
-              v-model="commentText"
-              class="nq-input-box"
-              placeholder="Share your thoughts..."
-              rows="3"
-              :disabled="posting"
-              @focus="onComposerFocus"
-              @blur="onComposerBlur"
-            />
-            <button
-              type="submit"
-              class="nq-pill-blue nq-pill-lg"
-              :disabled="!commentText.trim() || posting"
-              :aria-busy="posting"
-            >
-              {{ acceptedWaitLabel("Post", posting) }}
-            </button>
-          </div>
-        </form>
       </section>
 
       <TmdbAttribution variant="compact" class="title-attr" />
@@ -345,16 +320,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, onUnmounted, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
 import { useAuthStore } from "@/stores/auth";
 import { useFavoritesStore } from "@/stores/favorites";
 import { useCatalogStore } from "@/stores/catalog";
-import { displayName, imdbTitleUrl, makeTitleId, type AchievementKind, type MediaType } from "@cinima/shared";
+import { displayName, imdbTitleUrl, makeTitleId, normalizeCommentInput, type AchievementKind, type MediaType } from "@cinima/shared";
 import type { TitleDetail, CommentDto, TitleSuggester } from "@cinima/shared";
 import ExpandableText from "@/components/ExpandableText.vue";
-import CommentThanksButton from "@/components/CommentThanksButton.vue";
+import CommentComposer from "@/components/CommentComposer.vue";
+import CommentThanksActions from "@/components/CommentThanksActions.vue";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import TitleActionDialogs from "@/components/TitleActionDialogs.vue";
 import FavoritersSheet, { type TastePeopleTab } from "@/components/FavoritersSheet.vue";
@@ -379,6 +355,7 @@ import { useTitleFlightStore } from "@/stores/titleFlight";
 import { useUserSendStore } from "@/stores/userSend";
 import { formatTitleRating, hasTitleRating } from "@/lib/titleRating";
 import { acceptedWaitLabel } from "@/lib/acceptedWait";
+import { canPostComment } from "@/lib/commentComposer";
 
 const route = useRoute();
 const router = useRouter();
@@ -416,6 +393,7 @@ const comments = ref<CommentDto[]>([]);
 const loadingComments = ref(false);
 const commentText = ref("");
 const posting = ref(false);
+const commentSheetOpen = ref(false);
 const editingCommentId = ref<number | null>(null);
 const editText = ref("");
 const savingEdit = ref(false);
@@ -448,9 +426,6 @@ function offerRecommendCue(flew: boolean) {
     recommendCueTimer = null;
   }, delay);
 }
-const composerEl = ref<HTMLElement | null>(null);
-const composerDocked = ref(false);
-const composerSpacerHeight = ref("0px");
 const meWallet = computed(() => authStore.user?.walletAddress || "");
 const unthankedCount = computed(() => suggesters.value.filter((s) => !s.thanked).length);
 const imdbUrl = computed(() => imdbTitleUrl(title.value?.imdbId));
@@ -463,37 +438,6 @@ const favoriteCountLabel = computed(() => {
   const n = title.value?.favoriteCount ?? 0;
   return `${n} ${n === 1 ? "favorite" : "favorites"}`;
 });
-
-let composerBlurTimer: number | undefined;
-
-function measureComposerSpacer() {
-  if (!composerEl.value) return;
-  composerSpacerHeight.value = `${composerEl.value.offsetHeight}px`;
-}
-
-function onComposerFocus() {
-  if (composerBlurTimer !== undefined) {
-    window.clearTimeout(composerBlurTimer);
-    composerBlurTimer = undefined;
-  }
-  composerDocked.value = true;
-  void nextTick(measureComposerSpacer);
-}
-
-function undockComposer() {
-  composerDocked.value = false;
-  composerSpacerHeight.value = "0px";
-}
-
-function onComposerBlur() {
-  // Mobile often blurs the textarea before the Post tap registers.
-  composerBlurTimer = window.setTimeout(() => {
-    composerBlurTimer = undefined;
-    if (posting.value) return;
-    if (composerEl.value?.contains(document.activeElement)) return;
-    undockComposer();
-  }, 180);
-}
 
 const loadTitle = async () => {
   loading.value = true;
@@ -626,20 +570,20 @@ const closeTitleShare = () => {
 };
 
 const postComment = async () => {
-  if (!title.value || !commentText.value.trim()) return;
+  if (!title.value || !canPostComment(commentText.value, posting.value)) return;
+  const body = normalizeCommentInput(commentText.value);
   posting.value = true;
   try {
     await request("/comments", {
       method: "POST",
       body: JSON.stringify({
         titleId: title.value.id,
-        body: commentText.value.trim(),
+        body,
       }),
     });
     commentText.value = "";
     await loadComments();
     if (title.value) title.value.commentCount++;
-    undockComposer();
   } catch (err) {
     console.error("Comment failed:", err);
     alert("Failed to post comment");
@@ -853,7 +797,6 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  if (composerBlurTimer !== undefined) window.clearTimeout(composerBlurTimer);
   clearRecommendCueTimer();
 });
 </script>
@@ -1109,70 +1052,6 @@ onUnmounted(() => {
   margin: 0 0 1rem 0;
   font-size: 1.1rem;
   color: var(--text-primary);
-}
-
-.comment-composer {
-  display: flex;
-  flex-direction: row;
-  gap: 0.7rem;
-  align-items: flex-start;
-  margin-top: 0.75rem;
-  padding: 0.75rem;
-}
-
-.comment-composer-spacer {
-  margin-top: 0.75rem;
-  pointer-events: none;
-}
-
-.comment-composer--docked {
-  position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: calc(var(--bottom-tabs-inset, 0px) + 0.35rem);
-  z-index: 40;
-  width: min(
-    calc(100% - 2 * var(--column-pad)),
-    calc(var(--column-max) - 2 * var(--column-pad))
-  );
-  margin-top: 0;
-  box-sizing: border-box;
-}
-
-.comment-composer :deep(.identicon) {
-  flex-shrink: 0;
-}
-
-.composer-main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.65rem;
-}
-
-.composer-main textarea {
-  width: 100%;
-  resize: none;
-  border-radius: 0.75rem;
-  background-color: var(--colors-white);
-  --color: var(--colors-darkblue);
-  --placeholder-color: color-mix(in oklch, var(--colors-darkblue) 45%, transparent);
-  --outline-color: color-mix(in oklch, var(--colors-darkblue) 16%, transparent);
-}
-
-.composer-main textarea::placeholder {
-  opacity: 1;
-}
-
-.composer-main button {
-  align-self: flex-end;
-}
-
-.composer-main button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .loading-small,

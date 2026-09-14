@@ -14,6 +14,7 @@ const overlaySources = [
   "src/components/ShareLinkSheet.vue",
   "src/components/ShareTitleSheet.vue",
   "src/components/ShareWatchlistSheet.vue",
+  "src/components/CommentComposer.vue",
   "src/components/PayOnlyGateModal.vue",
   "src/components/PayTitleModal.vue",
   "src/components/ReturnDigestHost.vue",
@@ -54,6 +55,25 @@ describe("popup modal chrome", () => {
     expect(leave).not.toMatch(/\.reason-list\s*\{[^}]*\btop:\s*0;/s);
     expect(send).toContain("bottom: calc(100% + 0.25rem);");
     expect(send).not.toMatch(/\.send-nim-note-list\s*\{[^}]*\btop:\s*calc\(100%/s);
+    expect(send).toMatch(
+      /\.send-nim-tip\s*\{[^}]*bottom:\s*calc\(100% \+ 0\.4rem\);/s
+    );
+    expect(send).toMatch(/\.send-nim-tip\s*\{[^}]*right:\s*50%;/s);
+    expect(send).not.toMatch(/\.send-nim-tip\s*\{[^}]*\btop:\s*calc\(100%/s);
+    expect(send).not.toMatch(
+      /\.send-nim-tip\s*\{[^}]*transform:\s*translateX\(-50%\)/s
+    );
+    expect(send).toMatch(
+      /\.send-nim-tip\s*\{[^}]*background:\s*var\(--colors-neutral-50\)/s
+    );
+    expect(send).toMatch(/\.send-nim-tip::before\s*\{[^}]*right:\s*0;/s);
+    expect(send).toMatch(
+      /\.send-nim-tip::before\s*\{[^}]*border-top-color:\s*var\(--border\)/s
+    );
+    expect(send).toMatch(/\.send-nim-tip::after\s*\{[^}]*right:\s*0;/s);
+    expect(send).toMatch(
+      /\.send-nim-tip::after\s*\{[^}]*border-top-color:\s*var\(--colors-neutral-50\)/s
+    );
 
     for (const rel of overlaySources) {
       const src = readFileSync(path.join(webRoot, rel), "utf8");

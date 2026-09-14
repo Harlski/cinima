@@ -57,7 +57,7 @@
             </span>
           </span>
         </div>
-        <p class="send-nim-copy">Optional. Thanks already landed.</p>
+        <p class="send-nim-copy">{{ userSendSub }}</p>
         <div class="send-nim-note" @keydown.escape.stop="noteOpen = false">
           <span :id="noteLabelId">Message</span>
           <div class="send-nim-note-field">
@@ -136,6 +136,7 @@ import { storeToRefs } from "pinia";
 import {
   USER_SEND_CTA,
   USER_SEND_NOTES,
+  USER_SEND_SUB,
   nimiqWatchTxUrl,
   userSendNoteCostLabel,
   userSendNoteLabel,
@@ -150,6 +151,7 @@ const store = useUserSendStore();
 const { pending, busy, error, noteId, receiptHash } = storeToRefs(store);
 
 const userSendCta = USER_SEND_CTA;
+const userSendSub = USER_SEND_SUB;
 const cancelledCopy = PAY_CANCELLED_MESSAGE;
 const notes = USER_SEND_NOTES;
 const costLabel = computed(() => userSendNoteCostLabel(noteId.value));
@@ -308,15 +310,14 @@ async function onSend() {
 
 .send-nim-tip {
   position: absolute;
-  top: calc(100% + 0.4rem);
-  left: 50%;
+  right: 50%;
+  bottom: calc(100% + 0.4rem);
   z-index: 4;
   width: min(16.5rem, calc(100vw - 3rem));
-  transform: translateX(-50%);
   padding: 0.5rem 0.65rem;
   border-radius: 0.55rem;
   border: 1px solid var(--border);
-  background: var(--bg-primary);
+  background: var(--colors-neutral-50);
   color: var(--text-primary);
   font-size: 0.82rem;
   font-weight: 600;
@@ -326,6 +327,26 @@ async function onSend() {
   opacity: 0;
   pointer-events: none;
   visibility: hidden;
+}
+
+.send-nim-tip::before {
+  content: "";
+  position: absolute;
+  top: 100%;
+  right: 0;
+  transform: translateX(50%);
+  border: 6px solid transparent;
+  border-top-color: var(--border);
+}
+
+.send-nim-tip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  right: 0;
+  transform: translateX(50%) translateY(-1px);
+  border: 6px solid transparent;
+  border-top-color: var(--colors-neutral-50);
 }
 
 .send-nim-info-wrap:hover .send-nim-tip,
