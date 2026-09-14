@@ -164,11 +164,10 @@ function toggleNoteList() {
   openNoteList();
 }
 
-async function chooseNote(id: UserSendNoteId) {
+function chooseNote(id: UserSendNoteId) {
   if (busy.value) return;
   store.selectNote(id);
   noteOpen.value = false;
-  await store.confirm();
 }
 
 function onDialogClick(event: MouseEvent) {
@@ -203,7 +202,7 @@ function onNoteKeydown(event: KeyboardEvent) {
   if ((event.key === "Enter" || event.key === " ") && noteOpen.value) {
     event.preventDefault();
     const note = notes[highlightIndex.value];
-    if (note) void chooseNote(note.id);
+    if (note) chooseNote(note.id);
   }
 }
 

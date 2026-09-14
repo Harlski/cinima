@@ -124,8 +124,8 @@ export async function verifyUserSend(opts: {
 
   const tx = await fetchTx(hash);
   if (!tx) throw new Error("tx_not_found");
-  const to = normalizeWallet(tx.to);
-  const from = normalizeWallet(tx.from);
+  const to = await canonicalWallet(tx.to);
+  const from = await canonicalWallet(tx.from);
   if (to !== toWallet) throw new Error("wrong_send_recipient");
   if (from && from !== payerWallet) throw new Error("wrong_send_payer");
   if (tx.valueLuna < opts.minLuna) throw new Error("insufficient_amount");
@@ -133,7 +133,7 @@ export async function verifyUserSend(opts: {
 
   return {
     hash,
-    from: normalizeWallet(tx.from) || payerWallet,
+    from: from || payerWallet,
     to,
     valueLuna: tx.valueLuna,
     memo: tx.memo || "",
@@ -178,6 +178,18 @@ export function readChainTx(raw: unknown): ChainTx | null {
       rec.recipientData ?? rec.recipient_data ?? rec.data ?? rec.extraData ?? rec.message ?? ""
     ),
   };
+}
+
+async function canonicalWallet(addr: string): Promise<string> {
+  const compact = normalizeWallet(addr);
+  if (!compact) return "";
+  const raw = compact.startsWith("0X") ? compact.slice(2) : compact;
+  try {
+    const { Address } = await import("@nimiq/core");
+    return normalizeWallet(Address.fromAny(raw).toUserFriendlyAddress());
+  } catch {
+    return compact;
+  }
 }
 
 export function normalizeTxHash(raw: string): string {

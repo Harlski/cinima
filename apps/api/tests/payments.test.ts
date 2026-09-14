@@ -102,6 +102,30 @@ describe("User Send chain verify", () => {
     ).rejects.toThrow("tx_not_found");
   });
 
+  it("rejects a User Send paid from a different wallet", async () => {
+    vi.stubEnv("DEMO_MODE", "false");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        if (!init || String(init.method || "GET").toUpperCase() !== "POST") {
+          return new Response(null, { status: 404 });
+        }
+        return Response.json(
+          nimiqWatchTxEnvelope({ from: "14a404b0f2cc2b70920468e4971874b09477a476" })
+        );
+      })
+    );
+
+    await expect(
+      verifyUserSend({
+        txHash: TX_HASH,
+        payerWallet: normalizeWallet(PAYER),
+        toWallet: normalizeWallet(THANKEE),
+        minLuna: USER_SEND_LUNA,
+      })
+    ).rejects.toThrow("wrong_send_payer");
+  });
+
   it("rejects a NimiqWatch tx that did not pay the thankee", async () => {
     vi.stubEnv("DEMO_MODE", "false");
     vi.stubGlobal(
@@ -124,6 +148,37 @@ describe("User Send chain verify", () => {
         minLuna: USER_SEND_LUNA,
       })
     ).rejects.toThrow("wrong_send_recipient");
+  });
+
+  it("accepts a User Send when NimiqWatch reports the payer as hex", async () => {
+    vi.stubEnv("DEMO_MODE", "false");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        if (!init || String(init.method || "GET").toUpperCase() !== "POST") {
+          return new Response(null, { status: 404 });
+        }
+        return Response.json(
+          nimiqWatchTxEnvelope({
+            from: "16b5640b74d571a9fb63c003d65554b70cf0d250",
+            recipientData: Buffer.from("Thanks for the rec", "utf8").toString("hex"),
+          })
+        );
+      })
+    );
+
+    await expect(
+      verifyUserSend({
+        txHash: TX_HASH,
+        payerWallet: normalizeWallet(PAYER),
+        toWallet: normalizeWallet(THANKEE),
+        minLuna: USER_SEND_LUNA,
+      })
+    ).resolves.toMatchObject({
+      from: normalizeWallet(PAYER),
+      to: normalizeWallet(THANKEE),
+      memo: "Thanks for the rec",
+    });
   });
 
   it("accepts 1 NIM to the thankee from a NimiqWatch { data, metadata } tx", async () => {
