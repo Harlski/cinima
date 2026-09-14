@@ -1,11 +1,12 @@
 import {
   DIGEST_THANKER_CAP,
+  JOIN_GRANT_NIM,
   REWARD_NIM,
   USER_SEND_NIM,
   capDigestThankers,
   isReturnPresence,
   normalizeWallet,
-  type ReceivedThanksItem,
+  type ReceivedItem,
   type ReturnDigest,
 } from "@cinima/shared";
 import { and, desc, eq, gt, sql } from "drizzle-orm";
@@ -23,7 +24,7 @@ function previewComment(body: string): string {
 export async function listReceivedThanks(
   walletRaw: string,
   limit = 40
-): Promise<ReceivedThanksItem[]> {
+): Promise<ReceivedItem[]> {
   const wallet = normalizeWallet(walletRaw);
 
   const titleRows = await db
@@ -74,7 +75,19 @@ export async function listReceivedThanks(
     .orderBy(desc(commentThanks.createdAt))
     .limit(limit);
 
-  const items: ReceivedThanksItem[] = [
+  const joinRows = await db
+    .select({
+      id: sends.id,
+      createdAt: sends.createdAt,
+      sendTxHash: sends.txHash,
+      status: sends.status,
+    })
+    .from(sends)
+    .where(and(eq(sends.toWallet, wallet), eq(sends.source, "join")))
+    .orderBy(desc(sends.createdAt))
+    .limit(limit);
+
+  const items: ReceivedItem[] = [
     ...titleRows.map((r) => ({
       kind: "title" as const,
       id: r.id,
@@ -104,6 +117,14 @@ export async function listReceivedThanks(
       sendTxHash: r.sendTxHash,
       rewardNim: r.rewardStatus === "sent" && r.rewardTxHash ? REWARD_NIM : 0,
       sendNim: r.sendTxHash ? USER_SEND_NIM : 0,
+    })),
+    ...joinRows.map((r) => ({
+      kind: "join" as const,
+      id: r.id,
+      createdAt: r.createdAt.toISOString(),
+      sendTxHash: r.status === "sent" ? r.sendTxHash : null,
+      rewardNim: 0 as const,
+      sendNim: JOIN_GRANT_NIM,
     })),
   ];
 

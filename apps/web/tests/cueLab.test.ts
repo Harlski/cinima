@@ -23,6 +23,7 @@ import {
 describe("Cue lab", () => {
   it("previews a Marquee for every Achievement", () => {
     expect(cueLabMarqueeKinds()).toEqual([
+      "joined-the-crew",
       "opening-night",
       "full-house",
       "word-of-mouth",
@@ -55,6 +56,7 @@ describe("Cue lab", () => {
       "profile-header-banner-bleed",
       "welcome",
       "welcome-back",
+      "join-overlay",
       "tour-offer",
       "tour-skip-notice",
       "tour-start",

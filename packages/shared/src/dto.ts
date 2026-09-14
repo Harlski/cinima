@@ -33,6 +33,7 @@ export type AuthVerifyRequest = {
 export type AuthVerifyResponse = {
   token: string;
   user: SessionUser;
+  pendingJoinOverlay?: boolean;
 };
 
 export type TitleSummary = {
@@ -283,6 +284,7 @@ export type MeResponse = {
   xHandle: string | null;
   achievementCount: number;
   unseenAchievements: AchievementKind[];
+  pendingJoinOverlay?: boolean;
 };
 
 export type ReceivedThanksItem = {
@@ -301,8 +303,19 @@ export type ReceivedThanksItem = {
   sendNim: number;
 };
 
+export type ReceivedJoinItem = {
+  kind: "join";
+  id: number;
+  createdAt: string;
+  sendTxHash: string | null;
+  rewardNim: 0;
+  sendNim: number;
+};
+
+export type ReceivedItem = ReceivedThanksItem | ReceivedJoinItem;
+
 export type ReceivedThanksResponse = {
-  items: ReceivedThanksItem[];
+  items: ReceivedItem[];
 };
 
 export type ReturnDigest = {
@@ -418,8 +431,8 @@ export type StudioPersonRow = StudioPersonRef & {
 
 export type StudioSendRow = {
   id: number;
-  kind: "reward" | "ping";
-  source: "thanks" | "system" | "creator";
+  kind: "reward" | "ping" | "join";
+  source: "thanks" | "system" | "creator" | "join";
   toWallet: string;
   toHandle: string | null;
   luna: number;

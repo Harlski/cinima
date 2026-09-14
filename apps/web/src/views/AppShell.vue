@@ -68,6 +68,7 @@
     <GuidedTourHost />
     <MarqueeHost />
     <SendNimDialog />
+    <JoinOverlayHost />
     <ReturnDigestHost />
     <TitleFlightHost />
   </div>
@@ -87,6 +88,7 @@ import { useApi } from "@/composables/useApi";
 import AppBrandHeader from "@/components/AppBrandHeader.vue";
 import GuidedTourHost from "@/components/GuidedTourHost.vue";
 import Identicon from "@/components/Identicon.vue";
+import JoinOverlayHost from "@/components/JoinOverlayHost.vue";
 import MarqueeHost from "@/components/MarqueeHost.vue";
 import ReturnDigestHost from "@/components/ReturnDigestHost.vue";
 import SendNimDialog from "@/components/SendNimDialog.vue";

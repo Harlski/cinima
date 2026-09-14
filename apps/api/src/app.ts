@@ -136,6 +136,7 @@ import {
   listCredits,
   takeUnseenAchievements,
 } from "./services/achievements.js";
+import { ackJoinOverlay, grantJoinIfNeeded, joinOverlayIsPending } from "./services/joinGrant.js";
 import { proxyStudio } from "./lib/studioProxy.js";
 import {
   queueCreatorPings,
@@ -150,6 +151,7 @@ type Vars = {
   user: typeof schema.users.$inferSelect;
   sessionUser: SessionUser;
   payContext: boolean;
+  sessionCreatedAt: number;
 };
 
 const app = new Hono<{ Variables: Vars }>();
@@ -210,6 +212,7 @@ const requireAuth = async (c: any, next: any) => {
   const favCount = await favoriteCount(user.walletAddress);
 
   c.set("user", user);
+  c.set("sessionCreatedAt", session.createdAt.getTime());
   c.set("sessionUser", {
     walletAddress: user.walletAddress,
     handle: user.handle,
@@ -318,10 +321,12 @@ app.post("/api/auth/verify", requirePay, async (c) => {
 
     await db.update(schema.authNonces).set({ used: true }).where(eq(schema.authNonces.nonce, body.nonce));
 
+    let returning = true;
     let user = await db.query.users.findFirst({
       where: eq(schema.users.walletAddress, walletAddress),
     });
     if (!user) {
+      returning = false;
       await db.insert(schema.users).values({
         walletAddress,
         handle: null,
@@ -341,13 +346,19 @@ app.post("/api/auth/verify", requirePay, async (c) => {
       createdAt: new Date(),
     });
 
+    const join = await grantJoinIfNeeded(walletAddress, { returning });
+
     ringDoorAlarm({
       kind: "signed-in",
       handle: user?.handle ?? null,
       walletAddress,
     });
 
-    return c.json({ token, user: await sessionUserFor(walletAddress) });
+    return c.json({
+      token,
+      user: await sessionUserFor(walletAddress),
+      pendingJoinOverlay: join.overlay,
+    });
   } catch (err) {
     console.error("[auth/verify]", err);
     return c.json(
@@ -374,7 +385,11 @@ app.get("/api/me", requirePay, requireAuth, async (c) => {
     : null;
   if (user.handle) prewarmProfileShareOgImage(user.handle);
 
-  const unseen = await takeUnseenAchievements(user.walletAddress);
+  const join = await grantJoinIfNeeded(user.walletAddress, { returning: true });
+  const pendingJoinOverlay = join.overlay || (await joinOverlayIsPending(user.walletAddress));
+  const unseen = await takeUnseenAchievements(user.walletAddress, {
+    sessionCreatedAt: c.get("sessionCreatedAt"),
+  });
 
   const response: MeResponse = {
     user: c.get("sessionUser"),
@@ -387,8 +402,15 @@ app.get("/api/me", requirePay, requireAuth, async (c) => {
     xHandle: user.xHandle ?? null,
     achievementCount: await achievementCount(user.walletAddress),
     unseenAchievements: unseen,
+    pendingJoinOverlay,
   };
   return c.json(response);
+});
+
+app.post("/api/me/join-overlay", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  await ackJoinOverlay(user.walletAddress);
+  return c.json({ ok: true });
 });
 
 app.get("/api/me/received", requirePay, requireAuth, async (c) => {
@@ -1477,7 +1499,9 @@ app.post("/api/usage/heartbeat", requirePay, requireAuth, async (c) => {
   await recordHeartbeat(user.walletAddress);
   const digest = await digestForHeartbeat(user.walletAddress, previousLastAt);
   const earned = await evaluateAfterHeartbeat(user.walletAddress);
-  const unseen = await takeUnseenAchievements(user.walletAddress);
+  const unseen = await takeUnseenAchievements(user.walletAddress, {
+    sessionCreatedAt: c.get("sessionCreatedAt"),
+  });
   const earnedAchievements = [...new Set([...earned, ...unseen])];
   return c.json({ ok: true, earnedAchievements, digest });
 });
@@ -1485,7 +1509,9 @@ app.post("/api/usage/heartbeat", requirePay, requireAuth, async (c) => {
 app.post("/api/tour/skip", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
   const earned = await evaluateAfterTourSkip(user.walletAddress);
-  const unseen = await takeUnseenAchievements(user.walletAddress);
+  const unseen = await takeUnseenAchievements(user.walletAddress, {
+    sessionCreatedAt: c.get("sessionCreatedAt"),
+  });
   const earnedAchievements = [...new Set([...earned, ...unseen])];
   ringDoorAlarm({
     kind: "tour-skipped",
@@ -1498,7 +1524,9 @@ app.post("/api/tour/skip", requirePay, requireAuth, async (c) => {
 app.post("/api/tour/complete", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
   const earned = await evaluateAfterTourComplete(user.walletAddress);
-  const unseen = await takeUnseenAchievements(user.walletAddress);
+  const unseen = await takeUnseenAchievements(user.walletAddress, {
+    sessionCreatedAt: c.get("sessionCreatedAt"),
+  });
   const earnedAchievements = [...new Set([...earned, ...unseen])];
   ringDoorAlarm({
     kind: "tour-completed",

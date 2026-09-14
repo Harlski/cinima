@@ -306,6 +306,7 @@ a.nq-pill-orange:hover {
 .pay-only-modal,
 .gate-modal,
 .digest-modal,
+.join-overlay-modal,
 .tour-offer,
 .tour-done {
   background: transparent;
@@ -321,6 +322,7 @@ a.nq-pill-orange:hover {
 .pay-only-modal > .nq-card,
 .gate-modal > .nq-card,
 .digest-modal > .digest-panel,
+.join-overlay-modal > .join-overlay-panel,
 .tour-offer > .tour-offer-card,
 .tour-done > .tour-done-card {
   box-shadow:
@@ -339,6 +341,7 @@ a.nq-pill-orange:hover {
 .pay-only-modal > .nq-card::before,
 .gate-modal > .nq-card::before,
 .digest-modal > .digest-panel::before,
+.join-overlay-modal > .join-overlay-panel::before,
 .tour-offer > .tour-offer-card::before,
 .tour-done > .tour-done-card::before {
   content: "";
@@ -374,6 +377,7 @@ a.nq-pill-orange:hover {
 .pay-only-modal > .nq-card > *,
 .gate-modal > .nq-card > *,
 .digest-modal > .digest-panel > *,
+.join-overlay-modal > .join-overlay-panel > *,
 .tour-offer > .tour-offer-card > *,
 .tour-done > .tour-done-card > * {
   position: relative;

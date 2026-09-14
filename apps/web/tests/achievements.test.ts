@@ -20,11 +20,15 @@ import {
   shouldAwardSaveThatForLater,
   shouldAwardThatsTheOne,
   shouldAwardPlusOne,
+  shouldAwardJoinedTheCrew,
+  shouldMarqueeJoinedTheCrew,
+  isTourGatedAchievement,
 } from "@cinima/shared";
 
 describe("Achievement catalog", () => {
   it("names the catalog and how they unlock", () => {
     expect([...ACHIEVEMENT_KINDS]).toEqual([
+      "joined-the-crew",
       "opening-night",
       "full-house",
       "word-of-mouth",
@@ -39,6 +43,8 @@ describe("Achievement catalog", () => {
       "thats-the-one",
       "plus-one",
     ]);
+    expect(achievementTitle("joined-the-crew")).toBe("Joined the crew");
+    expect(achievementHow("joined-the-crew")).toBe("Joined Cinima");
     expect(achievementTitle("opening-night")).toBe("Opening night");
     expect(achievementHow("opening-night")).toBe("Recommended your first title");
     expect(achievementTitle("thats-a-wrap")).toBe("That's a wrap");
@@ -59,8 +65,14 @@ describe("Achievement catalog", () => {
     const rows = creditsCatalog([
       { kind: "opening-night", earnedAt: "2026-09-01T00:00:00.000Z" },
     ]);
-    expect(rows).toHaveLength(13);
+    expect(rows).toHaveLength(14);
     expect(rows[0]).toEqual({
+      kind: "joined-the-crew",
+      title: "Joined the crew",
+      how: "Joined Cinima",
+      earnedAt: null,
+    });
+    expect(rows[1]).toEqual({
       kind: "opening-night",
       title: "Opening night",
       how: "Recommended your first title",
@@ -206,5 +218,47 @@ describe("Achievement catalog", () => {
     expect(shouldAwardPlusOne({ alreadyEarned: false, followCountAfter: 0 })).toBe(false);
     expect(shouldAwardPlusOne({ alreadyEarned: false, followCountAfter: 1 })).toBe(true);
     expect(shouldAwardPlusOne({ alreadyEarned: true, followCountAfter: 1 })).toBe(false);
+  });
+
+  it("awards Joined the crew once on a Join grant", () => {
+    expect(shouldAwardJoinedTheCrew({ alreadyEarned: false })).toBe(true);
+    expect(shouldAwardJoinedTheCrew({ alreadyEarned: true })).toBe(false);
+    expect(isTourGatedAchievement("joined-the-crew")).toBe(false);
+    expect(isTourGatedAchievement("opening-night")).toBe(true);
+  });
+
+  it("holds Joined the crew Marquee until a later login, and skips it during Join overlay", () => {
+    expect(
+      shouldMarqueeJoinedTheCrew({
+        earnedAt: 100,
+        sessionCreatedAt: 100,
+        overlayPending: false,
+        seenAt: null,
+      })
+    ).toBe(false);
+    expect(
+      shouldMarqueeJoinedTheCrew({
+        earnedAt: 100,
+        sessionCreatedAt: 200,
+        overlayPending: false,
+        seenAt: null,
+      })
+    ).toBe(true);
+    expect(
+      shouldMarqueeJoinedTheCrew({
+        earnedAt: 100,
+        sessionCreatedAt: 200,
+        overlayPending: true,
+        seenAt: null,
+      })
+    ).toBe(false);
+    expect(
+      shouldMarqueeJoinedTheCrew({
+        earnedAt: 100,
+        sessionCreatedAt: 200,
+        overlayPending: false,
+        seenAt: 150,
+      })
+    ).toBe(false);
   });
 });

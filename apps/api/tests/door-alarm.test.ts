@@ -249,6 +249,17 @@ describe("Door alarm copy", () => {
       })
     ).toBe("Ping sent to alice: Cinima.app - come back");
   });
+
+  it("names a Join grant after it broadcasts", () => {
+    expect(
+      doorAlarmLine({
+        kind: "sent-join",
+        handle: "alice",
+        walletAddress: "NQ05USAGETESTWALLET000000000000001",
+        memo: "Joined Cinima",
+      })
+    ).toBe("Join grant sent to alice");
+  });
 });
 
 describe("Door alarm sender", () => {

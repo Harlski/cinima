@@ -17,6 +17,7 @@ const overlaySources = [
   "src/components/PayOnlyGateModal.vue",
   "src/components/PayTitleModal.vue",
   "src/components/ReturnDigestHost.vue",
+  "src/components/JoinOverlayHost.vue",
   "src/components/GuidedTourHost.vue",
   "src/views/Me.vue",
 ];

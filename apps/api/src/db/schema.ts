@@ -13,6 +13,8 @@ export const users = sqliteTable("users", {
   /** Guided tour finished. Opens Achievement earning and awards That's a wrap. */
   guidedTourCompletedAt: integer("guided_tour_completed_at", { mode: "timestamp_ms" }),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  /** Returning Join overlay waiting to be shown. */
+  joinOverlayPendingAt: integer("join_overlay_pending_at", { mode: "timestamp_ms" }),
 });
 
 export const sessions = sqliteTable("sessions", {

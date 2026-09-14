@@ -10,6 +10,8 @@ import {
   listPayAccounts,
   signPayMessage,
 } from "@/lib/nimiqPay";
+import { useJoinOverlayStore } from "@/stores/joinOverlay";
+import { useMarqueeStore } from "@/stores/marquee";
 import type {
   SessionUser,
   AuthChallengeResponse,
@@ -34,6 +36,10 @@ export const useAuthStore = defineStore("auth", () => {
     try {
       const response = await request<MeResponse>("/me");
       user.value = response.user;
+      if (response.unseenAchievements?.length) {
+        useMarqueeStore().enqueue(response.unseenAchievements);
+      }
+      if (response.pendingJoinOverlay) useJoinOverlayStore().offer();
     } catch {
       token.value = null;
       user.value = null;
@@ -84,6 +90,7 @@ export const useAuthStore = defineStore("auth", () => {
       token.value = verifyResp.token;
       user.value = verifyResp.user;
       localStorage.setItem(TOKEN_KEY, verifyResp.token);
+      if (verifyResp.pendingJoinOverlay) useJoinOverlayStore().offer();
     } catch (err) {
       error.value = err instanceof Error ? err.message : "Auth failed";
       throw err;
@@ -111,6 +118,7 @@ export const useAuthStore = defineStore("auth", () => {
     token.value = verifyResp.token;
     user.value = verifyResp.user;
     localStorage.setItem(TOKEN_KEY, verifyResp.token);
+    if (verifyResp.pendingJoinOverlay) useJoinOverlayStore().offer();
   };
 
   const boot = async () => {

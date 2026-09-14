@@ -75,8 +75,8 @@ export async function getSendChain(): Promise<ChainAdapter> {
 }
 
 export async function enqueueSend(input: {
-  kind: "reward" | "ping";
-  source: "thanks" | "system" | "creator";
+  kind: "reward" | "ping" | "join";
+  source: "thanks" | "system" | "creator" | "join";
   fromWallet?: string | null;
   toWallet: string;
   luna: number;
@@ -495,7 +495,7 @@ async function completeSend(row: typeof sends.$inferSelect, txHash: string, at: 
     .where(eq(users.walletAddress, row.toWallet))
     .limit(1);
   ringDoorAlarm({
-    kind: row.kind === "reward" ? "sent-reward" : "sent-ping",
+    kind: row.kind === "reward" ? "sent-reward" : row.kind === "join" ? "sent-join" : "sent-ping",
     handle: recipient?.handle ?? null,
     walletAddress: row.toWallet,
     memo: row.memo,

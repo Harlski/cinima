@@ -5,6 +5,35 @@ import { displayName } from "./memos.js";
 export const REWARD_NIM = 1;
 export const REWARD_LUNA = REWARD_NIM * LUNA_PER_NIM;
 
+/** One-time Join grant to a wallet for signing in. */
+export const JOIN_GRANT_NIM = 10;
+export const JOIN_GRANT_LUNA = JOIN_GRANT_NIM * LUNA_PER_NIM;
+
+export const JOIN_GRANT_MEMO = "Joined Cinima";
+export const JOIN_GRANT_HOW = "Joined Cinima";
+export const JOIN_OVERLAY_TITLE = "Thanks for joining Cinima";
+export const JOIN_OVERLAY_SUB = "Thanks for coming back!";
+export const JOIN_OVERLAY_NIM_LABEL = "+10 NIM";
+export const JOIN_OVERLAY_UNLOCKED = "Achievement unlocked";
+
+export function joinGrantMemo(): string {
+  return JOIN_GRANT_MEMO;
+}
+
+export function joinGrantIdempotencyKey(wallet: string): string {
+  return `join:${wallet}`;
+}
+
+export function shouldShowJoinOverlay(input: {
+  pending: boolean;
+  onboarding: boolean;
+  tourActive: boolean;
+}): boolean {
+  if (!input.pending) return false;
+  if (input.onboarding || input.tourActive) return false;
+  return true;
+}
+
 /** Dust Ping; enough to surface the memo in Nimiq Pay. */
 export const PING_NIM = 0.0001;
 export const PING_LUNA = Math.round(PING_NIM * LUNA_PER_NIM);
@@ -22,8 +51,8 @@ export const SYSTEM_PING_MIN_NEW_USERS = 3;
 /** Nimiq basic extra data budget. Memos are truncated to this. */
 export const SEND_MEMO_MAX_BYTES = 64;
 
-export type SendKind = "reward" | "ping";
-export type SendSource = "thanks" | "system" | "creator";
+export type SendKind = "reward" | "ping" | "join";
+export type SendSource = "thanks" | "system" | "creator" | "join";
 export type SendStatus = "queued" | "sending" | "sent" | "failed";
 
 export function rewardsRemainingToday(sentOrQueuedToday: number): number {
@@ -159,6 +188,7 @@ export function nimiqWatchTxUrl(txHash: string): string | null {
 export const RECEIVED_LIST_HEADING = "Guestbook";
 
 export type ReceivedThanksKind = "title" | "comment";
+export type ReceivedItemKind = ReceivedThanksKind | "join";
 
 /** One-line why under the title on a Guestbook card. */
 export function receivedThanksHow(kind: ReceivedThanksKind): string {
@@ -168,6 +198,11 @@ export function receivedThanksHow(kind: ReceivedThanksKind): string {
     case "title":
       return "Thanked your recommendation";
   }
+}
+
+export function receivedHow(kind: ReceivedItemKind): string {
+  if (kind === "join") return JOIN_GRANT_HOW;
+  return receivedThanksHow(kind);
 }
 
 export function receivedNimLabel(rewardNim: number, sendNim: number): string | null {

@@ -47,6 +47,10 @@
           Throwaway Me layouts on a fixture Handle. Arrow keys and the bar flip
           variants. Close to return here. Nothing writes to the live profile.
         </p>
+        <p v-if="group.group === 'Welcome'" class="hint">
+          Welcome is the Enter identicon overlay. Join overlay is the one-time
+          returning grant: thanks for coming back, +10 NIM, Joined the crew.
+        </p>
         <p v-if="group.group === 'Guided tour'" class="hint">
           Offer and skipped notice overlay here. Start tour runs the real walkthrough
           and leaves this screen.
@@ -162,6 +166,7 @@ import { removeFromWatchlistMessage } from "@/lib/titleActionLabels";
 import { WELCOME_HOLD_MS, welcomeMessage } from "@/lib/welcome";
 import { useAuthStore } from "@/stores/auth";
 import { useGuidedTourStore } from "@/stores/guidedTour";
+import { useJoinOverlayStore } from "@/stores/joinOverlay";
 import { useMarqueeStore } from "@/stores/marquee";
 import { useReturnDigestStore } from "@/stores/returnDigest";
 import { useTitleFlightStore } from "@/stores/titleFlight";
@@ -175,6 +180,7 @@ const auth = useAuthStore();
 const userSend = useUserSendStore();
 const returnDigest = useReturnDigestStore();
 const titleFlight = useTitleFlightStore();
+const joinOverlay = useJoinOverlayStore();
 
 const headerVariant = computed<ProfileHeaderVariantId | null>(() => {
   const raw = route.query.profileHeader;
@@ -243,6 +249,7 @@ function closeLocalOverlays() {
   shareOpen.value = false;
   userSend.cancel();
   returnDigest.dismiss();
+  joinOverlay.dismissPreview();
   titleFlight.clear();
 }
 
@@ -259,6 +266,7 @@ onUnmounted(() => {
   clearWelcomeTimer();
   userSend.cancel();
   returnDigest.dismiss();
+  joinOverlay.dismissPreview();
   titleFlight.clear();
 });
 
@@ -318,6 +326,10 @@ function previewOverlay(id: CueLabOverlayId) {
   }
   if (id === "welcome-back") {
     showWelcome(true);
+    return;
+  }
+  if (id === "join-overlay") {
+    joinOverlay.preview();
     return;
   }
   if (id === "tour-offer") {

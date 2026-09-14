@@ -3,6 +3,7 @@ import { MAX_RECOMMENDS } from "./constants.js";
 export const HIGH_SEAS_UNIQUE_VIEWS = 10;
 
 export const ACHIEVEMENT_KINDS = [
+  "joined-the-crew",
   "opening-night",
   "full-house",
   "word-of-mouth",
@@ -21,6 +22,7 @@ export const ACHIEVEMENT_KINDS = [
 export type AchievementKind = (typeof ACHIEVEMENT_KINDS)[number];
 
 const TITLES: Record<AchievementKind, string> = {
+  "joined-the-crew": "Joined the crew",
   "opening-night": "Opening night",
   "full-house": "Full house",
   "word-of-mouth": "Word of mouth",
@@ -37,6 +39,7 @@ const TITLES: Record<AchievementKind, string> = {
 };
 
 const HOW: Record<AchievementKind, string> = {
+  "joined-the-crew": "Joined Cinima",
   "opening-night": "Recommended your first title",
   "full-house": "Filled every Recommend slot",
   "word-of-mouth": "Shared a title",
@@ -89,6 +92,27 @@ export function achievementsEligible(input: {
 }): boolean {
   if (input.alreadyHasAchievement) return true;
   return input.tourStatus !== "never";
+}
+
+/** Joined the crew is awarded on Join grant; it does not open the tour gate. */
+export function isTourGatedAchievement(kind: AchievementKind): boolean {
+  return kind !== "joined-the-crew";
+}
+
+export function shouldAwardJoinedTheCrew(input: { alreadyEarned: boolean }): boolean {
+  return !input.alreadyEarned;
+}
+
+/** Marquee Joined the crew on a later login, not the grant session or Join overlay. */
+export function shouldMarqueeJoinedTheCrew(input: {
+  earnedAt: number;
+  sessionCreatedAt: number;
+  overlayPending: boolean;
+  seenAt: number | null;
+}): boolean {
+  if (input.seenAt != null) return false;
+  if (input.overlayPending) return false;
+  return input.earnedAt < input.sessionCreatedAt;
 }
 
 /** That's a wrap leads the Marquee queue when the tour also unlocks other credits. */

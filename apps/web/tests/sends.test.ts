@@ -9,6 +9,14 @@ import {
   SYSTEM_PING_MIN_NEW_USERS,
   CREATOR_TEST_PING_MESSAGE,
   DIGEST_THANKER_CAP,
+  JOIN_GRANT_HOW,
+  JOIN_GRANT_LUNA,
+  JOIN_GRANT_MEMO,
+  JOIN_GRANT_NIM,
+  JOIN_OVERLAY_NIM_LABEL,
+  JOIN_OVERLAY_SUB,
+  JOIN_OVERLAY_TITLE,
+  JOIN_OVERLAY_UNLOCKED,
   RECEIVED_LIST_HEADING,
   USER_SEND_LUNA,
   USER_SEND_COST_LABEL,
@@ -19,13 +27,17 @@ import {
   isQuiet,
   isReturnPresence,
   isUserSendMemo,
+  joinGrantIdempotencyKey,
+  joinGrantMemo,
   newUsersPingMemo,
   digestNimReceivedLabel,
+  receivedHow,
   receivedNimLabel,
   receivedThanksHow,
   rewardMemo,
   rewardMemoFor,
   rewardsRemainingToday,
+  shouldShowJoinOverlay,
   shouldShowReturnDigest,
   truncateMemo,
   userSendMemo,
@@ -121,6 +133,36 @@ describe("Send memos", () => {
   it("names why a Guestbook entry arrived", () => {
     expect(receivedThanksHow("title")).toBe("Thanked your recommendation");
     expect(receivedThanksHow("comment")).toBe("Thanked your comment");
+    expect(receivedHow("join")).toBe("Joined Cinima");
+    expect(receivedHow("title")).toBe("Thanked your recommendation");
+    expect(receivedNimLabel(0, 10)).toBe("+10 NIM");
+  });
+
+  it("names a 10 NIM Join grant and the returning Join overlay", () => {
+    expect(JOIN_GRANT_NIM).toBe(10);
+    expect(JOIN_GRANT_LUNA).toBe(1_000_000);
+    expect(joinGrantMemo()).toBe("Joined Cinima");
+    expect(JOIN_GRANT_MEMO).toBe("Joined Cinima");
+    expect(JOIN_GRANT_HOW).toBe("Joined Cinima");
+    expect(joinGrantIdempotencyKey("NQ05JOINTESTWALLET000000000000001")).toBe(
+      "join:NQ05JOINTESTWALLET000000000000001"
+    );
+    expect(JOIN_OVERLAY_TITLE).toBe("Thanks for joining Cinima");
+    expect(JOIN_OVERLAY_SUB).toBe("Thanks for coming back!");
+    expect(JOIN_OVERLAY_NIM_LABEL).toBe("+10 NIM");
+    expect(JOIN_OVERLAY_UNLOCKED).toBe("Achievement unlocked");
+    expect(
+      shouldShowJoinOverlay({ pending: true, onboarding: false, tourActive: false })
+    ).toBe(true);
+    expect(
+      shouldShowJoinOverlay({ pending: true, onboarding: true, tourActive: false })
+    ).toBe(false);
+    expect(
+      shouldShowJoinOverlay({ pending: true, onboarding: false, tourActive: true })
+    ).toBe(false);
+    expect(
+      shouldShowJoinOverlay({ pending: false, onboarding: false, tourActive: false })
+    ).toBe(false);
   });
 
   it("uses a truncated wallet when the Handle is missing", () => {

@@ -89,6 +89,7 @@
             class="received-event"
           >
             <RouterLink
+              v-if="item.kind !== 'join'"
               class="received-who"
               :to="{ name: 'user', params: { wallet: item.fromWallet } }"
               :aria-label="displayName(item.fromHandle, item.fromWallet)"
@@ -97,14 +98,16 @@
             </RouterLink>
             <div class="received-body">
               <RouterLink
+                v-if="item.kind !== 'join'"
                 class="received-title"
                 :to="{ name: 'title', params: { id: item.titleId } }"
               >
                 {{ item.titleName }}
               </RouterLink>
-              <p class="received-how">{{ receivedThanksHow(item.kind) }}</p>
+              <p v-if="item.kind === 'join'" class="received-title">{{ receivedHow(item.kind) }}</p>
+              <p v-else class="received-how">{{ receivedHow(item.kind) }}</p>
               <button
-                v-if="item.sendMemo"
+                v-if="item.kind !== 'join' && item.sendMemo"
                 type="button"
                 class="received-memo"
                 :class="{ 'is-open': isMemoOpen(item) }"
@@ -220,12 +223,12 @@ import {
   ACTIVITY_UI_VISIBLE,
   RECEIVED_LIST_HEADING,
   displayName,
+  receivedHow,
   receivedNimLabel,
-  receivedThanksHow,
   type HeatmapDay,
   type MeResponse,
   type PublicProfile,
-  type ReceivedThanksItem,
+  type ReceivedItem,
   type TitleSummary,
 } from "@cinima/shared";
 import { siteOrigin } from "@/lib/siteMeta";
@@ -254,7 +257,7 @@ const xEditorOpen = ref(false);
 const shareOpen = ref(false);
 const handleBusy = ref(false);
 const xBusy = ref(false);
-const receivedItems = ref<ReceivedThanksItem[]>([]);
+const receivedItems = ref<ReceivedItem[]>([]);
 const receivedHeading = RECEIVED_LIST_HEADING;
 const openMemos = ref(new Set<string>());
 
@@ -266,15 +269,15 @@ const publicProfileTo = computed(() => {
   return { name: "public" as const, params: { username: handle } };
 });
 
-function memoKey(item: ReceivedThanksItem) {
+function memoKey(item: ReceivedItem) {
   return `${item.kind}-${item.id}`;
 }
 
-function isMemoOpen(item: ReceivedThanksItem) {
+function isMemoOpen(item: ReceivedItem) {
   return openMemos.value.has(memoKey(item));
 }
 
-function toggleMemo(item: ReceivedThanksItem) {
+function toggleMemo(item: ReceivedItem) {
   const key = memoKey(item);
   const next = new Set(openMemos.value);
   if (next.has(key)) next.delete(key);
@@ -282,7 +285,7 @@ function toggleMemo(item: ReceivedThanksItem) {
   openMemos.value = next;
 }
 
-function nimLabel(item: ReceivedThanksItem) {
+function nimLabel(item: ReceivedItem) {
   return receivedNimLabel(item.rewardNim, item.sendNim);
 }
 
@@ -310,7 +313,7 @@ const loadMe = async (opts?: { quiet?: boolean }) => {
       useMarqueeStore().enqueue(data.unseenAchievements);
     }
     try {
-      const received = await request<{ items: ReceivedThanksItem[] }>("/me/received");
+      const received = await request<{ items: ReceivedItem[] }>("/me/received");
       receivedItems.value = received.items;
     } catch {
       receivedItems.value = [];

@@ -35,6 +35,7 @@ export const CUE_LAB_OVERLAYS = [
   { id: "profile-header-banner-bleed", label: "Cover + bleed", group: "Profile header" },
   { id: "welcome", label: "Welcome", group: "Welcome" },
   { id: "welcome-back", label: "Welcome Back", group: "Welcome" },
+  { id: "join-overlay", label: "Join overlay", group: "Welcome" },
   { id: "tour-offer", label: "Tour offer", group: "Guided tour" },
   { id: "tour-skip-notice", label: "Tour skipped notice", group: "Guided tour" },
   { id: "tour-start", label: "Start tour", group: "Guided tour" },

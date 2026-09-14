@@ -1,8 +1,10 @@
-import { and, count, countDistinct, desc, eq, gt, isNotNull, sql } from "drizzle-orm";
+import { and, count, countDistinct, desc, eq, gt, inArray, isNotNull, sql } from "drizzle-orm";
 import {
   achievementTitle,
   achievementsEligible,
+  isTourGatedAchievement,
   orderEarnedAchievements,
+  shouldMarqueeJoinedTheCrew,
   shouldAwardBravo,
   shouldAwardEncore,
   shouldAwardFullHouse,
@@ -71,6 +73,14 @@ export async function achievementCount(wallet: string): Promise<number> {
   return Number(row?.n || 0);
 }
 
+async function gatedAchievementCount(wallet: string): Promise<number> {
+  const rows = await db
+    .select({ kind: achievements.kind })
+    .from(achievements)
+    .where(eq(achievements.walletAddress, wallet));
+  return rows.filter((r) => isTourGatedAchievement(r.kind as AchievementKind)).length;
+}
+
 export async function listCredits(wallet: string): Promise<AchievementDto[]> {
   const rows = await db
     .select()
@@ -85,18 +95,57 @@ export async function listCredits(wallet: string): Promise<AchievementDto[]> {
 }
 
 /** Return unseen Achievements and mark them seen. */
-export async function takeUnseenAchievements(wallet: string): Promise<AchievementKind[]> {
+export async function takeUnseenAchievements(
+  wallet: string,
+  opts?: { sessionCreatedAt?: number }
+): Promise<AchievementKind[]> {
   const rows = await db
-    .select({ kind: achievements.kind })
+    .select({
+      kind: achievements.kind,
+      earnedAt: achievements.earnedAt,
+      seenAt: achievements.seenAt,
+    })
     .from(achievements)
     .where(and(eq(achievements.walletAddress, wallet), sql`${achievements.seenAt} is null`))
     .orderBy(achievements.earnedAt);
-  const kinds = rows.map((r) => r.kind as AchievementKind);
+  if (!rows.length) return [];
+
+  const [user] = await db
+    .select({ pending: users.joinOverlayPendingAt })
+    .from(users)
+    .where(eq(users.walletAddress, wallet))
+    .limit(1);
+  const overlayPending = user?.pending != null;
+  const sessionCreatedAt = opts?.sessionCreatedAt ?? Date.now();
+
+  const kinds: AchievementKind[] = [];
+  for (const row of rows) {
+    const kind = row.kind as AchievementKind;
+    if (kind === "joined-the-crew") {
+      if (
+        !shouldMarqueeJoinedTheCrew({
+          earnedAt: row.earnedAt.getTime(),
+          sessionCreatedAt,
+          overlayPending,
+          seenAt: row.seenAt?.getTime() ?? null,
+        })
+      ) {
+        continue;
+      }
+    }
+    kinds.push(kind);
+  }
   if (!kinds.length) return [];
   await db
     .update(achievements)
     .set({ seenAt: new Date() })
-    .where(and(eq(achievements.walletAddress, wallet), sql`${achievements.seenAt} is null`));
+    .where(
+      and(
+        eq(achievements.walletAddress, wallet),
+        inArray(achievements.kind, kinds),
+        sql`${achievements.seenAt} is null`
+      )
+    );
   return kinds;
 }
 
@@ -131,7 +180,7 @@ function tourStatusFromUser(user: {
 async function isEligible(wallet: string): Promise<boolean> {
   const [user] = await db.select().from(users).where(eq(users.walletAddress, wallet)).limit(1);
   if (!user) return false;
-  const n = await achievementCount(wallet);
+  const n = await gatedAchievementCount(wallet);
   return achievementsEligible({
     tourStatus: tourStatusFromUser(user),
     alreadyHasAchievement: n > 0,
