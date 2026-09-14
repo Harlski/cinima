@@ -104,6 +104,7 @@
             @open-user="goToUser"
             @open-title="goToTitle"
             @thank="thankComment(item)"
+            @send="offerCommentSend(item)"
           />
         </div>
       </section>
@@ -253,6 +254,7 @@ import {
 import { useCommunityRecommends } from "@/composables/useCommunityRecommends";
 import { useTitleActionConfirm } from "@/composables/useTitleActionConfirm";
 import { useMarqueeStore } from "@/stores/marquee";
+import { useUserSendStore } from "@/stores/userSend";
 
 defineOptions({ name: "Discover" });
 
@@ -323,6 +325,16 @@ const followingStripReady = ref(false);
 const discoverApplied = ref(false);
 /** Creator row injected when Find people is filtered for the guided tour. */
 const tourCreatorEntry = ref<FindPeopleEntry | null>(null);
+
+watch(
+  () => useUserSendStore().lastAttached,
+  (attached) => {
+    if (!attached || attached.kind !== "comment") return;
+    commentFeed.value = commentFeed.value.map((row) =>
+      row.id === attached.commentId ? { ...row, sent: true } : row
+    );
+  }
+);
 
 const visibleFindPeople = computed(() => {
   if (!tour.filterFindPeopleToCreator) return findPeople.value;
@@ -528,15 +540,36 @@ const thankComment = async (item: CommentFeedItem) => {
     }>(`/comments/${item.id}/thanks`, { method: "POST" });
     commentFeed.value = commentFeed.value.map((row) =>
       row.id === item.id
-        ? { ...row, thanksCount: data.comment.thanksCount, thanked: data.comment.thanked }
+        ? {
+            ...row,
+            thanksCount: data.comment.thanksCount,
+            thanked: data.comment.thanked,
+            sent: data.comment.sent,
+          }
         : row
     );
     if (data.earnedAchievements?.length) {
       useMarqueeStore().enqueue(data.earnedAchievements);
     }
+    useUserSendStore().offer({
+      kind: "comment",
+      toWallet: item.walletAddress,
+      handle: item.handle,
+      commentId: item.id,
+    });
   } finally {
     thankBusyId.value = null;
   }
+};
+
+const offerCommentSend = (item: CommentFeedItem) => {
+  if (!item.thanked || item.sent) return;
+  useUserSendStore().offer({
+    kind: "comment",
+    toWallet: item.walletAddress,
+    handle: item.handle,
+    commentId: item.id,
+  });
 };
 
 const openFindPeople = async () => {
@@ -604,9 +637,15 @@ const onFollowPerson = async (person: FindPeopleEntry) => {
   if (followBusyWallet.value) return;
   followBusyWallet.value = person.walletAddress;
   try {
-    await request(`/users/${encodeURIComponent(person.walletAddress)}/follow`, {
-      method: "POST",
-    });
+    const data = await request<{ earnedAchievements?: AchievementKind[] }>(
+      `/users/${encodeURIComponent(person.walletAddress)}/follow`,
+      {
+        method: "POST",
+      }
+    );
+    if (data.earnedAchievements?.length) {
+      useMarqueeStore().enqueue(data.earnedAchievements);
+    }
     findPeople.value = findPeople.value.filter(
       (p) => p.walletAddress !== person.walletAddress
     );

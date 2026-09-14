@@ -12,6 +12,10 @@ export const ACHIEVEMENT_KINDS = [
   "high-seas",
   "season-ticket",
   "thats-a-wrap",
+  "in-the-listings",
+  "save-that-for-later",
+  "thats-the-one",
+  "plus-one",
 ] as const;
 
 export type AchievementKind = (typeof ACHIEVEMENT_KINDS)[number];
@@ -26,6 +30,10 @@ const TITLES: Record<AchievementKind, string> = {
   "high-seas": "High seas",
   "season-ticket": "Season ticket",
   "thats-a-wrap": "That's a wrap",
+  "in-the-listings": "In the listings",
+  "save-that-for-later": "Save that for later",
+  "thats-the-one": "That's the one",
+  "plus-one": "Plus one",
 };
 
 const HOW: Record<AchievementKind, string> = {
@@ -38,6 +46,10 @@ const HOW: Record<AchievementKind, string> = {
   "high-seas": "Viewed ten unique titles",
   "season-ticket": "Came back on a second day",
   "thats-a-wrap": "Finished the guided tour",
+  "in-the-listings": "Searched for a title",
+  "save-that-for-later": "Added a Search result to your Watchlist",
+  "thats-the-one": "Recommended a Search result",
+  "plus-one": "Followed a Handle",
 };
 
 export function achievementTitle(kind: AchievementKind): string {
@@ -161,4 +173,32 @@ export function shouldAwardThatsAWrap(input: {
   tourCompleted: boolean;
 }): boolean {
   return !input.alreadyEarned && input.tourCompleted;
+}
+
+export function shouldAwardInTheListings(input: {
+  alreadyEarned: boolean;
+  searchCountAfter: number;
+}): boolean {
+  return !input.alreadyEarned && input.searchCountAfter >= 1;
+}
+
+export function shouldAwardSaveThatForLater(input: {
+  alreadyEarned: boolean;
+  hasWatchlistAddAfterSearchOpen: boolean;
+}): boolean {
+  return !input.alreadyEarned && input.hasWatchlistAddAfterSearchOpen;
+}
+
+export function shouldAwardThatsTheOne(input: {
+  alreadyEarned: boolean;
+  hasRecommendAfterSearchOpen: boolean;
+}): boolean {
+  return !input.alreadyEarned && input.hasRecommendAfterSearchOpen;
+}
+
+export function shouldAwardPlusOne(input: {
+  alreadyEarned: boolean;
+  followCountAfter: number;
+}): boolean {
+  return !input.alreadyEarned && input.followCountAfter >= 1;
 }

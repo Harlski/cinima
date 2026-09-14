@@ -94,6 +94,9 @@ const statements = [
     to_wallet TEXT NOT NULL,
     title_id TEXT NOT NULL,
     tip_tx_hash TEXT,
+    send_tx_hash TEXT,
+    send_tx_at INTEGER,
+    send_memo TEXT,
     created_at INTEGER NOT NULL
   )`,
   `CREATE TABLE IF NOT EXISTS follows (
@@ -246,6 +249,9 @@ export async function migrate() {
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     from_wallet TEXT NOT NULL,
     comment_id INTEGER NOT NULL,
+    send_tx_hash TEXT,
+    send_tx_at INTEGER,
+    send_memo TEXT,
     created_at INTEGER NOT NULL
   )`);
   await client.execute(
@@ -287,6 +293,36 @@ export async function migrate() {
   await client.execute(`CREATE INDEX IF NOT EXISTS sends_status_created ON sends(status, created_at)`);
   await client.execute(`CREATE INDEX IF NOT EXISTS sends_to_source ON sends(to_wallet, source)`);
   await client.execute(`CREATE INDEX IF NOT EXISTS sends_from_kind ON sends(from_wallet, kind)`);
+  try {
+    await client.execute(`ALTER TABLE thanks ADD COLUMN send_tx_hash TEXT`);
+  } catch {
+    /* column already exists */
+  }
+  try {
+    await client.execute(`ALTER TABLE thanks ADD COLUMN send_tx_at INTEGER`);
+  } catch {
+    /* column already exists */
+  }
+  try {
+    await client.execute(`ALTER TABLE comment_thanks ADD COLUMN send_tx_hash TEXT`);
+  } catch {
+    /* column already exists */
+  }
+  try {
+    await client.execute(`ALTER TABLE comment_thanks ADD COLUMN send_tx_at INTEGER`);
+  } catch {
+    /* column already exists */
+  }
+  try {
+    await client.execute(`ALTER TABLE thanks ADD COLUMN send_memo TEXT`);
+  } catch {
+    /* column already exists */
+  }
+  try {
+    await client.execute(`ALTER TABLE comment_thanks ADD COLUMN send_memo TEXT`);
+  } catch {
+    /* column already exists */
+  }
   await client.execute(
     `CREATE TABLE IF NOT EXISTS sender_heartbeat (
       id INTEGER PRIMARY KEY,

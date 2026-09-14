@@ -1,13 +1,17 @@
 <template>
   <div v-if="current && title" class="marquee" role="status" aria-live="polite">
-    <button type="button" class="marquee-bar" aria-label="Open Credits" @click="openCredits">
-      <p class="marquee-label">Achievement</p>
-      <p class="marquee-title">{{ title }}</p>
-      <p v-if="how" class="marquee-how">{{ how }}</p>
-    </button>
-    <button type="button" class="marquee-x" aria-label="Dismiss" @click="store.dismiss()">
-      <NqIcon name="cross" :size="18" />
-    </button>
+    <Transition name="marquee-pop" appear mode="out-in">
+      <div :key="current.kind" class="marquee-slide">
+        <button type="button" class="marquee-bar" aria-label="Open Credits" @click="openCredits">
+          <p class="marquee-label">Achievement</p>
+          <p class="marquee-title">{{ title }}</p>
+          <p v-if="how" class="marquee-how">{{ how }}</p>
+        </button>
+        <button type="button" class="marquee-x" aria-label="Dismiss" @click="store.dismiss()">
+          <NqIcon name="cross" :size="18" />
+        </button>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -36,20 +40,28 @@ function openCredits() {
   position: fixed;
   left: 0;
   right: 0;
-  top: calc(var(--app-brand-row, 2.75rem) + var(--vv-offset-top, 0px));
-  z-index: 46;
+  /* Cover the brand row so the bar can travel behind it, then rest below. */
+  top: var(--vv-offset-top, 0px);
+  z-index: 44;
+  overflow: hidden;
   pointer-events: none;
-  animation: marquee-in 0.28s ease-out;
+  padding-top: var(--app-brand-row, 2.75rem);
+}
+
+.marquee-slide {
+  position: relative;
+}
+
+.marquee-pop-enter-active {
+  animation: marquee-in 0.38s cubic-bezier(0.25, 0, 0, 1);
 }
 
 @keyframes marquee-in {
   from {
     transform: translateY(-100%);
-    opacity: 0;
   }
   to {
     transform: translateY(0);
-    opacity: 1;
   }
 }
 
@@ -104,5 +116,11 @@ function openCredits() {
   background: transparent;
   color: var(--colors-neutral-0);
   cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-pop-enter-active {
+    animation: none;
+  }
 }
 </style>

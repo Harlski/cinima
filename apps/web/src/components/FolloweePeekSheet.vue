@@ -18,7 +18,14 @@
 
         <template v-else>
           <div class="who">
-            <Identicon :address="profile.walletAddress" :size="52" alt="" />
+            <button
+              type="button"
+              class="who-face"
+              aria-label="View Profile"
+              @click="$emit('view-profile')"
+            >
+              <Identicon :address="profile.walletAddress" :size="52" alt="" />
+            </button>
             <h2 id="followee-peek-title">
               {{ displayName(profile.handle, profile.walletAddress) }}
             </h2>
@@ -140,6 +147,16 @@ watch(
   align-items: center;
   gap: 0.55rem;
   padding-top: 0.35rem;
+}
+
+.who-face {
+  display: flex;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 50%;
+  line-height: 0;
+  cursor: pointer;
 }
 
 .who h2 {

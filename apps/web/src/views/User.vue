@@ -13,8 +13,13 @@
         :following-count="profile.followingCount"
         :achievement-count="profile.achievementCount ?? 0"
         :achievement-open="true"
-        wallet-display="abbrev"
-        :avatar-size="64"
+        :recommends="profile.recommends || []"
+        :identicon-to="
+          profile.handle
+            ? { name: 'public', params: { username: profile.handle } }
+            : null
+        "
+        identicon-label="View Public Profile"
         @open-credits="openCredits"
       >
         <template v-if="!profile.isSelf" #actions>
@@ -62,7 +67,6 @@ import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
 import { ACTIVITY_UI_VISIBLE, displayName } from "@cinima/shared";
-import type { PublicProfile } from "@cinima/shared";
 import ActivityHeatmap from "@/components/ActivityHeatmap.vue";
 import LoadingWait from "@/components/LoadingWait.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
@@ -71,6 +75,8 @@ import TourSpotlight from "@/components/TourSpotlight.vue";
 import UserCard from "@/components/UserCard.vue";
 import { TOUR_SPOTLIGHT } from "@/lib/guidedTour";
 import { acceptedWaitLabel } from "@/lib/acceptedWait";
+import { useMarqueeStore } from "@/stores/marquee";
+import type { AchievementKind, PublicProfile } from "@cinima/shared";
 
 const route = useRoute();
 const router = useRouter();
@@ -103,12 +109,18 @@ const toggleFollow = async () => {
         followerCount: Math.max(0, profile.value.followerCount - 1),
       };
     } else {
-      await request(`/users/${w}/follow`, { method: "POST" });
+      const data = await request<{ earnedAchievements?: AchievementKind[] }>(
+        `/users/${w}/follow`,
+        { method: "POST" }
+      );
       profile.value = {
         ...profile.value,
         isFollowing: true,
         followerCount: profile.value.followerCount + 1,
       };
+      if (data.earnedAchievements?.length) {
+        useMarqueeStore().enqueue(data.earnedAchievements);
+      }
     }
   } finally {
     followBusy.value = false;
@@ -151,6 +163,6 @@ watch(wallet, loadProfile);
   padding: 1rem 0;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 0.85rem;
 }
 </style>

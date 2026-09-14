@@ -329,6 +329,6 @@ describe("Door alarm HTTP write path", () => {
       })
     );
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true });
+    expect(await res.json()).toEqual({ ok: true, earnedAchievements: [] });
   });
 });

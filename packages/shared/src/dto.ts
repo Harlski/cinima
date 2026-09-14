@@ -1,5 +1,6 @@
 import type { MediaType, TitleId } from "./ids.js";
 import type { AchievementKind } from "./achievements.js";
+import type { ReceivedThanksKind } from "./sends.js";
 
 export type GatePayload = {
   gate: true;
@@ -90,6 +91,8 @@ export type CommentDto = {
   deleted: boolean;
   thanksCount: number;
   thanked: boolean;
+  /** True when this viewer already landed a User Send on this Comment Thanks */
+  sent: boolean;
 };
 
 export type CommentFeedItem = CommentDto & {
@@ -104,6 +107,8 @@ export type TitleSuggester = {
   walletAddress: string;
   handle: string | null;
   thanked: boolean;
+  /** True when this viewer already landed a User Send on this Thanks */
+  sent: boolean;
   /** True when this peer's Favorite is also a Recommend */
   recommended: boolean;
 };
@@ -278,6 +283,38 @@ export type MeResponse = {
   xHandle: string | null;
   achievementCount: number;
   unseenAchievements: AchievementKind[];
+};
+
+export type ReceivedThanksItem = {
+  kind: ReceivedThanksKind;
+  id: number;
+  fromWallet: string;
+  fromHandle: string | null;
+  titleId: string;
+  titleName: string;
+  commentPreview: string | null;
+  sendMemo: string | null;
+  createdAt: string;
+  rewardTxHash: string | null;
+  sendTxHash: string | null;
+  rewardNim: number;
+  sendNim: number;
+};
+
+export type ReceivedThanksResponse = {
+  items: ReceivedThanksItem[];
+};
+
+export type ReturnDigest = {
+  thanksCount: number;
+  nimReceived: number;
+  thankers: { walletAddress: string; handle: string | null }[];
+};
+
+export type HeartbeatResponse = {
+  ok: true;
+  earnedAchievements: AchievementKind[];
+  digest: ReturnDigest | null;
 };
 
 export type CreditsResponse = {

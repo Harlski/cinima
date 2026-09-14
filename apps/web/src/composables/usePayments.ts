@@ -1,6 +1,11 @@
 import { ref } from "vue";
 import { encodeMemo, type PaymentMemo } from "@cinima/shared";
-import { demoEnabledOutsidePay, isNimiqPay, sendPayTransaction } from "@/lib/nimiqPay";
+import {
+  demoEnabledOutsidePay,
+  isNimiqPay,
+  payUserMessage,
+  sendPayTransaction,
+} from "@/lib/nimiqPay";
 
 const treasuryAddress = (import.meta.env.VITE_TREASURY_ADDRESS || "").trim();
 
@@ -24,8 +29,7 @@ export function usePayments() {
         data: encoded,
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Payment failed";
-      error.value = message;
+      error.value = payUserMessage(err, "Payment failed");
       throw err;
     } finally {
       loading.value = false;

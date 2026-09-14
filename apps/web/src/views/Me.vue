@@ -15,8 +15,9 @@
         :following-count="heatmapMeta?.followingCount"
         :achievement-count="achievementCount"
         :achievement-open="true"
-        wallet-display="abbrev"
-        :avatar-size="64"
+        :recommends="recommends"
+        :identicon-to="publicProfileTo"
+        identicon-label="View Public Profile"
         @open-credits="openCredits"
       >
         <template #actions>
@@ -78,6 +79,45 @@
         :recommends="recommends"
         @select="(title) => goToTitle(title.id)"
       />
+
+      <section v-if="receivedItems.length" class="received">
+        <h2>{{ receivedHeading }}</h2>
+        <ul class="received-list">
+          <li
+            v-for="item in receivedItems"
+            :key="`${item.kind}-${item.id}`"
+            class="received-event"
+          >
+            <RouterLink
+              class="received-who"
+              :to="{ name: 'user', params: { wallet: item.fromWallet } }"
+              :aria-label="displayName(item.fromHandle, item.fromWallet)"
+            >
+              <Identicon :address="item.fromWallet" :size="32" alt="" />
+            </RouterLink>
+            <div class="received-body">
+              <RouterLink
+                class="received-title"
+                :to="{ name: 'title', params: { id: item.titleId } }"
+              >
+                {{ item.titleName }}
+              </RouterLink>
+              <p class="received-how">{{ receivedThanksHow(item.kind) }}</p>
+              <button
+                v-if="item.sendMemo"
+                type="button"
+                class="received-memo"
+                :class="{ 'is-open': isMemoOpen(item) }"
+                :aria-expanded="isMemoOpen(item)"
+                @click="toggleMemo(item)"
+              >
+                {{ item.sendMemo }}
+              </button>
+            </div>
+            <span v-if="nimLabel(item)" class="received-nim">{{ nimLabel(item) }}</span>
+          </li>
+        </ul>
+      </section>
 
       <div class="tour-replay">
         <button
@@ -163,9 +203,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import { useRouter } from "vue-router";
+import { useRouter, RouterLink } from "vue-router";
 import { useApi } from "@/composables/useApi";
 import { useAuthStore } from "@/stores/auth";
+import Identicon from "@/components/Identicon.vue";
 import NqIcon from "@/components/NqIcon.vue";
 import LoadingWait from "@/components/LoadingWait.vue";
 import ActivityHeatmap from "@/components/ActivityHeatmap.vue";
@@ -177,13 +218,20 @@ import { useMarqueeStore } from "@/stores/marquee";
 import { studioEntryVisible } from "@/lib/studio";
 import {
   ACTIVITY_UI_VISIBLE,
+  RECEIVED_LIST_HEADING,
   displayName,
+  receivedNimLabel,
+  receivedThanksHow,
+  type HeatmapDay,
+  type MeResponse,
+  type PublicProfile,
+  type ReceivedThanksItem,
+  type TitleSummary,
 } from "@cinima/shared";
 import { siteOrigin } from "@/lib/siteMeta";
 import { profileShareSheetPreview } from "@/lib/profileShare";
 import { acceptedWaitLabel } from "@/lib/acceptedWait";
 import { useGuidedTourStore } from "@/stores/guidedTour";
-import type { HeatmapDay, MeResponse, PublicProfile, TitleSummary } from "@cinima/shared";
 
 const router = useRouter();
 const { request } = useApi();
@@ -206,8 +254,37 @@ const xEditorOpen = ref(false);
 const shareOpen = ref(false);
 const handleBusy = ref(false);
 const xBusy = ref(false);
+const receivedItems = ref<ReceivedThanksItem[]>([]);
+const receivedHeading = RECEIVED_LIST_HEADING;
+const openMemos = ref(new Set<string>());
 
 const showStudio = computed(() => studioEntryVisible(user.value?.walletAddress));
+
+const publicProfileTo = computed(() => {
+  const handle = user.value?.handle?.trim();
+  if (!handle) return null;
+  return { name: "public" as const, params: { username: handle } };
+});
+
+function memoKey(item: ReceivedThanksItem) {
+  return `${item.kind}-${item.id}`;
+}
+
+function isMemoOpen(item: ReceivedThanksItem) {
+  return openMemos.value.has(memoKey(item));
+}
+
+function toggleMemo(item: ReceivedThanksItem) {
+  const key = memoKey(item);
+  const next = new Set(openMemos.value);
+  if (next.has(key)) next.delete(key);
+  else next.add(key);
+  openMemos.value = next;
+}
+
+function nimLabel(item: ReceivedThanksItem) {
+  return receivedNimLabel(item.rewardNim, item.sendNim);
+}
 
 const sharePreview = computed(() => {
   if (!shareUrl.value || !user.value?.handle) return null;
@@ -231,6 +308,12 @@ const loadMe = async (opts?: { quiet?: boolean }) => {
     achievementCount.value = data.achievementCount ?? 0;
     if (data.unseenAchievements?.length) {
       useMarqueeStore().enqueue(data.unseenAchievements);
+    }
+    try {
+      const received = await request<{ items: ReceivedThanksItem[] }>("/me/received");
+      receivedItems.value = received.items;
+    } catch {
+      receivedItems.value = [];
     }
     if (authStore.user?.walletAddress) {
       try {
@@ -339,25 +422,24 @@ onUnmounted(() => {
   padding: 1rem 0;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.85rem;
 }
 
 .card-actions {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.25rem;
 }
 
 .icon-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.35rem;
-  height: 2.35rem;
+  width: 2.1rem;
+  height: 2.1rem;
   padding: 0;
   border: 0;
-  border-radius: 999px;
-  background: var(--colors-neutral-200);
+  background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
 }
@@ -367,8 +449,8 @@ onUnmounted(() => {
 }
 
 .icon-btn :deep(.nq-icon) {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
 .handle-prompt {
@@ -384,6 +466,119 @@ onUnmounted(() => {
 
 .handle-prompt p {
   margin: 0 0 0.75rem;
+}
+
+.received {
+  padding: 0 1rem;
+}
+
+.received h2 {
+  margin: 0 0 0.65rem;
+  font-size: 1.1rem;
+}
+
+.received-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.received-event {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.45rem 0.65rem;
+  line-height: 1.25;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+}
+
+.received-event :deep(.identicon) {
+  flex-shrink: 0;
+}
+
+.received-who {
+  display: flex;
+  flex-shrink: 0;
+  border-radius: 50%;
+  line-height: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.received-who:hover {
+  text-decoration: none;
+}
+
+.received-body {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.received-title {
+  margin: 0;
+  font-weight: 650;
+  font-size: 0.88rem;
+  line-height: 1.25;
+  color: var(--text-primary);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.received-how {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.3;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.received-memo {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.78rem;
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  overflow: hidden;
+}
+
+.received-memo.is-open {
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  overflow: visible;
+  white-space: normal;
+}
+
+.received-nim {
+  flex-shrink: 0;
+  align-self: center;
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--gold, #e5c158);
+  white-space: nowrap;
 }
 
 .tour-replay,

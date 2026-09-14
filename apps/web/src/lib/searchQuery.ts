@@ -6,3 +6,8 @@ export function parseSearchQuery(value: unknown): string {
 export function searchRouteQuery(query: string): { q?: string } {
   return query.trim() ? { q: query } : {};
 }
+
+/** Matches the API: a typed Search of at least two characters, even with no results. */
+export function shouldRecordSearchUsage(query: string): boolean {
+  return query.trim().length >= 2;
+}

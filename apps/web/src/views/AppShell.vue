@@ -48,9 +48,10 @@
         <NqIcon name="bell" :size="24" />
         <span>Activity</span>
       </RouterLink>
-      <RouterLink to="/me" class="tab tab--me">
+      <RouterLink to="/me" class="tab tab--me" data-digest-target="me">
         <Identicon
           class="tab-identicon"
+          :class="{ 'tab-identicon--digest-arrive': meTabHint }"
           :address="walletAddress"
           :size="26"
           alt="Me"
@@ -61,13 +62,16 @@
 
     <GuidedTourHost />
     <MarqueeHost />
+    <SendNimDialog />
+    <ReturnDigestHost />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, watch } from "vue";
 import { RouterView, RouterLink, useRoute } from "vue-router";
-import type { AchievementKind } from "@cinima/shared";
+import { storeToRefs } from "pinia";
+import type { HeartbeatResponse } from "@cinima/shared";
 import { ACTIVITY_UI_VISIBLE } from "@cinima/shared";
 import { useViewportChromeLock } from "@/composables/useViewportChromeLock";
 import { useFavoritesStore } from "@/stores/favorites";
@@ -78,10 +82,13 @@ import AppBrandHeader from "@/components/AppBrandHeader.vue";
 import GuidedTourHost from "@/components/GuidedTourHost.vue";
 import Identicon from "@/components/Identicon.vue";
 import MarqueeHost from "@/components/MarqueeHost.vue";
+import ReturnDigestHost from "@/components/ReturnDigestHost.vue";
+import SendNimDialog from "@/components/SendNimDialog.vue";
 import NqIcon from "@/components/NqIcon.vue";
 import TourSpotlight from "@/components/TourSpotlight.vue";
 import { TOUR_SPOTLIGHT } from "@/lib/guidedTour";
 import { useMarqueeStore } from "@/stores/marquee";
+import { useReturnDigestStore } from "@/stores/returnDigest";
 import { useGuidedTourStore } from "@/stores/guidedTour";
 import { USAGE_HEARTBEAT_MS } from "@/lib/studio";
 
@@ -93,15 +100,23 @@ const watchlistStore = useWatchlistStore();
 const authStore = useAuthStore();
 const { request } = useApi();
 const walletAddress = computed(() => authStore.user?.walletAddress || "");
+const { meTabHint } = storeToRefs(useReturnDigestStore());
 
 function sendHeartbeat() {
   if (!authStore.token || !authStore.user) return;
   if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
-  void request<{ earnedAchievements?: AchievementKind[] }>("/usage/heartbeat", {
+  void request<HeartbeatResponse>("/usage/heartbeat", {
     method: "POST",
   })
     .then((data) => {
       if (data.earnedAchievements?.length) useMarqueeStore().enqueue(data.earnedAchievements);
+      const onboarding = !!document.querySelector(
+        ".discover--onboarding, .discover--handle"
+      );
+      useReturnDigestStore().apply(data.digest ?? null, {
+        onboarding,
+        tourActive: useGuidedTourStore().active || useGuidedTourStore().offering,
+      });
     })
     .catch(() => {});
 }
@@ -267,6 +282,10 @@ onUnmounted(() => {
   border-radius: 50%;
 }
 
+.tab-identicon--digest-arrive {
+  animation: digest-me-pulse 0.55s ease;
+}
+
 .tab span {
   font-size: 0.75rem;
   font-weight: 500;
@@ -298,6 +317,16 @@ onUnmounted(() => {
   opacity: 0;
 }
 
+@keyframes digest-me-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.18);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .app-content,
   .bottom-tabs {
@@ -306,6 +335,10 @@ onUnmounted(() => {
 
   .app-shell:has(.discover--onboarding) .bottom-tabs {
     transition: none;
+  }
+
+  .tab-identicon--digest-arrive {
+    animation: none;
   }
 }
 </style>

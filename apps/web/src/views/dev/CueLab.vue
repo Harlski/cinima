@@ -1,11 +1,17 @@
 <template>
-  <div class="cue-lab">
+  <ProfileHeaderLabHost
+    v-if="headerVariant"
+    :variant="headerVariant"
+    @close="setHeaderVariant(null)"
+    @variant="setHeaderVariant"
+  />
+  <div v-else class="cue-lab">
     <div class="content">
       <h1>Cue lab</h1>
       <p class="lede">
-        Preview Marquee, Recommend cue, Guided tour, Welcome, and product modals
-        without walking the product flow. Previews are local; they do not award
-        Achievements.
+        Preview Marquee, Recommend cue, Return digest, profile headers, Guided tour,
+        Welcome, and product modals without walking the product flow. Previews are
+        local; they do not award Achievements or Send NIM.
       </p>
 
       <section class="nq-card block">
@@ -33,6 +39,14 @@
         class="nq-card block"
       >
         <h2>{{ group.group }}</h2>
+        <p v-if="group.group === 'Cues'" class="hint">
+          Recommend cue slides up above the tab bar. Return digest is the panel on
+          return Presence.
+        </p>
+        <p v-if="group.group === 'Profile header'" class="hint">
+          Throwaway Me layouts on a fixture Handle. Arrow keys and the bar flip
+          variants. Close to return here. Nothing writes to the live profile.
+        </p>
         <p v-if="group.group === 'Guided tour'" class="hint">
           Offer and skipped notice overlay here. Start tour runs the real walkthrough
           and leaves this screen.
@@ -107,7 +121,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onUnmounted, ref } from "vue";
+import { computed, onUnmounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import {
   achievementTitle,
   CREATOR_WALLET_DISPLAY,
@@ -121,11 +136,19 @@ import PayTitleModal from "@/components/PayTitleModal.vue";
 import RecommendCue from "@/components/RecommendCue.vue";
 import ShareLinkSheet from "@/components/ShareLinkSheet.vue";
 import WelcomeOverlay from "@/components/WelcomeOverlay.vue";
+import ProfileHeaderLabHost from "@/components/dev/ProfileHeaderLabHost.vue";
 import {
   cueLabMarqueeKinds,
   cueLabOverlayGroups,
+  cueLabProfileHeaderVariant,
+  cueLabReturnDigest,
+  cueLabSendPreview,
   type CueLabOverlayId,
 } from "@/lib/cueLab";
+import {
+  isProfileHeaderVariantId,
+  type ProfileHeaderVariantId,
+} from "@/lib/profileHeaderLab";
 import {
   initialTourRuntime,
   TOUR_COMMUNITY_FALLBACK_TITLE,
@@ -137,10 +160,35 @@ import { WELCOME_HOLD_MS, welcomeMessage } from "@/lib/welcome";
 import { useAuthStore } from "@/stores/auth";
 import { useGuidedTourStore } from "@/stores/guidedTour";
 import { useMarqueeStore } from "@/stores/marquee";
+import { useReturnDigestStore } from "@/stores/returnDigest";
+import { useUserSendStore } from "@/stores/userSend";
 
+const route = useRoute();
+const router = useRouter();
 const marquee = useMarqueeStore();
 const tour = useGuidedTourStore();
 const auth = useAuthStore();
+const userSend = useUserSendStore();
+const returnDigest = useReturnDigestStore();
+
+const headerVariant = computed<ProfileHeaderVariantId | null>(() => {
+  const raw = route.query.profileHeader;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return typeof value === "string" && isProfileHeaderVariantId(value) ? value : null;
+});
+
+function setHeaderVariant(id: ProfileHeaderVariantId | null) {
+  const query = { ...route.query };
+  if (id) query.profileHeader = id;
+  else delete query.profileHeader;
+  void router.replace({ query });
+}
+
+watch(headerVariant, (id) => {
+  if (!id) return;
+  const el = document.querySelector(".app-content");
+  if (el instanceof HTMLElement) el.scrollTop = 0;
+});
 
 const marqueeKinds = cueLabMarqueeKinds();
 const overlayGroups = cueLabOverlayGroups();
@@ -188,6 +236,8 @@ function closeLocalOverlays() {
   payGateOpen.value = false;
   payTitleOpen.value = false;
   shareOpen.value = false;
+  userSend.cancel();
+  returnDigest.dismiss();
 }
 
 function showWelcome(returning: boolean) {
@@ -201,6 +251,8 @@ function showWelcome(returning: boolean) {
 
 onUnmounted(() => {
   clearWelcomeTimer();
+  userSend.cancel();
+  returnDigest.dismiss();
 });
 
 function previewMarquee(kind: AchievementKind) {
@@ -219,13 +271,25 @@ function onRecommendCueShare() {
 }
 
 function previewOverlay(id: CueLabOverlayId) {
+  const profileHeader = cueLabProfileHeaderVariant(id);
   closeLocalOverlays();
+  if (profileHeader) {
+    setHeaderVariant(profileHeader);
+    return;
+  }
   if (id !== "tour-offer" && id !== "tour-skip-notice" && id !== "tour-start") {
     tour.skipNotice = false;
   }
 
   if (id === "recommend-cue") {
     recommendCueOpen.value = true;
+    return;
+  }
+  if (id === "return-digest") {
+    returnDigest.apply(cueLabReturnDigest(), {
+      onboarding: false,
+      tourActive: false,
+    });
     return;
   }
   if (id === "welcome") {
@@ -252,6 +316,10 @@ function previewOverlay(id: CueLabOverlayId) {
   }
   if (id === "confirm") {
     confirmOpen.value = true;
+    return;
+  }
+  if (id === "send-nim") {
+    userSend.offer(cueLabSendPreview(), { preview: true });
     return;
   }
   if (id === "watchlist-leave") {

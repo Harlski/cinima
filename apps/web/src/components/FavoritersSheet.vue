@@ -54,6 +54,26 @@
               </div>
             </button>
             <button
+              v-if="!person.thanked"
+              type="button"
+              class="open-btn nq-pill-blue"
+              :disabled="busyWallet === person.walletAddress"
+              :aria-busy="busyWallet === person.walletAddress"
+              @click="$emit('thank', person)"
+            >
+              {{ acceptedWaitLabel("Thanks", busyWallet === person.walletAddress) }}
+            </button>
+            <button
+              v-else-if="!person.sent"
+              type="button"
+              class="open-btn nq-pill-gold"
+              :disabled="busyWallet === person.walletAddress"
+              :aria-busy="busyWallet === person.walletAddress"
+              @click="$emit('send', person)"
+            >
+              {{ acceptedWaitLabel(userSendCta, busyWallet === person.walletAddress) }}
+            </button>
+            <button
               type="button"
               class="open-btn nq-pill-secondary"
               @click="$emit('open-profile', person.walletAddress)"
@@ -72,12 +92,15 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import { displayName } from "@cinima/shared";
+import { displayName, USER_SEND_CTA } from "@cinima/shared";
 import type { TitleSuggester } from "@cinima/shared";
 import Identicon from "@/components/Identicon.vue";
 import NqIcon from "@/components/NqIcon.vue";
+import { acceptedWaitLabel } from "@/lib/acceptedWait";
 
 export type TastePeopleTab = "recommends" | "favorites";
+
+const userSendCta = USER_SEND_CTA;
 
 const props = withDefaults(
   defineProps<{
@@ -85,17 +108,21 @@ const props = withDefaults(
     initialTab?: TastePeopleTab;
     recommendCount?: number;
     favoriteCount?: number;
+    busyWallet?: string | null;
   }>(),
   {
     initialTab: "recommends",
     recommendCount: 0,
     favoriteCount: 0,
+    busyWallet: null,
   }
 );
 
 defineEmits<{
   close: [];
   "open-profile": [wallet: string];
+  thank: [person: TitleSuggester];
+  send: [person: TitleSuggester];
 }>();
 
 const tab = ref<TastePeopleTab>(props.initialTab ?? "recommends");
@@ -212,7 +239,8 @@ const visiblePeople = computed(() =>
 .person-row {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.55rem;
 }
 
 .person-main {
@@ -245,8 +273,8 @@ const visiblePeople = computed(() =>
 
 .open-btn {
   flex-shrink: 0;
-  min-width: 5.6rem;
-  padding-inline: 0.75rem;
-  font-size: 0.82rem;
+  min-width: 6.4rem;
+  padding-inline: 0.7rem;
+  font-size: 0.78rem;
 }
 </style>

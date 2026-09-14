@@ -1,7 +1,8 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { useApi } from "@/composables/useApi";
-import type { TitleSummary, WatchlistLeaveReason } from "@cinima/shared";
+import type { AchievementKind, TitleSummary, WatchlistLeaveReason } from "@cinima/shared";
+import { useMarqueeStore } from "@/stores/marquee";
 
 export const useWatchlistStore = defineStore("watchlist", () => {
   const ids = ref<Set<string>>(new Set());
@@ -34,7 +35,11 @@ export const useWatchlistStore = defineStore("watchlist", () => {
     }
 
     try {
-      const data = await request<{ ok?: boolean; removed?: boolean }>(
+      const data = await request<{
+        ok?: boolean;
+        removed?: boolean;
+        earnedAchievements?: AchievementKind[];
+      }>(
         `/watchlist/${encodeURIComponent(titleId)}`,
         {
           method: wasOnList ? "DELETE" : "POST",
@@ -44,6 +49,9 @@ export const useWatchlistStore = defineStore("watchlist", () => {
               : undefined,
         }
       );
+      if (!wasOnList && data.earnedAchievements?.length) {
+        useMarqueeStore().enqueue(data.earnedAchievements);
+      }
       if (!wasOnList && !title) {
         await refresh();
       }

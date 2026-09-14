@@ -1,18 +1,14 @@
 <template>
   <div class="title-detail">
-    <header class="detail-header">
-      <button type="button" @click="goBack" class="back-button" aria-label="Back">
-        <NqIcon name="arrow-left" :size="24" />
-      </button>
-      <button
-        type="button"
-        class="share-button"
-        aria-label="Share title"
-        @click="openTitleShare"
-      >
-        <NqIcon name="link" :size="22" />
-      </button>
-    </header>
+    <button
+      type="button"
+      class="back-button"
+      aria-label="Back"
+      :hidden="composerDocked || recommendCueOpen"
+      @click="goBack"
+    >
+      <NqIcon name="arrow-left" :size="24" />
+    </button>
 
     <div v-if="loading" class="loading">
       <LoadingWait />
@@ -31,7 +27,17 @@
           <div v-else class="poster-placeholder">{{ title.title }}</div>
         </div>
         <div class="meta">
-          <h2>{{ title.title }}</h2>
+          <div class="meta-title">
+            <h2>{{ title.title }}</h2>
+            <button
+              type="button"
+              class="share-button"
+              aria-label="Share title"
+              @click="openTitleShare"
+            >
+              <NqIcon name="link" :size="20" />
+            </button>
+          </div>
           <p class="meta-line">
             <span class="rating" :class="{ muted: !hasTitleRating(title.rating) }">
               <NqIcon name="star" :size="14" />
@@ -125,43 +131,16 @@
         :episodes="title.episodes"
       />
 
-      <section v-if="suggesters.length" class="thanks-section">
-        <div class="thanks-card nq-card">
-          <div class="thanks-head">
-            <button
-              type="button"
-              class="thanks-head-left"
-              aria-label="Show who Favorited this"
-              @click="openTastePeople('favorites')"
-            >
-              <div class="thanks-stack" aria-hidden="true">
-                <Identicon
-                  v-for="s in suggesters.slice(0, 5)"
-                  :key="s.walletAddress"
-                  :address="s.walletAddress"
-                  :size="28"
-                  alt=""
-                />
-                <span v-if="suggesters.length > 5" class="thanks-more">
-                  +{{ suggesters.length - 5 }}
-                </span>
-              </div>
-              <p class="thanks-count">
-                {{ suggesters.length }} favorited this
-              </p>
-            </button>
-            <button
-              v-if="unthankedCount"
-              type="button"
-              class="nq-pill-blue nq-pill-lg"
-              :disabled="thankingAll"
-              :aria-busy="thankingAll"
-              @click="thankAll"
-            >
-              {{ acceptedWaitLabel("Thank all", thankingAll) }}
-            </button>
-          </div>
-        </div>
+      <section v-if="unthankedCount" class="thanks-section">
+        <button
+          type="button"
+          class="nq-pill-blue nq-pill-lg nq-pill-stretch"
+          :disabled="thankingAll"
+          :aria-busy="thankingAll"
+          @click="thankAll"
+        >
+          {{ acceptedWaitLabel("Thank all", thankingAll) }}
+        </button>
       </section>
 
       <section class="comments-section">
@@ -252,9 +231,11 @@
                   :own="isOwnComment(comment)"
                   :deleted="comment.deleted"
                   :thanked="comment.thanked"
+                  :sent="comment.sent"
                   :count="comment.thanksCount"
                   :busy="thankBusyId === comment.id"
                   @thank="thankComment(comment)"
+                  @send="offerCommentSend(comment)"
                 />
                 <button
                   v-if="isOwnComment(comment)"
@@ -338,8 +319,11 @@
       :initial-tab="tastePeopleTab"
       :recommend-count="title.recommendCount"
       :favorite-count="title.favoriteCount"
+      :busy-wallet="thankBusyWallet"
       @close="favoritersOpen = false"
       @open-profile="onOpenFavoriterProfile"
+      @thank="thankPerson"
+      @send="offerTitleSend"
     />
 
     <TitleActionDialogs
@@ -361,7 +345,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, onUnmounted } from "vue";
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
 import { useAuthStore } from "@/stores/auth";
@@ -390,6 +374,7 @@ import { shouldOfferRecommendCue, TOUR_SPOTLIGHT } from "@/lib/guidedTour";
 import { watchlistButtonLabel } from "@/lib/titleActionLabels";
 import { useGuidedTourStore } from "@/stores/guidedTour";
 import { useMarqueeStore } from "@/stores/marquee";
+import { useUserSendStore } from "@/stores/userSend";
 import { formatTitleRating, hasTitleRating } from "@/lib/titleRating";
 import { acceptedWaitLabel } from "@/lib/acceptedWait";
 
@@ -433,6 +418,7 @@ const editText = ref("");
 const savingEdit = ref(false);
 const commentPendingDelete = ref<number | null>(null);
 const thankBusyId = ref<number | null>(null);
+const thankBusyWallet = ref<string | null>(null);
 const suggesters = ref<TitleSuggester[]>([]);
 const thankingAll = ref(false);
 const favoritersOpen = ref(false);
@@ -641,11 +627,27 @@ const thankComment = async (comment: CommentDto) => {
     if (data.earnedAchievements?.length) {
       useMarqueeStore().enqueue(data.earnedAchievements);
     }
+    useUserSendStore().offer({
+      kind: "comment",
+      toWallet: comment.walletAddress,
+      handle: comment.handle,
+      commentId: comment.id,
+    });
   } catch (err) {
     console.error("Comment Thanks failed:", err);
   } finally {
     thankBusyId.value = null;
   }
+};
+
+const offerCommentSend = (comment: CommentDto) => {
+  if (!comment.thanked || comment.sent) return;
+  useUserSendStore().offer({
+    kind: "comment",
+    toWallet: comment.walletAddress,
+    handle: comment.handle,
+    commentId: comment.id,
+  });
 };
 
 const startEdit = (comment: CommentDto) => {
@@ -732,6 +734,62 @@ const onOpenFavoriterProfile = (wallet: string) => {
   goToUser(wallet);
 };
 
+const thankPerson = async (person: TitleSuggester) => {
+  if (!title.value || person.thanked || thankBusyWallet.value) return;
+  thankBusyWallet.value = person.walletAddress;
+  try {
+    const data = await request<{ created: boolean; earnedAchievements?: AchievementKind[] }>(
+      "/thanks",
+      {
+        method: "POST",
+        body: JSON.stringify({ toWallet: person.walletAddress, titleId: title.value.id }),
+      }
+    );
+    suggesters.value = suggesters.value.map((s) =>
+      s.walletAddress === person.walletAddress ? { ...s, thanked: true } : s
+    );
+    if (data.earnedAchievements?.length) {
+      useMarqueeStore().enqueue(data.earnedAchievements);
+    }
+    useUserSendStore().offer({
+      kind: "title",
+      toWallet: person.walletAddress,
+      handle: person.handle,
+      titleId: title.value.id,
+    });
+  } catch (err) {
+    console.error("Thanks failed:", err);
+  } finally {
+    thankBusyWallet.value = null;
+  }
+};
+
+const offerTitleSend = (person: TitleSuggester) => {
+  if (!title.value || !person.thanked || person.sent) return;
+  useUserSendStore().offer({
+    kind: "title",
+    toWallet: person.walletAddress,
+    handle: person.handle,
+    titleId: title.value.id,
+  });
+};
+
+watch(
+  () => useUserSendStore().lastAttached,
+  (attached) => {
+    if (!attached) return;
+    if (attached.kind === "title") {
+      suggesters.value = suggesters.value.map((s) =>
+        s.walletAddress === attached.toWallet ? { ...s, sent: true } : s
+      );
+    } else {
+      comments.value = comments.value.map((c) =>
+        c.id === attached.commentId ? { ...c, sent: true } : c
+      );
+    }
+  }
+);
+
 const formatTime = (iso: string) => {
   const date = new Date(iso);
   const now = new Date();
@@ -763,6 +821,7 @@ onUnmounted(() => {
 
 <style scoped>
 .title-detail {
+  position: relative;
   min-height: calc(
     100dvh - var(--app-brand-row, 2.75rem) - var(--vv-offset-top, 0px) -
       var(--bottom-tabs-inset)
@@ -771,26 +830,56 @@ onUnmounted(() => {
   flex-direction: column;
 }
 
-.detail-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.35rem 0 0;
-}
-
 .back-button,
 .share-button {
-  padding: 0.5rem;
+  padding: 0;
   background: transparent;
   border: none;
   color: var(--text-primary);
   cursor: pointer;
-  display: flex;
+  display: grid;
+  place-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.back-button {
+  position: fixed;
+  z-index: 46;
+  left: max(
+    var(--column-pad, 1.25rem),
+    calc((100vw - var(--column-max, 44rem)) / 2 + var(--column-pad, 1.25rem))
+  );
+  bottom: calc(var(--bottom-tabs-inset, 0px) + 0.55rem);
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 1.5px solid color-mix(in oklch, var(--colors-white, #fff) 62%, transparent);
+  box-shadow:
+    0 0 0 2px color-mix(in oklch, var(--colors-white, #fff) 52%, transparent),
+    0 0 12px 2px color-mix(in oklch, var(--colors-white, #fff) 38%, transparent);
+}
+
+.back-button[hidden] {
+  display: none;
 }
 
 .back-button :deep(.nq-icon) {
   width: 24px;
   height: 24px;
+}
+
+.share-button {
+  flex-shrink: 0;
+  width: 1.85rem;
+  height: 1.85rem;
+  margin-top: 0.05rem;
+  color: var(--text-secondary);
+}
+
+.share-button :deep(.nq-icon) {
+  width: 20px;
+  height: 20px;
 }
 
 .loading {
@@ -865,6 +954,28 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
+.meta-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.meta h2 {
+  margin: 0;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: calc(100% - 2.1rem);
+  font-size: 1.05rem;
+  line-height: 1.2;
+  color: var(--text-primary);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+
 .taste-counts {
   display: flex;
   flex-wrap: wrap;
@@ -914,18 +1025,6 @@ onUnmounted(() => {
   text-decoration: none;
 }
 
-.meta h2 {
-  margin: 0;
-  font-size: 1.05rem;
-  line-height: 1.2;
-  color: var(--text-primary);
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  overflow: hidden;
-}
-
 .meta-line {
   margin: 0;
   display: flex;
@@ -971,61 +1070,6 @@ onUnmounted(() => {
   margin: 0 0 1rem 0;
   font-size: 1.1rem;
   color: var(--text-primary);
-}
-
-.thanks-card {
-  padding: 0.95rem 1rem 0.85rem;
-}
-
-.thanks-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.thanks-head-left {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.thanks-count {
-  margin: 0;
-  font-size: 0.92rem;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.thanks-stack {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.thanks-stack :deep(.identicon) {
-  margin-left: -0.45rem;
-  border: 2px solid var(--bg-surface);
-  box-sizing: content-box;
-}
-
-.thanks-stack :deep(.identicon:first-child) {
-  margin-left: 0;
-}
-
-.thanks-more {
-  margin-left: 0.4rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text-secondary);
 }
 
 .comment-composer {

@@ -16,10 +16,14 @@ import {
   shouldAwardThatsAWrap,
   shouldAwardWhatsNext,
   shouldAwardWordOfMouth,
+  shouldAwardInTheListings,
+  shouldAwardSaveThatForLater,
+  shouldAwardThatsTheOne,
+  shouldAwardPlusOne,
 } from "@cinima/shared";
 
 describe("Achievement catalog", () => {
-  it("names the nine credits and how they unlock", () => {
+  it("names the catalog and how they unlock", () => {
     expect([...ACHIEVEMENT_KINDS]).toEqual([
       "opening-night",
       "full-house",
@@ -30,18 +34,32 @@ describe("Achievement catalog", () => {
       "high-seas",
       "season-ticket",
       "thats-a-wrap",
+      "in-the-listings",
+      "save-that-for-later",
+      "thats-the-one",
+      "plus-one",
     ]);
     expect(achievementTitle("opening-night")).toBe("Opening night");
     expect(achievementHow("opening-night")).toBe("Recommended your first title");
     expect(achievementTitle("thats-a-wrap")).toBe("That's a wrap");
     expect(achievementHow("thats-a-wrap")).toBe("Finished the guided tour");
+    expect(achievementTitle("in-the-listings")).toBe("In the listings");
+    expect(achievementHow("in-the-listings")).toBe("Searched for a title");
+    expect(achievementTitle("save-that-for-later")).toBe("Save that for later");
+    expect(achievementHow("save-that-for-later")).toBe(
+      "Added a Search result to your Watchlist"
+    );
+    expect(achievementTitle("thats-the-one")).toBe("That's the one");
+    expect(achievementHow("thats-the-one")).toBe("Recommended a Search result");
+    expect(achievementTitle("plus-one")).toBe("Plus one");
+    expect(achievementHow("plus-one")).toBe("Followed a Handle");
   });
 
   it("lists locked catalog rows plus earned dates", () => {
     const rows = creditsCatalog([
       { kind: "opening-night", earnedAt: "2026-09-01T00:00:00.000Z" },
     ]);
-    expect(rows).toHaveLength(9);
+    expect(rows).toHaveLength(13);
     expect(rows[0]).toEqual({
       kind: "opening-night",
       title: "Opening night",
@@ -146,5 +164,47 @@ describe("Achievement catalog", () => {
     expect(shouldAwardThatsAWrap({ alreadyEarned: false, tourCompleted: true })).toBe(true);
     expect(shouldAwardThatsAWrap({ alreadyEarned: false, tourCompleted: false })).toBe(false);
     expect(shouldAwardThatsAWrap({ alreadyEarned: true, tourCompleted: true })).toBe(false);
+  });
+
+  it("awards In the listings on the first Search", () => {
+    expect(shouldAwardInTheListings({ alreadyEarned: false, searchCountAfter: 0 })).toBe(false);
+    expect(shouldAwardInTheListings({ alreadyEarned: false, searchCountAfter: 1 })).toBe(true);
+    expect(shouldAwardInTheListings({ alreadyEarned: true, searchCountAfter: 2 })).toBe(false);
+  });
+
+  it("awards Save that for later and That's the one only after a Search result open", () => {
+    expect(
+      shouldAwardSaveThatForLater({
+        alreadyEarned: false,
+        hasWatchlistAddAfterSearchOpen: true,
+      })
+    ).toBe(true);
+    expect(
+      shouldAwardSaveThatForLater({
+        alreadyEarned: false,
+        hasWatchlistAddAfterSearchOpen: false,
+      })
+    ).toBe(false);
+    expect(
+      shouldAwardSaveThatForLater({
+        alreadyEarned: true,
+        hasWatchlistAddAfterSearchOpen: true,
+      })
+    ).toBe(false);
+    expect(
+      shouldAwardThatsTheOne({ alreadyEarned: false, hasRecommendAfterSearchOpen: true })
+    ).toBe(true);
+    expect(
+      shouldAwardThatsTheOne({ alreadyEarned: false, hasRecommendAfterSearchOpen: false })
+    ).toBe(false);
+    expect(
+      shouldAwardThatsTheOne({ alreadyEarned: true, hasRecommendAfterSearchOpen: true })
+    ).toBe(false);
+  });
+
+  it("awards Plus one on the first Follow", () => {
+    expect(shouldAwardPlusOne({ alreadyEarned: false, followCountAfter: 0 })).toBe(false);
+    expect(shouldAwardPlusOne({ alreadyEarned: false, followCountAfter: 1 })).toBe(true);
+    expect(shouldAwardPlusOne({ alreadyEarned: true, followCountAfter: 1 })).toBe(false);
   });
 });

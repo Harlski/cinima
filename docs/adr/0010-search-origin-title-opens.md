@@ -1,0 +1,3 @@
+# Search-origin title opens are a usage fact
+
+Save that for later and That's the one teach finding a title in Search, then Watchlist or Recommend. Search usage stores the query, not the title; a view stores the title, not the door. Query-to-name matching fails on the typos Door alarm already sees (`"patt"` / `"pat"`). A later Watchlist add or Recommend after any Search lets Discover traffic steal the credit. The fact is therefore a Search result open: this Handle tapped a Search result onto that title. The Watchlist add or Recommend must happen after that open for that title. In the listings still fires on the first typed query, even with no result open. Historical views after a Search do not backfill the two compound credits.

@@ -10,6 +10,79 @@ import { init, type NimiqProvider, getHostLanguage } from "@nimiq/mini-app-sdk";
 
 export type ProviderError = { error: { type?: string; message?: string } };
 
+export const PAY_CANCELLED_MESSAGE = "Cancelled";
+
+export class PayCancelledError extends Error {
+  constructor() {
+    super(PAY_CANCELLED_MESSAGE);
+    this.name = "PayCancelledError";
+  }
+}
+
+type PayErrorParts = { type: string; message: string; code?: number };
+
+function payErrorParts(err: unknown): PayErrorParts {
+  if (err == null) return { type: "", message: "" };
+  if (typeof err === "string") return { type: "", message: err };
+  if (typeof err !== "object") return { type: "", message: String(err) };
+
+  const rec = err as Record<string, unknown>;
+  const nested =
+    rec.error && typeof rec.error === "object"
+      ? (rec.error as Record<string, unknown>)
+      : null;
+  const rawType =
+    nested?.type ??
+    rec.type ??
+    (err instanceof Error && err.name !== "Error" ? err.name : "");
+  const type = rawType == null || rawType === "" ? "" : String(rawType);
+  const rawMessage = nested?.message ?? rec.message ?? "";
+  const message = rawMessage == null ? "" : String(rawMessage);
+  const codeRaw = nested?.code ?? rec.code;
+  const code = typeof codeRaw === "number" ? codeRaw : undefined;
+  return { type, message, code };
+}
+
+function isProviderShaped(err: unknown): boolean {
+  if (typeof err !== "object" || err === null) return false;
+  const rec = err as Record<string, unknown>;
+  return "error" in rec || "type" in rec || "message" in rec || "code" in rec;
+}
+
+/**
+ * True when the Pay sheet was rejected, dismissed, or closed without sending.
+ * Real host failures (invalid tx, funds, network) stay false.
+ */
+export function isPayCancelled(err: unknown): boolean {
+  if (err instanceof PayCancelledError) return true;
+  if (err == null) return true;
+  if (typeof err === "string" && !err.trim()) return true;
+  const { type, message, code } = payErrorParts(err);
+  if (code === 4001) return true;
+  if (isProviderShaped(err) && !type && !message && code == null) return true;
+  const blob = `${type} ${message}`.toLowerCase();
+  if (/permission[_\s-]?denied/.test(blob)) return true;
+  if (/user[_\s-]*(reject|denied|abort|cancel)/.test(blob)) return true;
+  if (/\b(cancelled|canceled|cancel|dismissed|dismiss)\b/.test(blob)) return true;
+  if (/^(rejected|reject)$/i.test(message.trim())) return true;
+  return false;
+}
+
+/** Copy for the Send dialog: Cancelled vs a real failure string. */
+export function payUserMessage(err: unknown, fallback = "Send failed"): string {
+  if (isPayCancelled(err)) return PAY_CANCELLED_MESSAGE;
+  const { message, type } = payErrorParts(err);
+  if (message === "pay_failed" || message === "provider_error") return fallback;
+  return message || type || fallback;
+}
+
+function throwPayFailure(err: unknown): never {
+  if (isPayCancelled(err)) throw new PayCancelledError();
+  if (err instanceof Error) throw err;
+  const { message, type } = payErrorParts(err);
+  throw new Error(message || type || "pay_failed");
+}
+
 /** True when Nimiq Pay injected host context / provider (before or after init). */
 export function isNimiqPay(): boolean {
   if (typeof window === "undefined") return false;
@@ -147,15 +220,21 @@ export async function sendPayTransaction(opts: {
   data: string;
 }): Promise<string> {
   const nimiq = await getNimiq();
-  const result = await nimiq.sendBasicTransactionWithData({
-    recipient: opts.recipient,
-    value: opts.valueLuna,
-    data: opts.data,
-  });
+  let result: unknown;
+  try {
+    result = await nimiq.sendBasicTransactionWithData({
+      recipient: opts.recipient,
+      value: opts.valueLuna,
+      data: opts.data,
+    });
+  } catch (err) {
+    throwPayFailure(err);
+  }
   const err = getProviderErrorMessage(result);
-  if (err) throw new Error(err);
+  if (err) throwPayFailure(result);
   if (typeof result === "string" && result.trim()) return result.trim();
-  throw new Error("pay_failed");
+  // Host closed the sheet (reject / tap outside) without a hash or ErrorResponse.
+  throw new PayCancelledError();
 }
 
 export function hostLanguage(): string {

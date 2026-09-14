@@ -11,10 +11,16 @@ process.env.WEB_ORIGIN = "https://cinima.app";
 const WALLET = "NQ05ACHIEVEMENTTESTWALLET000000001";
 const PEER = "NQ05ACHIEVEMENTPEERWALLET0000000001";
 const FINISHER = "NQ05ACHIEVEMENTFINISHERWALLET00001";
+const LEARNER = "NQ05ACHIEVEMENTLEARNERWALLET000001";
+const WITHHOLDER = "NQ05ACHIEVEMENTWITHHOLDWALLET0001";
 const TOKEN = "test-session-token-achievements";
 const PEER_TOKEN = "peer-token";
 const FINISHER_TOKEN = "finisher-token";
+const LEARNER_TOKEN = "learner-token";
+const WITHHOLDER_TOKEN = "withholder-token";
 const TITLE_ID = "movie:550";
+const SEARCH_TITLE_ID = "tmdb:movie:551";
+const PRIOR_TITLE_ID = "tmdb:movie:552";
 
 describe("Achievement HTTP API", () => {
   let app: { fetch: (request: Request) => Response | Promise<Response> };
@@ -37,6 +43,18 @@ describe("Achievement HTTP API", () => {
     "X-Cinima-Demo": "1",
   };
 
+  const learnerHeaders = {
+    Authorization: `Bearer ${LEARNER_TOKEN}`,
+    "Content-Type": "application/json",
+    "X-Cinima-Demo": "1",
+  };
+
+  const withholderHeaders = {
+    Authorization: `Bearer ${WITHHOLDER_TOKEN}`,
+    "Content-Type": "application/json",
+    "X-Cinima-Demo": "1",
+  };
+
   beforeAll(async () => {
     await (await import("../src/db/migrate.js")).migrate();
     const { db } = await import("../src/db/index.js");
@@ -46,6 +64,8 @@ describe("Achievement HTTP API", () => {
       { walletAddress: WALLET, handle: "star", lifetimeUnlockedAt: null, createdAt: now },
       { walletAddress: PEER, handle: "peer", lifetimeUnlockedAt: null, createdAt: now },
       { walletAddress: FINISHER, handle: "wrap", lifetimeUnlockedAt: null, createdAt: now },
+      { walletAddress: LEARNER, handle: "learner", lifetimeUnlockedAt: null, createdAt: now },
+      { walletAddress: WITHHOLDER, handle: "held", lifetimeUnlockedAt: null, createdAt: now },
     ]);
     await db.insert(schema.sessions).values([
       {
@@ -66,20 +86,60 @@ describe("Achievement HTTP API", () => {
         expiresAt: new Date(Date.now() + 60 * 60 * 1000),
         createdAt: now,
       },
+      {
+        token: LEARNER_TOKEN,
+        walletAddress: LEARNER,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        createdAt: now,
+      },
+      {
+        token: WITHHOLDER_TOKEN,
+        walletAddress: WITHHOLDER,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        createdAt: now,
+      },
     ]);
-    await db.insert(schema.titles).values({
-      id: TITLE_ID,
-      mediaType: "movie",
-      tmdbId: 550,
-      title: "Fight Club",
-      year: 1999,
-      posterPath: null,
-      overview: "fixture",
-      imdbId: null,
-      rating: "8.4",
-      fetchedAt: now,
-      source: "seed",
-    });
+    await db.insert(schema.titles).values([
+      {
+        id: TITLE_ID,
+        mediaType: "movie",
+        tmdbId: 550,
+        title: "Fight Club",
+        year: 1999,
+        posterPath: null,
+        overview: "fixture",
+        imdbId: null,
+        rating: "8.4",
+        fetchedAt: now,
+        source: "seed",
+      },
+      {
+        id: SEARCH_TITLE_ID,
+        mediaType: "movie",
+        tmdbId: 551,
+        title: "The Pitt",
+        year: 2025,
+        posterPath: null,
+        overview: "fixture",
+        imdbId: null,
+        rating: "8.0",
+        fetchedAt: now,
+        source: "seed",
+      },
+      {
+        id: PRIOR_TITLE_ID,
+        mediaType: "movie",
+        tmdbId: 552,
+        title: "Arrival",
+        year: 2016,
+        posterPath: null,
+        overview: "fixture",
+        imdbId: null,
+        rating: "8.0",
+        fetchedAt: now,
+        source: "seed",
+      },
+    ]);
     await db.insert(schema.favorites).values([
       {
         walletAddress: WALLET,
@@ -197,5 +257,119 @@ describe("Achievement HTTP API", () => {
     );
     const againBody = (await again.json()) as { earnedAchievements?: string[] };
     expect(againBody.earnedAchievements || []).not.toContain("thats-a-wrap");
+  });
+
+  it("does not award In the listings before the Guided tour is skipped", async () => {
+    const search = await app.fetch(
+      new Request("http://test/api/usage/search", {
+        method: "POST",
+        headers: withholderHeaders,
+        body: JSON.stringify({ query: "pitt" }),
+      })
+    );
+    expect(search.status).toBe(200);
+    const searchBody = (await search.json()) as { earnedAchievements?: string[] };
+    expect(searchBody.earnedAchievements || []).toEqual([]);
+
+    const skip = await app.fetch(
+      new Request("http://test/api/tour/skip", {
+        method: "POST",
+        headers: withholderHeaders,
+      })
+    );
+    const skipBody = (await skip.json()) as { earnedAchievements: string[] };
+    expect(skipBody.earnedAchievements).toEqual(["in-the-listings"]);
+  });
+
+  it("awards Search-origin credits and Plus one after the tour is skipped", async () => {
+    const skip = await app.fetch(
+      new Request("http://test/api/tour/skip", {
+        method: "POST",
+        headers: learnerHeaders,
+      })
+    );
+    expect(skip.status).toBe(200);
+    expect(((await skip.json()) as { earnedAchievements: string[] }).earnedAchievements).toEqual(
+      []
+    );
+
+    const search = await app.fetch(
+      new Request("http://test/api/usage/search", {
+        method: "POST",
+        headers: learnerHeaders,
+        body: JSON.stringify({ query: "pitt" }),
+      })
+    );
+    expect(search.status).toBe(200);
+    const searchBody = (await search.json()) as { earnedAchievements: string[] };
+    expect(searchBody.earnedAchievements).toEqual(["in-the-listings"]);
+
+    const watchWithoutOpen = await app.fetch(
+      new Request(`http://test/api/watchlist/${encodeURIComponent(PRIOR_TITLE_ID)}`, {
+        method: "POST",
+        headers: learnerHeaders,
+      })
+    );
+    expect(watchWithoutOpen.status).toBe(200);
+    const withoutOpenBody = (await watchWithoutOpen.json()) as { earnedAchievements?: string[] };
+    expect(withoutOpenBody.earnedAchievements || []).not.toContain("save-that-for-later");
+
+    const lateOpen = await app.fetch(
+      new Request("http://test/api/usage/search-open", {
+        method: "POST",
+        headers: learnerHeaders,
+        body: JSON.stringify({ titleId: PRIOR_TITLE_ID }),
+      })
+    );
+    expect(lateOpen.status).toBe(200);
+    const lateOpenBody = (await lateOpen.json()) as { earnedAchievements?: string[] };
+    expect(lateOpenBody.earnedAchievements || []).not.toContain("save-that-for-later");
+
+    const open = await app.fetch(
+      new Request("http://test/api/usage/search-open", {
+        method: "POST",
+        headers: learnerHeaders,
+        body: JSON.stringify({ titleId: SEARCH_TITLE_ID }),
+      })
+    );
+    expect(open.status).toBe(200);
+
+    const watch = await app.fetch(
+      new Request(`http://test/api/watchlist/${encodeURIComponent(SEARCH_TITLE_ID)}`, {
+        method: "POST",
+        headers: learnerHeaders,
+      })
+    );
+    expect(watch.status).toBe(200);
+    const watchBody = (await watch.json()) as { earnedAchievements: string[] };
+    expect(watchBody.earnedAchievements).toEqual(["save-that-for-later"]);
+
+    const fav = await app.fetch(
+      new Request(`http://test/api/favorites/${encodeURIComponent(SEARCH_TITLE_ID)}`, {
+        method: "POST",
+        headers: learnerHeaders,
+      })
+    );
+    expect(fav.status).toBe(200);
+
+    const rec = await app.fetch(
+      new Request(`http://test/api/recommends/${encodeURIComponent(SEARCH_TITLE_ID)}`, {
+        method: "POST",
+        headers: learnerHeaders,
+      })
+    );
+    expect(rec.status).toBe(200);
+    const recBody = (await rec.json()) as { earnedAchievements: string[] };
+    expect(recBody.earnedAchievements).toEqual(["opening-night", "thats-the-one"]);
+
+    const follow = await app.fetch(
+      new Request(`http://test/api/users/${encodeURIComponent(PEER)}/follow`, {
+        method: "POST",
+        headers: learnerHeaders,
+      })
+    );
+    expect(follow.status).toBe(200);
+    const followBody = (await follow.json()) as { earnedAchievements: string[] };
+    expect(followBody.earnedAchievements).toEqual(["plus-one"]);
   });
 });

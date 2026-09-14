@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseSearchQuery, searchRouteQuery } from "../src/lib/searchQuery";
+import { parseSearchQuery, searchRouteQuery, shouldRecordSearchUsage } from "../src/lib/searchQuery";
 
 describe("parseSearchQuery", () => {
   it("treats a missing q as no active search", () => {
@@ -34,5 +34,14 @@ describe("searchRouteQuery", () => {
 
   it("keeps inner spaces so a restored search matches what was typed", () => {
     expect(searchRouteQuery("  Heat  ")).toEqual({ q: "  Heat  " });
+  });
+});
+
+describe("shouldRecordSearchUsage", () => {
+  it("records a typed Search of two characters, even with no results", () => {
+    expect(shouldRecordSearchUsage("du")).toBe(true);
+    expect(shouldRecordSearchUsage("dune")).toBe(true);
+    expect(shouldRecordSearchUsage("d")).toBe(false);
+    expect(shouldRecordSearchUsage("  ")).toBe(false);
   });
 });

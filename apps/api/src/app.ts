@@ -65,6 +65,7 @@ import {
 import {
   CommentError,
   addCommentThanks,
+  attachCommentThanksSend,
   createComment,
   deleteComment,
   listCommentFeed,
@@ -108,22 +109,28 @@ import {
 } from "./services/watchlist.js";
 import {
   addThanks,
+  attachTitleThanksSend,
   countTitleTastePeers,
   listSuggesters,
   thankAllSuggesters,
 } from "./services/social.js";
-import { recordHeartbeat, recordSearch, recordView } from "./services/usage.js";
+import { digestForHeartbeat, lastPresenceAt, listReceivedThanks } from "./services/received.js";
+import { recordHeartbeat, recordSearch, recordSearchOpen, recordView } from "./services/usage.js";
 import { recordShareVisit } from "./services/shareVisits.js";
 import { ringDoorAlarm, ringShareVisitDoorAlarm } from "./services/doorAlarm.js";
 import {
   achievementCount,
+  evaluateAfterFollow,
   evaluateAfterHeartbeat,
   evaluateAfterRecommend,
+  evaluateAfterSearch,
+  evaluateAfterSearchOpen,
   evaluateAfterThanksReceived,
   evaluateAfterThanksSent,
   evaluateAfterTitleShare,
   evaluateAfterTourComplete,
   evaluateAfterTourSkip,
+  evaluateAfterWatchlistAdd,
   evaluateAfterWatchlistShare,
   evaluateAfterView,
   listCredits,
@@ -384,6 +391,12 @@ app.get("/api/me", requirePay, requireAuth, async (c) => {
   return c.json(response);
 });
 
+app.get("/api/me/received", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  const items = await listReceivedThanks(user.walletAddress);
+  return c.json({ items });
+});
+
 app.post("/api/me/handle", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
   const { handle } = await c.req.json<{ handle: string }>();
@@ -625,7 +638,8 @@ app.post("/api/watchlist/:titleId", requirePay, requireAuth, async (c) => {
     walletAddress: user.walletAddress,
     title: await doorAlarmTitle(titleId),
   });
-  return c.json({ ok: true });
+  const earnedAchievements = await evaluateAfterWatchlistAdd(user.walletAddress);
+  return c.json({ ok: true, earnedAchievements });
 });
 
 app.delete("/api/watchlist/:titleId", requirePay, requireAuth, async (c) => {
@@ -776,6 +790,25 @@ app.post("/api/comments/:id/thanks", requirePay, requireAuth, async (c) => {
   }
 });
 
+app.post("/api/comments/:id/thanks/send", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  const id = Number(c.req.param("id"));
+  if (!Number.isInteger(id) || id <= 0) return c.json({ error: "invalid_id" }, 400);
+  const body = await c.req.json<{ txHash?: string }>();
+  if (!body.txHash) return c.json({ error: "missing_tx_hash" }, 400);
+  try {
+    const comment = await attachCommentThanksSend(user.walletAddress, id, body.txHash);
+    return c.json({ ok: true, comment, sent: true });
+  } catch (e) {
+    if (e instanceof CommentError) {
+      return c.json({ error: e.code, message: e.message }, commentErrorStatus(e.code));
+    }
+    const code = e instanceof Error ? e.message : "send_failed";
+    if (code === "already_sent") return c.json({ error: code }, 409);
+    return c.json({ error: code }, 400);
+  }
+});
+
 app.post("/api/thanks", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
   const body = await c.req.json<{ toWallet: string; titleId: string; tipTxHash?: string }>();
@@ -812,6 +845,28 @@ app.post("/api/thanks", requirePay, requireAuth, async (c) => {
     const code = err instanceof Error ? err.message : "thanks_failed";
     if (code === "cannot_thank_self") return c.json({ error: code }, 400);
     if (code === "payments_retired") return c.json(PAYMENTS_RETIRED, 410);
+    return c.json({ error: code }, 400);
+  }
+});
+
+app.post("/api/thanks/send", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  const body = await c.req.json<{ toWallet?: string; titleId?: string; txHash?: string }>();
+  if (!body.toWallet || !body.titleId || !body.txHash) {
+    return c.json({ error: "missing_fields" }, 400);
+  }
+  try {
+    const result = await attachTitleThanksSend({
+      from: user.walletAddress,
+      to: body.toWallet,
+      titleId: body.titleId,
+      txHash: body.txHash,
+    });
+    return c.json({ ok: true, sent: true, sendTxHash: result.sendTxHash });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "send_failed";
+    if (code === "not_found") return c.json({ error: code }, 404);
+    if (code === "already_sent") return c.json({ error: code }, 409);
     return c.json({ error: code }, 400);
   }
 });
@@ -943,7 +998,8 @@ app.post("/api/users/:wallet/follow", requirePay, requireAuth, async (c) => {
       walletAddress: user.walletAddress,
       followee: displayName(followee?.handle ?? null, followeeWallet),
     });
-    return c.json({ ok: true, following: true });
+    const earnedAchievements = await evaluateAfterFollow(user.walletAddress);
+    return c.json({ ok: true, following: true, earnedAchievements });
   } catch (e) {
     return c.json({ error: e instanceof Error ? e.message : "follow_failed" }, 400);
   }
@@ -1382,7 +1438,17 @@ app.post("/api/usage/search", requirePay, requireAuth, async (c) => {
       query: result.query,
     });
   }
-  return c.json({ ok: true });
+  const earnedAchievements = await evaluateAfterSearch(user.walletAddress);
+  return c.json({ ok: true, earnedAchievements });
+});
+
+app.post("/api/usage/search-open", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  const body = (await c.req.json().catch(() => ({}))) as { titleId?: string };
+  const result = await recordSearchOpen(user.walletAddress, String(body.titleId ?? ""));
+  if ("error" in result) return c.json({ error: result.error }, 400);
+  const earnedAchievements = await evaluateAfterSearchOpen(user.walletAddress);
+  return c.json({ ok: true, earnedAchievements });
 });
 
 app.post("/api/usage/view", requirePay, requireAuth, async (c) => {
@@ -1407,11 +1473,13 @@ app.post("/api/usage/view", requirePay, requireAuth, async (c) => {
 
 app.post("/api/usage/heartbeat", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
+  const previousLastAt = await lastPresenceAt(user.walletAddress);
   await recordHeartbeat(user.walletAddress);
+  const digest = await digestForHeartbeat(user.walletAddress, previousLastAt);
   const earned = await evaluateAfterHeartbeat(user.walletAddress);
   const unseen = await takeUnseenAchievements(user.walletAddress);
   const earnedAchievements = [...new Set([...earned, ...unseen])];
-  return c.json({ ok: true, earnedAchievements });
+  return c.json({ ok: true, earnedAchievements, digest });
 });
 
 app.post("/api/tour/skip", requirePay, requireAuth, async (c) => {

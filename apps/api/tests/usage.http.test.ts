@@ -75,7 +75,7 @@ describe("Usage write HTTP API", () => {
       })
     );
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true });
+    expect(await res.json()).toEqual({ ok: true, earnedAchievements: [] });
   });
 
   it("does not double-count the same search from the same Handle within the window", async () => {
@@ -84,6 +84,33 @@ describe("Usage write HTTP API", () => {
     const second = await recordSearch(WALLET, "arrival");
     expect(first).toEqual({ recorded: true, query: "arrival" });
     expect(second).toEqual({ recorded: false, query: "arrival" });
+  });
+
+  it("records a Search result open once per title", async () => {
+    const first = await app.fetch(
+      new Request("http://test/api/usage/search-open", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ titleId: MOVIE_ID }),
+      })
+    );
+    expect(first.status).toBe(200);
+    expect(await first.json()).toEqual({ ok: true, earnedAchievements: [] });
+
+    const { recordSearchOpen } = await import("../src/services/usage.js");
+    const second = await recordSearchOpen(WALLET, MOVIE_ID);
+    expect(second).toEqual({ recorded: false, titleId: MOVIE_ID });
+  });
+
+  it("rejects an invalid Search result open", async () => {
+    const res = await app.fetch(
+      new Request("http://test/api/usage/search-open", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ titleId: "nope" }),
+      })
+    );
+    expect(res.status).toBe(400);
   });
 
   it("records a title view", async () => {
@@ -134,6 +161,6 @@ describe("Usage write HTTP API", () => {
       })
     );
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true, earnedAchievements: [] });
+    expect(await res.json()).toEqual({ ok: true, earnedAchievements: [], digest: null });
   });
 });

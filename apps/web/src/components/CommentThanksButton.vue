@@ -3,31 +3,41 @@
     v-if="!own && !deleted"
     type="button"
     class="comment-thanks"
-    :class="{ 'is-thanked': thanked }"
-    :disabled="busy || thanked"
+    :class="{ 'is-thanked': thanked && sent }"
+    :disabled="busy || (thanked && sent)"
     :aria-busy="busy"
-    @click="$emit('thank')"
+    @click="onClick"
   >
-    {{ thanked ? "Thanked" : "Thanks" }}
+    {{ thanked && sent ? "Thanked" : thanked ? userSendCta : "Thanks" }}
     <span v-if="count > 0">{{ count }}</span>
   </button>
 </template>
 
 <script setup lang="ts">
-withDefaults(
+import { USER_SEND_CTA } from "@cinima/shared";
+
+const userSendCta = USER_SEND_CTA;
+const props = withDefaults(
   defineProps<{
     own: boolean;
     deleted: boolean;
     thanked: boolean;
+    sent?: boolean;
     count: number;
     busy?: boolean;
   }>(),
-  { busy: false }
+  { busy: false, sent: false }
 );
 
-defineEmits<{
+const emit = defineEmits<{
   thank: [];
+  send: [];
 }>();
+
+function onClick() {
+  if (props.thanked) emit("send");
+  else emit("thank");
+}
 </script>
 
 <style scoped>

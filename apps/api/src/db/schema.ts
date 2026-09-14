@@ -131,6 +131,9 @@ export const thanks = sqliteTable(
     toWallet: text("to_wallet").notNull(),
     titleId: text("title_id").notNull(),
     tipTxHash: text("tip_tx_hash"),
+    sendTxHash: text("send_tx_hash"),
+    sendTxAt: integer("send_tx_at", { mode: "timestamp_ms" }),
+    sendMemo: text("send_memo"),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   },
   (t) => [uniqueIndex("thanks_unique").on(t.fromWallet, t.toWallet, t.titleId)]
@@ -142,6 +145,9 @@ export const commentThanks = sqliteTable(
     id: integer("id").primaryKey({ autoIncrement: true }),
     fromWallet: text("from_wallet").notNull(),
     commentId: integer("comment_id").notNull(),
+    sendTxHash: text("send_tx_hash"),
+    sendTxAt: integer("send_tx_at", { mode: "timestamp_ms" }),
+    sendMemo: text("send_memo"),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   },
   (t) => [
@@ -186,7 +192,7 @@ export const shareLinks = sqliteTable("share_links", {
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
 
-/** Signed-in search and title view records for Studio. */
+/** Signed-in search, Search result open, and title view records. */
 export const usageEvents = sqliteTable(
   "usage_events",
   {

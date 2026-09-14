@@ -33,45 +33,47 @@
 
       <div class="reason" @keydown.escape.stop="reasonOpen = false">
         <span :id="reasonLabelId">Why?</span>
-        <button
-          :id="triggerId"
-          type="button"
-          class="nq-input-box reason-trigger"
-          aria-haspopup="listbox"
-          :aria-expanded="reasonOpen"
-          :aria-controls="listId"
-          :aria-activedescendant="reasonOpen ? optionId(highlightIndex) : undefined"
-          :aria-labelledby="`${reasonLabelId} ${triggerId}`"
-          @click.stop="toggleReasonList"
-          @keydown="onTriggerKeydown"
-        >
-          <span>{{ reasonLabel }}</span>
-          <span class="reason-chevron" :class="{ open: reasonOpen }" aria-hidden="true" />
-        </button>
-        <ul
-          v-if="reasonOpen"
-          :id="listId"
-          class="reason-list"
-          role="listbox"
-          :aria-labelledby="reasonLabelId"
-        >
-          <li
-            v-for="(value, index) in reasonChoices"
-            :id="optionId(index)"
-            :key="value ?? 'skip'"
-            class="reason-option"
-            :class="{ 'is-active': highlightIndex === index }"
-            role="option"
-            :aria-selected="reason === value"
-            @click.stop="selectReason(value)"
+        <div class="reason-field">
+          <button
+            :id="triggerId"
+            type="button"
+            class="nq-input-box reason-trigger"
+            aria-haspopup="listbox"
+            :aria-expanded="reasonOpen"
+            :aria-controls="listId"
+            :aria-activedescendant="reasonOpen ? optionId(highlightIndex) : undefined"
+            :aria-labelledby="`${reasonLabelId} ${triggerId}`"
+            @click.stop="toggleReasonList"
+            @keydown="onTriggerKeydown"
           >
-            {{
-              value == null
-                ? WATCHLIST_LEAVE_REASON_PLACEHOLDER
-                : WATCHLIST_LEAVE_REASON_LABELS[value]
-            }}
-          </li>
-        </ul>
+            <span>{{ reasonLabel }}</span>
+            <span class="reason-chevron" :class="{ open: reasonOpen }" aria-hidden="true" />
+          </button>
+          <ul
+            v-if="reasonOpen"
+            :id="listId"
+            class="reason-list"
+            role="listbox"
+            :aria-labelledby="reasonLabelId"
+          >
+            <li
+              v-for="(value, index) in reasonChoices"
+              :id="optionId(index)"
+              :key="value ?? 'skip'"
+              class="reason-option"
+              :class="{ 'is-active': highlightIndex === index }"
+              role="option"
+              :aria-selected="reason === value"
+              @click.stop="selectReason(value)"
+            >
+              {{
+                value == null
+                  ? WATCHLIST_LEAVE_REASON_PLACEHOLDER
+                  : WATCHLIST_LEAVE_REASON_LABELS[value]
+              }}
+            </li>
+          </ul>
+        </div>
       </div>
 
       <div class="confirm-actions">
@@ -219,8 +221,7 @@ function onTriggerKeydown(event: KeyboardEvent) {
 
 .confirm-dialog {
   width: min(100%, 22rem);
-  max-height: min(92dvh, 44rem);
-  overflow-y: auto;
+  overflow: visible;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -310,7 +311,6 @@ function onTriggerKeydown(event: KeyboardEvent) {
 }
 
 .reason {
-  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -318,6 +318,10 @@ function onTriggerKeydown(event: KeyboardEvent) {
   font-size: 0.82rem;
   font-weight: 600;
   color: var(--text-secondary);
+}
+
+.reason-field {
+  position: relative;
 }
 
 .reason-trigger {
@@ -360,6 +364,11 @@ function onTriggerKeydown(event: KeyboardEvent) {
 }
 
 .reason-list {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  left: 0;
+  right: 0;
   list-style: none;
   margin: 0;
   padding: 0.25rem;
@@ -369,7 +378,7 @@ function onTriggerKeydown(event: KeyboardEvent) {
   border-radius: 0.5rem;
   border: 1.5px solid var(--border);
   background: var(--bg-primary);
-  box-shadow: 0 8px 24px color-mix(in oklch, var(--colors-neutral) 18%, transparent);
+  box-shadow: 0 12px 28px color-mix(in oklch, var(--colors-neutral) 28%, transparent);
 }
 
 .reason-option {

@@ -1,10 +1,10 @@
-import { DELETED_COMMENT_LABEL, normalizeWallet } from "@cinima/shared";
+import { DELETED_COMMENT_LABEL, USER_SEND_LUNA, normalizeWallet, userSendMemoOrDefault } from "@cinima/shared";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { comments, favorites, thanks, titles, unlocks, users } from "../db/schema.js";
 import { toTitleSummary } from "../lib/titles.js";
 import { markLifetimeUnlocked } from "./auth.js";
-import { verifyPayment } from "./payments.js";
+import { verifyPayment, verifyUserSend } from "./payments.js";
 
 export async function hasUnlock(wallet: string, titleId: string) {
   const w = normalizeWallet(wallet);
@@ -135,6 +135,7 @@ export async function listSuggesters(titleId: string, me: string) {
       walletAddress: favorites.walletAddress,
       handle: users.handle,
       thankedAt: thanks.createdAt,
+      sendTxHash: thanks.sendTxHash,
       recommendedAt: favorites.recommendedAt,
     })
     .from(favorites)
@@ -155,6 +156,7 @@ export async function listSuggesters(titleId: string, me: string) {
     walletAddress: p.walletAddress,
     handle: p.handle,
     thanked: p.thankedAt != null,
+    sent: !!p.sendTxHash,
     recommended: p.recommendedAt != null,
   }));
 }
@@ -283,4 +285,38 @@ export async function activityFeed(limit = 40) {
 
   items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   return items.slice(0, limit);
+}
+
+export async function attachTitleThanksSend(opts: {
+  from: string;
+  to: string;
+  titleId: string;
+  txHash: string;
+}): Promise<{ sendTxHash: string }> {
+  const fromWallet = normalizeWallet(opts.from);
+  const toWallet = normalizeWallet(opts.to);
+  const row = await db.query.thanks.findFirst({
+    where: and(
+      eq(thanks.fromWallet, fromWallet),
+      eq(thanks.toWallet, toWallet),
+      eq(thanks.titleId, opts.titleId)
+    ),
+  });
+  if (!row) throw new Error("not_found");
+  if (row.sendTxHash) throw new Error("already_sent");
+  const verified = await verifyUserSend({
+    txHash: opts.txHash,
+    payerWallet: fromWallet,
+    toWallet,
+    minLuna: USER_SEND_LUNA,
+  });
+  const hash = String(opts.txHash).trim();
+  const sendMemo = userSendMemoOrDefault(verified.memo, "title");
+  const updated = await db
+    .update(thanks)
+    .set({ sendTxHash: hash, sendTxAt: new Date(), sendMemo })
+    .where(and(eq(thanks.id, row.id), sql`${thanks.sendTxHash} is null`))
+    .returning({ sendTxHash: thanks.sendTxHash });
+  if (!updated[0]?.sendTxHash) throw new Error("already_sent");
+  return { sendTxHash: updated[0].sendTxHash };
 }

@@ -109,7 +109,7 @@ Required TMDB credit: logo plus the non-endorsement notice that the application 
 _Avoid_: powered by IMDb, sourced from OMDb
 
 **Thanks**:
-A user’s directed signal that another user’s Favorite of a title was useful. Binary per thanker, thankee, and title. Distinct from Comment Thanks.
+A user’s directed signal that another user’s Favorite of a title was useful. Binary per thanker, thankee, and title. Distinct from Comment Thanks. May attach a Reward and at most one User Send.
 _Avoid_: tip, like, kudos, shout-out, Comment Thanks as the same mark
 
 **Comment Thanks**:
@@ -117,7 +117,7 @@ A user’s directed signal that another user’s Comment was useful. Binary per 
 _Avoid_: like, kudos, title Thanks as the same mark, unlike
 
 **Thank all**:
-One action that sends Thanks to every remaining peer who Favorited a title (including those who Recommended it). On title detail, peers are shown as Identicons with a Favorited count; tapping the stack opens the same tabbed Handle list used by Title taste counts. Individual per-peer Thanks are not offered on that screen.
+One action that sends Thanks to every remaining peer who Favorited a title (including those who Recommended it). On title detail it appears when peers remain unthanked. The Handle list opens from Title taste counts. Individual per-peer Thanks are offered in that list, not as a second Favorited count on the page.
 _Avoid_: mass tip, blast, thank everyone as a separate mark
 
 **Favorites onboarding**:
@@ -157,8 +157,20 @@ How many Thanks and Comment Thanks other users have sent to this Handle. The soc
 _Avoid_: thank rating, thanks score, tip count, Reward count
 
 **Send**:
-An outgoing NIM transfer from the Sender wallet to a Handle's wallet, with a memo Nimiq Pay shows in its header. Thanks stays the social mark; a Send is optional extra.
-_Avoid_: notification, tip, payout, treasury transfer, like
+An outgoing NIM transfer from the Sender wallet to a Handle's wallet, with a memo Nimiq Pay shows in its header. Rewards and Pings are Sends. Distinct from a User Send.
+_Avoid_: notification, tip, payout, treasury transfer, like, User Send
+
+**User Send**:
+A 1 NIM transfer from a thanker's own wallet to the thankee, approved in Nimiq Pay, with an optional custom memo picked from a fixed list. UI: Send Custom Message. Optional extra on one-to-one Thanks or Comment Thanks; at most one successful User Send per Thanks. Cancel or fail leaves Thanks in place. Never paid to Cinima.
+_Avoid_: tip, gift, Reward, Send, profile gift, payment to Cinima, free-text memo
+
+**Received list**:
+The Me Guestbook of Thanks this Handle received: thanker Identicon, title, a line naming Thanks or Comment Thanks, User Send note, and NIM when present.
+_Avoid_: Activity, notifications, inbox as a tab, Marquee, thanker Handle on the card
+
+**Return digest**:
+The panel on return Presence when Thanks or NIM arrived since last Presence: up to eight thanker Identicons, then +{x} NIM received, then Continue into the app. Not Marquee. Skip during Favorites onboarding and the Guided tour.
+_Avoid_: login modal, notification, Activity, Marquee, received cue
 
 **Reward**:
 A Send of 1 NIM attached to a Thanks or Comment Thanks, funded by Cinima. A thanker gets at most five Rewards per UTC day; further Thanks that day stay social-only. Thank all spends remaining Rewards in Favorited order, then Thanks the rest without NIM.
@@ -201,8 +213,8 @@ Creator-only Telegram notices of live usage: sign-in, search, title view, Favori
 _Avoid_: webhook log, Slack alert, analytics ping, Studio notification
 
 **Achievement**:
-A named, once-earned credit for a Cinima action that teaches the product or rewards coming back. None are awarded until the Guided tour is completed or skipped. When that gate opens, actions already taken count. The catalog: Opening night (first Recommend), Full house (all movie and TV Recommend slots filled), Word of mouth (Title Share), What's next (Watchlist Share), Bravo (sent Thanks), Encore (received Thanks), High seas (ten unique title views), Season ticket (second distinct UTC day with Presence), That's a wrap (finished the Guided tour).
-_Avoid_: badge as a separate product term, XP, streak freeze, daily quest, points economy
+A named, once-earned credit for a Cinima action that teaches the product or rewards coming back. None are awarded until the Guided tour is completed or skipped. When that gate opens, actions already taken count. The catalog: Opening night (first Recommend), Full house (all movie and TV Recommend slots filled), Word of mouth (Title Share), What's next (Watchlist Share), Bravo (sent Thanks), Encore (received Thanks), High seas (ten unique title views), Season ticket (second distinct UTC day with Presence), That's a wrap (finished the Guided tour), In the listings (first Search), Save that for later (Watchlist add on a title opened from Search), That's the one (Recommend on a title opened from Search), Plus one (first Follow).
+_Avoid_: badge as a separate product term, XP, streak freeze, daily quest, points economy, learning pathway as a separate product, wishlist
 
 **Achievement count**:
 How many Achievements a Handle has earned. The one-liner on Public Profile, Me, and other Handles' profiles.

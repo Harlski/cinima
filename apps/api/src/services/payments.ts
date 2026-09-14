@@ -2,6 +2,7 @@ import {
   COMMENT_LUNA,
   LIFETIME_UNLOCK_LUNA,
   UNLOCK_LUNA,
+  isUserSendMemo,
   normalizeWallet,
   parseMemo,
 } from "@cinima/shared";
@@ -95,6 +96,46 @@ export async function verifyPayment(opts: {
     to,
     valueLuna: tx.valueLuna,
     memo,
+  };
+}
+
+/** Verify a User Send: 1 NIM from thanker to thankee with the human Pay memo. */
+export async function verifyUserSend(opts: {
+  txHash: string;
+  payerWallet: string;
+  toWallet: string;
+  minLuna: number;
+}): Promise<VerifiedTx> {
+  const hash = String(opts.txHash ?? "").trim();
+  if (!hash) throw new Error("missing_tx_hash");
+  const toWallet = normalizeWallet(opts.toWallet);
+  const payerWallet = normalizeWallet(opts.payerWallet);
+
+  if (config.demoMode && (hash.startsWith("demo:") || hash.startsWith("dev:"))) {
+    return {
+      hash,
+      from: payerWallet,
+      to: toWallet,
+      valueLuna: opts.minLuna,
+      memo: "demo-user-send",
+    };
+  }
+
+  const tx = await fetchTx(hash);
+  if (!tx) throw new Error("tx_not_found");
+  const to = normalizeWallet(tx.to);
+  const from = normalizeWallet(tx.from);
+  if (to !== toWallet) throw new Error("wrong_send_recipient");
+  if (from && from !== payerWallet) throw new Error("wrong_send_payer");
+  if (tx.valueLuna < opts.minLuna) throw new Error("insufficient_amount");
+  if (!isUserSendMemo(tx.memo || "")) throw new Error("memo_mismatch");
+
+  return {
+    hash,
+    from: normalizeWallet(tx.from) || payerWallet,
+    to,
+    valueLuna: tx.valueLuna,
+    memo: tx.memo || "",
   };
 }
 

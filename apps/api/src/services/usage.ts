@@ -5,7 +5,7 @@ import { presenceDays, usageEvents } from "../db/schema.js";
 
 const SEARCH_DEDUPE_MS = 10 * 60 * 1000;
 const VIEW_DEDUPE_MS = 30 * 60 * 1000;
-const HEARTBEAT_MAX_GAP_MS = 90_000;
+export const HEARTBEAT_MAX_GAP_MS = 90_000;
 const SEARCH_MAX_LEN = 80;
 
 export function normalizeSearchQuery(raw: string): string | null {
@@ -70,6 +70,31 @@ export async function recordView(
   await db.insert(usageEvents).values({
     walletAddress,
     kind: "view",
+    query: null,
+    titleId,
+    createdAt: new Date(atMs),
+  });
+  return { recorded: true, titleId };
+}
+
+export async function recordSearchOpen(
+  walletRaw: string,
+  titleId: string,
+  atMs = Date.now()
+): Promise<{ recorded: boolean; titleId: string } | { error: "invalid_title" }> {
+  if (!isTitleId(titleId)) return { error: "invalid_title" };
+  const walletAddress = normalizeWallet(walletRaw);
+  const existing = await db.query.usageEvents.findFirst({
+    where: and(
+      eq(usageEvents.walletAddress, walletAddress),
+      eq(usageEvents.kind, "search-open"),
+      eq(usageEvents.titleId, titleId)
+    ),
+  });
+  if (existing) return { recorded: false, titleId };
+  await db.insert(usageEvents).values({
+    walletAddress,
+    kind: "search-open",
     query: null,
     titleId,
     createdAt: new Date(atMs),

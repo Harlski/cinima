@@ -13,7 +13,11 @@
           :handle="profile.handle"
           :x-handle="profile.xHandle"
           :achievement-count="profile.achievementCount ?? 0"
-          wallet-display="copy"
+          :follower-count="profile.followerCount"
+          :following-count="profile.followingCount"
+          :recommends="profile.recommends || []"
+          :identicon-to="{ name: 'user', params: { wallet: profile.walletAddress } }"
+          identicon-label="View profile"
         />
 
         <ProfileTaste
@@ -161,6 +165,6 @@ watch(handle, () => {
   padding-bottom: 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 0.85rem;
 }
 </style>

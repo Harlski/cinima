@@ -139,5 +139,93 @@ describe("Thanks HTTP API", () => {
     };
     expect(suggesters.suggesters).toHaveLength(2);
     expect(suggesters.suggesters.every((s) => s.thanked)).toBe(true);
+    expect(suggesters.suggesters.every((s) => s.sent === false)).toBe(true);
+  });
+
+  it("attaches a User Send once and lists it for the thankee", async () => {
+    const send = await app.fetch(
+      new Request("http://test/api/thanks/send", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          toWallet: PEER_A,
+          titleId: TITLE_ID,
+          txHash: "demo:user-send-1",
+        }),
+      })
+    );
+    expect(send.status).toBe(200);
+    expect(((await send.json()) as { sent: boolean }).sent).toBe(true);
+
+    const again = await app.fetch(
+      new Request("http://test/api/thanks/send", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          toWallet: PEER_A,
+          titleId: TITLE_ID,
+          txHash: "demo:user-send-2",
+        }),
+      })
+    );
+    expect(again.status).toBe(409);
+
+    const { db } = await import("../src/db/index.js");
+    const schema = await import("../src/db/schema.js");
+    const now = new Date();
+    await db.insert(schema.sessions).values({
+      token: "peer-a-thanks-session",
+      walletAddress: PEER_A,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      createdAt: now,
+    });
+
+    const received = await app.fetch(
+      new Request("http://test/api/me/received", {
+        headers: {
+          Authorization: "Bearer peer-a-thanks-session",
+          "X-Cinima-Demo": "1",
+        },
+      })
+    );
+    expect(received.status).toBe(200);
+    const body = (await received.json()) as {
+      items: { fromWallet: string; sendNim: number; sendTxHash: string | null; sendMemo: string | null }[];
+    };
+    expect(body.items).toHaveLength(1);
+    expect(body.items[0]?.fromWallet).toBe(ME);
+    expect(body.items[0]?.sendNim).toBe(1);
+    expect(body.items[0]?.sendTxHash).toBe("demo:user-send-1");
+    expect(body.items[0]?.sendMemo).toBe("Thanks for the rec");
+  });
+
+  it("returns a Return digest after a Presence gap", async () => {
+    const { db } = await import("../src/db/index.js");
+    const schema = await import("../src/db/schema.js");
+    const ago = new Date(Date.now() - 5 * 60 * 1000);
+    await db.insert(schema.presenceDays).values({
+      walletAddress: PEER_A,
+      day: ago.toISOString().slice(0, 10),
+      activeMs: 1000,
+      lastHeartbeatAt: ago,
+    });
+
+    const res = await app.fetch(
+      new Request("http://test/api/usage/heartbeat", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer peer-a-thanks-session",
+          "X-Cinima-Demo": "1",
+        },
+      })
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      digest: { thanksCount: number; nimReceived: number; thankers: { walletAddress: string }[] } | null;
+    };
+    expect(body.digest).toBeTruthy();
+    expect(body.digest?.thanksCount).toBe(1);
+    expect(body.digest?.nimReceived).toBeGreaterThanOrEqual(1);
+    expect(body.digest?.thankers[0]?.walletAddress).toBe(ME);
   });
 });

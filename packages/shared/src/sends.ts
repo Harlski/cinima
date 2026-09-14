@@ -68,6 +68,123 @@ export function rewardMemoFor(handle: string | null | undefined, wallet: string)
   return rewardMemo(displayName(handle, wallet));
 }
 
+/** 1 NIM User Send from a thanker's wallet. Same size as a Reward. */
+export const USER_SEND_NIM = REWARD_NIM;
+export const USER_SEND_LUNA = REWARD_LUNA;
+
+/** UI label for an optional User Send. */
+export const USER_SEND_CTA = "Send Custom Message";
+
+/** Cost shown on the message picker. Paid from the thanker's wallet. */
+export const USER_SEND_COST_LABEL = `${USER_SEND_NIM} NIM`;
+
+export const USER_SEND_NOTES = [
+  { id: "thanks-rec", label: "Thanks for the rec" },
+  { id: "loved-take", label: "Loved this take" },
+  { id: "watchlist", label: "Going on my Watchlist" },
+  { id: "great-taste", label: "You have great taste" },
+  { id: "thanks-cinima", label: "Thanks on Cinima" },
+] as const;
+
+export type UserSendNoteId = (typeof USER_SEND_NOTES)[number]["id"];
+
+export const DEFAULT_USER_SEND_NOTE_ID: UserSendNoteId = "thanks-rec";
+
+export function isUserSendNoteId(value: string): value is UserSendNoteId {
+  return USER_SEND_NOTES.some((note) => note.id === value);
+}
+
+export function defaultUserSendNoteId(kind: "title" | "comment"): UserSendNoteId {
+  return kind === "comment" ? "loved-take" : DEFAULT_USER_SEND_NOTE_ID;
+}
+
+export function userSendNoteLabel(id: UserSendNoteId): string {
+  const note = USER_SEND_NOTES.find((row) => row.id === id);
+  return note?.label ?? USER_SEND_NOTES[0]!.label;
+}
+
+export function userSendMemo(noteLabel: string): string {
+  const text = String(noteLabel ?? "").trim() || USER_SEND_NOTES[0]!.label;
+  return truncateMemo(text);
+}
+
+export function userSendMemoForNote(id: UserSendNoteId): string {
+  return userSendMemo(userSendNoteLabel(id));
+}
+
+export function isUserSendMemo(memo: string): boolean {
+  const text = String(memo ?? "");
+  return USER_SEND_NOTES.some((note) => userSendMemoForNote(note.id) === text);
+}
+
+/** Persist a catalog note; demo hashes fall back to the kind default. */
+export function userSendMemoOrDefault(memo: string, kind: "title" | "comment"): string {
+  if (isUserSendMemo(memo)) return memo;
+  return userSendMemoForNote(defaultUserSendNoteId(kind));
+}
+
+/** Me Guestbook heading: cinema guestbook as a Handle's received history. */
+export const RECEIVED_LIST_HEADING = "Guestbook";
+
+export type ReceivedThanksKind = "title" | "comment";
+
+/** One-line why under the title on a Guestbook card. */
+export function receivedThanksHow(kind: ReceivedThanksKind): string {
+  switch (kind) {
+    case "comment":
+      return "Thanked your comment";
+    case "title":
+      return "Thanked your recommendation";
+  }
+}
+
+export function receivedNimLabel(rewardNim: number, sendNim: number): string | null {
+  const n = Number(rewardNim || 0) + Number(sendNim || 0);
+  if (n <= 0) return null;
+  return `+${n} NIM`;
+}
+
+/** Return digest gold line when NIM arrived since last Presence. */
+export function digestNimReceivedLabel(nimReceived: number): string | null {
+  const n = Number(nimReceived || 0);
+  if (n <= 0) return null;
+  return `+${n} NIM received`;
+}
+
+/** Return digest shows at most this many thanker Identicons. */
+export const DIGEST_THANKER_CAP = 8;
+
+/** Presence gap that counts as a return (matches API heartbeat max gap). */
+export const DIGEST_RETURN_GAP_MS = 90_000;
+
+export type DigestThanker = {
+  walletAddress: string;
+  handle: string | null;
+};
+
+export function capDigestThankers<T>(thankers: T[], cap = DIGEST_THANKER_CAP): T[] {
+  return thankers.slice(0, Math.max(0, cap));
+}
+
+export function shouldShowReturnDigest(input: {
+  thanksCount: number;
+  nimReceived: number;
+  onboarding: boolean;
+  tourActive: boolean;
+}): boolean {
+  if (input.onboarding || input.tourActive) return false;
+  return input.thanksCount > 0 || input.nimReceived > 0;
+}
+
+export function isReturnPresence(
+  previousLastAt: number | null,
+  now: number,
+  gapMs = DIGEST_RETURN_GAP_MS
+): boolean {
+  if (previousLastAt == null) return false;
+  return now - previousLastAt > gapMs;
+}
+
 export function watchlistPingMemo(title: string): string {
   const name = String(title ?? "").trim() || "this";
   return fitMemo("Cinima.app - Have you watched: ", name, " yet?");

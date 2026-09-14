@@ -30,9 +30,11 @@
       :own="own"
       :deleted="false"
       :thanked="item.thanked"
+      :sent="item.sent"
       :count="item.thanksCount"
       :busy="thankBusy"
       @thank="$emit('thank')"
+      @send="$emit('send')"
     />
   </article>
 </template>
@@ -55,6 +57,7 @@ defineEmits<{
   "open-user": [wallet: string];
   "open-title": [titleId: string];
   thank: [];
+  send: [];
 }>();
 </script>
 

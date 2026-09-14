@@ -8,14 +8,30 @@ import {
   SYSTEM_PING_LAPSE_MS,
   SYSTEM_PING_MIN_NEW_USERS,
   CREATOR_TEST_PING_MESSAGE,
+  DIGEST_THANKER_CAP,
+  RECEIVED_LIST_HEADING,
+  USER_SEND_LUNA,
+  USER_SEND_COST_LABEL,
+  capDigestThankers,
   creatorPingMemo,
   decideSystemPing,
+  defaultUserSendNoteId,
   isQuiet,
+  isReturnPresence,
+  isUserSendMemo,
   newUsersPingMemo,
+  digestNimReceivedLabel,
+  receivedNimLabel,
+  receivedThanksHow,
   rewardMemo,
   rewardMemoFor,
   rewardsRemainingToday,
+  shouldShowReturnDigest,
   truncateMemo,
+  userSendMemo,
+  userSendMemoForNote,
+  userSendMemoOrDefault,
+  USER_SEND_NOTES,
   watchlistPingMemo,
 } from "@cinima/shared";
 
@@ -43,6 +59,41 @@ describe("Send memos", () => {
     expect(rewardMemoFor("alice", "NQ05THANKSTESTWALLETME00000000001")).toBe(
       "alice thanked you on Cinima"
     );
+  });
+
+  it("names a picked note on a User Send", () => {
+    expect(userSendMemo("Thanks for the rec")).toBe("Thanks for the rec");
+    expect(userSendMemoForNote("thanks-rec")).toBe("Thanks for the rec");
+    expect(userSendMemoForNote("loved-take")).toBe("Loved this take");
+    expect(isUserSendMemo("Thanks for the rec")).toBe(true);
+    expect(isUserSendMemo("Loved this take")).toBe(true);
+    expect(isUserSendMemo("alice thanked you on Cinima")).toBe(false);
+    expect(isUserSendMemo("alice sent 1 NIM on Cinima")).toBe(false);
+    expect(USER_SEND_LUNA).toBe(100_000);
+    expect(USER_SEND_COST_LABEL).toBe("1 NIM");
+    expect(USER_SEND_NOTES).toHaveLength(5);
+    expect(defaultUserSendNoteId("title")).toBe("thanks-rec");
+    expect(defaultUserSendNoteId("comment")).toBe("loved-take");
+    expect(userSendMemoOrDefault("demo-user-send", "title")).toBe("Thanks for the rec");
+    expect(userSendMemoOrDefault("demo-user-send", "comment")).toBe("Loved this take");
+    expect(userSendMemoOrDefault("Thanks for the rec", "comment")).toBe("Thanks for the rec");
+    for (const note of USER_SEND_NOTES) {
+      expect(new TextEncoder().encode(userSendMemoForNote(note.id)).length).toBeLessThanOrEqual(
+        SEND_MEMO_MAX_BYTES
+      );
+    }
+  });
+
+  it("names the Me Guestbook and +NIM on the card", () => {
+    expect(RECEIVED_LIST_HEADING).toBe("Guestbook");
+    expect(receivedNimLabel(1, 0)).toBe("+1 NIM");
+    expect(receivedNimLabel(1, 1)).toBe("+2 NIM");
+    expect(receivedNimLabel(0, 0)).toBeNull();
+  });
+
+  it("names why a Guestbook entry arrived", () => {
+    expect(receivedThanksHow("title")).toBe("Thanked your recommendation");
+    expect(receivedThanksHow("comment")).toBe("Thanked your comment");
   });
 
   it("uses a truncated wallet when the Handle is missing", () => {
@@ -77,6 +128,46 @@ describe("Send memos", () => {
     expect(memo.startsWith("Cinima.app - Have you watched: ")).toBe(true);
     expect(memo.endsWith(" yet?")).toBe(true);
     expect(truncateMemo("é".repeat(64)).length).toBeLessThan(64);
+  });
+});
+
+describe("Return digest", () => {
+  it("caps thanker Identicons at eight", () => {
+    const nine = Array.from({ length: 9 }, (_, i) => ({ walletAddress: `NQ${i}`, handle: `h${i}` }));
+    expect(DIGEST_THANKER_CAP).toBe(8);
+    expect(capDigestThankers(nine)).toHaveLength(8);
+    expect(capDigestThankers(nine)[7]).toEqual({ walletAddress: "NQ7", handle: "h7" });
+  });
+
+  it("hides when onboarding, touring, or nothing arrived", () => {
+    expect(
+      shouldShowReturnDigest({ thanksCount: 2, nimReceived: 1, onboarding: true, tourActive: false })
+    ).toBe(false);
+    expect(
+      shouldShowReturnDigest({ thanksCount: 2, nimReceived: 1, onboarding: false, tourActive: true })
+    ).toBe(false);
+    expect(
+      shouldShowReturnDigest({ thanksCount: 0, nimReceived: 0, onboarding: false, tourActive: false })
+    ).toBe(false);
+    expect(
+      shouldShowReturnDigest({ thanksCount: 1, nimReceived: 0, onboarding: false, tourActive: false })
+    ).toBe(true);
+    expect(
+      shouldShowReturnDigest({ thanksCount: 0, nimReceived: 1, onboarding: false, tourActive: false })
+    ).toBe(true);
+  });
+
+  it("names +NIM received on the panel", () => {
+    expect(digestNimReceivedLabel(4)).toBe("+4 NIM received");
+    expect(digestNimReceivedLabel(1)).toBe("+1 NIM received");
+    expect(digestNimReceivedLabel(0)).toBeNull();
+  });
+
+  it("treats a Presence gap as a return, not the first heartbeat", () => {
+    const now = 1_000_000;
+    expect(isReturnPresence(null, now)).toBe(false);
+    expect(isReturnPresence(now - 30_000, now)).toBe(false);
+    expect(isReturnPresence(now - 90_001, now)).toBe(true);
   });
 });
 

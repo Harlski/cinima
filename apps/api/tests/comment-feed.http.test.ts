@@ -165,11 +165,12 @@ describe("Comment Feed and Comment Thanks HTTP API", () => {
     expect(first.status).toBe(200);
     const firstBody = (await first.json()) as {
       created: boolean;
-      comment: { thanksCount: number; thanked: boolean };
+      comment: { thanksCount: number; thanked: boolean; sent: boolean };
     };
     expect(firstBody.created).toBe(true);
     expect(firstBody.comment.thanksCount).toBe(1);
     expect(firstBody.comment.thanked).toBe(true);
+    expect(firstBody.comment.sent).toBe(false);
 
     const second = await app.fetch(
       new Request(`http://test/api/comments/${peerCommentId}/thanks`, {
@@ -244,5 +245,53 @@ describe("Comment Feed and Comment Thanks HTTP API", () => {
       suggesters: { walletAddress: string; thanked: boolean }[];
     };
     expect(suggesters.suggesters.find((s) => s.walletAddress === PEER)?.thanked).not.toBe(true);
+  });
+
+  it("attaches a User Send once on Comment Thanks and lists it for the author", async () => {
+    const feed = await app.fetch(new Request("http://test/api/comments/feed", { headers: meHeaders }));
+    const peerCommentId = ((await feed.json()) as { items: { id: number; body: string }[] }).items.find(
+      (i) => i.body === "Still holds up"
+    )?.id;
+    expect(peerCommentId).toBeTruthy();
+
+    const send = await app.fetch(
+      new Request(`http://test/api/comments/${peerCommentId}/thanks/send`, {
+        method: "POST",
+        headers: meHeaders,
+        body: JSON.stringify({ txHash: "demo:comment-user-send-1" }),
+      })
+    );
+    expect(send.status).toBe(200);
+    const sendBody = (await send.json()) as { sent: boolean; comment: { sent: boolean } };
+    expect(sendBody.sent).toBe(true);
+    expect(sendBody.comment.sent).toBe(true);
+
+    const again = await app.fetch(
+      new Request(`http://test/api/comments/${peerCommentId}/thanks/send`, {
+        method: "POST",
+        headers: meHeaders,
+        body: JSON.stringify({ txHash: "demo:comment-user-send-2" }),
+      })
+    );
+    expect(again.status).toBe(409);
+
+    const received = await app.fetch(
+      new Request("http://test/api/me/received", { headers: peerHeaders })
+    );
+    expect(received.status).toBe(200);
+    const body = (await received.json()) as {
+      items: {
+        kind: string;
+        sendNim: number;
+        sendTxHash: string | null;
+        sendMemo: string | null;
+        commentPreview: string | null;
+      }[];
+    };
+    const row = body.items.find((i) => i.kind === "comment");
+    expect(row?.sendNim).toBe(1);
+    expect(row?.sendTxHash).toBe("demo:comment-user-send-1");
+    expect(row?.sendMemo).toBe("Loved this take");
+    expect(row?.commentPreview).toBe("Still holds up");
   });
 });

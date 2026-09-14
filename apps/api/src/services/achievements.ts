@@ -7,9 +7,13 @@ import {
   shouldAwardEncore,
   shouldAwardFullHouse,
   shouldAwardHighSeas,
+  shouldAwardInTheListings,
   shouldAwardOpeningNight,
+  shouldAwardPlusOne,
+  shouldAwardSaveThatForLater,
   shouldAwardSeasonTicket,
   shouldAwardThatsAWrap,
+  shouldAwardThatsTheOne,
   shouldAwardWhatsNext,
   shouldAwardWordOfMouth,
   type AchievementKind,
@@ -21,12 +25,14 @@ import {
   commentThanks,
   comments,
   favorites,
+  follows,
   presenceDays,
   shareLinks,
   thanks,
   titles,
   usageEvents,
   users,
+  watchlist,
 } from "../db/schema.js";
 
 export type AchievementDto = {
@@ -140,6 +146,40 @@ async function hasShareKind(wallet: string, kind: "title" | "watchlist"): Promis
   return Number(row?.n || 0) > 0;
 }
 
+async function hasWatchlistAddAfterSearchOpen(wallet: string): Promise<boolean> {
+  const [row] = await db
+    .select({ n: count() })
+    .from(watchlist)
+    .innerJoin(
+      usageEvents,
+      and(
+        eq(usageEvents.walletAddress, watchlist.walletAddress),
+        eq(usageEvents.titleId, watchlist.titleId),
+        eq(usageEvents.kind, "search-open"),
+        sql`${usageEvents.createdAt} <= ${watchlist.createdAt}`
+      )
+    )
+    .where(eq(watchlist.walletAddress, wallet));
+  return Number(row?.n || 0) > 0;
+}
+
+async function hasRecommendAfterSearchOpen(wallet: string): Promise<boolean> {
+  const [row] = await db
+    .select({ n: count() })
+    .from(favorites)
+    .innerJoin(
+      usageEvents,
+      and(
+        eq(usageEvents.walletAddress, favorites.walletAddress),
+        eq(usageEvents.titleId, favorites.titleId),
+        eq(usageEvents.kind, "search-open"),
+        sql`${usageEvents.createdAt} <= ${favorites.recommendedAt}`
+      )
+    )
+    .where(and(eq(favorites.walletAddress, wallet), isNotNull(favorites.recommendedAt)));
+  return Number(row?.n || 0) > 0;
+}
+
 async function evaluatePending(wallet: string, atMs: number): Promise<AchievementKind[]> {
   const have = await earnedKinds(wallet);
   const recs = await recommendCounts(wallet);
@@ -241,6 +281,52 @@ async function evaluatePending(wallet: string, atMs: number): Promise<Achievemen
     if (await insertIfNew(wallet, "season-ticket", atMs)) earned.push("season-ticket");
   }
 
+  const [searchRow] = await db
+    .select({ n: count() })
+    .from(usageEvents)
+    .where(and(eq(usageEvents.walletAddress, wallet), eq(usageEvents.kind, "search")));
+  if (
+    shouldAwardInTheListings({
+      alreadyEarned: have.has("in-the-listings"),
+      searchCountAfter: Number(searchRow?.n || 0),
+    })
+  ) {
+    if (await insertIfNew(wallet, "in-the-listings", atMs)) earned.push("in-the-listings");
+  }
+
+  if (
+    shouldAwardSaveThatForLater({
+      alreadyEarned: have.has("save-that-for-later"),
+      hasWatchlistAddAfterSearchOpen: await hasWatchlistAddAfterSearchOpen(wallet),
+    })
+  ) {
+    if (await insertIfNew(wallet, "save-that-for-later", atMs)) {
+      earned.push("save-that-for-later");
+    }
+  }
+
+  if (
+    shouldAwardThatsTheOne({
+      alreadyEarned: have.has("thats-the-one"),
+      hasRecommendAfterSearchOpen: await hasRecommendAfterSearchOpen(wallet),
+    })
+  ) {
+    if (await insertIfNew(wallet, "thats-the-one", atMs)) earned.push("thats-the-one");
+  }
+
+  const [followRow] = await db
+    .select({ n: count() })
+    .from(follows)
+    .where(eq(follows.followerWallet, wallet));
+  if (
+    shouldAwardPlusOne({
+      alreadyEarned: have.has("plus-one"),
+      followCountAfter: Number(followRow?.n || 0),
+    })
+  ) {
+    if (await insertIfNew(wallet, "plus-one", atMs)) earned.push("plus-one");
+  }
+
   return orderEarnedAchievements(earned);
 }
 
@@ -287,6 +373,34 @@ export async function evaluateAfterThanksReceived(
 }
 
 export async function evaluateAfterView(
+  wallet: string,
+  atMs = Date.now()
+): Promise<AchievementKind[]> {
+  return evaluateIfEligible(wallet, atMs);
+}
+
+export async function evaluateAfterSearch(
+  wallet: string,
+  atMs = Date.now()
+): Promise<AchievementKind[]> {
+  return evaluateIfEligible(wallet, atMs);
+}
+
+export async function evaluateAfterSearchOpen(
+  wallet: string,
+  atMs = Date.now()
+): Promise<AchievementKind[]> {
+  return evaluateIfEligible(wallet, atMs);
+}
+
+export async function evaluateAfterWatchlistAdd(
+  wallet: string,
+  atMs = Date.now()
+): Promise<AchievementKind[]> {
+  return evaluateIfEligible(wallet, atMs);
+}
+
+export async function evaluateAfterFollow(
   wallet: string,
   atMs = Date.now()
 ): Promise<AchievementKind[]> {

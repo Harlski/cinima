@@ -1,15 +1,18 @@
 import {
   DELETED_COMMENT_LABEL,
+  USER_SEND_LUNA,
   normalizeCommentInput,
   normalizeWallet,
+  userSendMemoOrDefault,
   type CommentDto,
   type CommentFeedItem,
 } from "@cinima/shared";
-import { desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { commentThanks, comments, titles, users } from "../db/schema.js";
 import { censorProfanity } from "../lib/profanity.js";
 import { toTitleSummary } from "../lib/titles.js";
+import { verifyUserSend } from "./payments.js";
 
 export class CommentError extends Error {
   constructor(
@@ -36,7 +39,7 @@ type CommentRow = {
   handle: string | null;
 };
 
-type ThanksMeta = { count: number; thanked: boolean };
+type ThanksMeta = { count: number; thanked: boolean; sent: boolean };
 
 export function toCommentDto(row: CommentRow, thanks: ThanksMeta): CommentDto {
   const deleted = row.deletedAt != null;
@@ -50,6 +53,7 @@ export function toCommentDto(row: CommentRow, thanks: ThanksMeta): CommentDto {
     deleted,
     thanksCount: thanks.count,
     thanked: thanks.thanked,
+    sent: thanks.sent,
   };
 }
 
@@ -64,20 +68,24 @@ async function thanksMetaFor(
   viewer: string
 ): Promise<Map<number, ThanksMeta>> {
   const map = new Map<number, ThanksMeta>();
-  for (const id of commentIds) map.set(id, { count: 0, thanked: false });
+  for (const id of commentIds) map.set(id, { count: 0, thanked: false, sent: false });
   if (!commentIds.length) return map;
   const viewerW = normalizeWallet(viewer);
   const rows = await db
     .select({
       commentId: commentThanks.commentId,
       fromWallet: commentThanks.fromWallet,
+      sendTxHash: commentThanks.sendTxHash,
     })
     .from(commentThanks)
     .where(inArray(commentThanks.commentId, commentIds));
   for (const r of rows) {
-    const cur = map.get(r.commentId) ?? { count: 0, thanked: false };
+    const cur = map.get(r.commentId) ?? { count: 0, thanked: false, sent: false };
     cur.count += 1;
-    if (r.fromWallet === viewerW) cur.thanked = true;
+    if (r.fromWallet === viewerW) {
+      cur.thanked = true;
+      cur.sent = !!r.sendTxHash;
+    }
     map.set(r.commentId, cur);
   }
   return map;
@@ -103,7 +111,7 @@ async function fetchCommentRow(id: number): Promise<CommentRow | null> {
 
 async function toDtoForViewer(row: CommentRow, viewer: string): Promise<CommentDto> {
   const meta = await thanksMetaFor([row.id], viewer);
-  return toCommentDto(row, meta.get(row.id) ?? { count: 0, thanked: false });
+  return toCommentDto(row, meta.get(row.id) ?? { count: 0, thanked: false, sent: false });
 }
 
 export async function listCommentsForTitle(
@@ -130,7 +138,7 @@ export async function listCommentsForTitle(
     viewer
   );
   return rows.map((row) =>
-    toCommentDto(row, meta.get(row.id) ?? { count: 0, thanked: false })
+    toCommentDto(row, meta.get(row.id) ?? { count: 0, thanked: false, sent: false })
   );
 }
 
@@ -161,7 +169,7 @@ export async function listCommentFeed(
     viewer
   );
   return rows.map((row) => ({
-    ...toCommentDto(row, meta.get(row.id) ?? { count: 0, thanked: false }),
+    ...toCommentDto(row, meta.get(row.id) ?? { count: 0, thanked: false, sent: false }),
     title: toTitleSummary(row.title),
   }));
 }
@@ -246,6 +254,36 @@ export async function addCommentThanks(
 
   const comment = await toDtoForViewer(row, fromWallet);
   return { created: inserted.length > 0, id: inserted[0]?.id ?? null, comment };
+}
+
+export async function attachCommentThanksSend(
+  from: string,
+  commentId: number,
+  txHash: string
+): Promise<CommentDto> {
+  const row = await fetchCommentRow(commentId);
+  if (!row) throw new CommentError("not_found", "Comment not found");
+  const fromWallet = normalizeWallet(from);
+  const thanksRow = await db.query.commentThanks.findFirst({
+    where: and(eq(commentThanks.fromWallet, fromWallet), eq(commentThanks.commentId, commentId)),
+  });
+  if (!thanksRow) throw new CommentError("not_found", "Thanks not found");
+  if (thanksRow.sendTxHash) throw new Error("already_sent");
+  const verified = await verifyUserSend({
+    txHash,
+    payerWallet: fromWallet,
+    toWallet: row.walletAddress,
+    minLuna: USER_SEND_LUNA,
+  });
+  const hash = String(txHash).trim();
+  const sendMemo = userSendMemoOrDefault(verified.memo, "comment");
+  const updated = await db
+    .update(commentThanks)
+    .set({ sendTxHash: hash, sendTxAt: new Date(), sendMemo })
+    .where(and(eq(commentThanks.id, thanksRow.id), sql`${commentThanks.sendTxHash} is null`))
+    .returning({ id: commentThanks.id });
+  if (!updated.length) throw new Error("already_sent");
+  return toDtoForViewer(row, fromWallet);
 }
 
 export function commentActivityBody(row: {

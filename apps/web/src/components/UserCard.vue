@@ -1,53 +1,79 @@
 <template>
-  <div class="player-card nq-card">
-    <Identicon :address="walletAddress" :size="avatarSize" alt="Identicon" />
-    <div class="player-meta">
-      <h1>{{ handle }}</h1>
-      <button
-        v-if="walletDisplay === 'copy'"
-        type="button"
-        class="wallet wallet--copy"
-        :title="copied ? 'Copied' : 'Copy wallet address'"
-        @click="copyWallet"
-      >
-        {{ formatWallet(walletAddress) }}
-      </button>
-      <p v-else class="wallet">{{ abbreviateWallet(walletAddress) }}</p>
-      <p v-if="statsLine" class="stats">{{ statsLine }}</p>
-      <button
-        v-if="achievementCount != null && achievementOpen"
-        type="button"
-        class="achievements"
-        @click="$emit('open-credits')"
-      >
-        {{ achievementLine }}
-      </button>
-      <p v-else-if="achievementCount != null" class="achievements achievements--static">
-        {{ achievementLine }}
-      </p>
-      <a
-        v-if="showXLink && xUrl"
-        class="x-link"
-        :href="xUrl"
-        target="_blank"
-        rel="noopener noreferrer"
-        :aria-label="`${handle} on X`"
-      >
-        <NqIcon name="logos-twitter-mono" :size="18" />
-        <span>@{{ xHandle }}</span>
-      </a>
+  <div class="profile-header" :class="{ 'has-wash': wash.length }">
+    <div
+      v-if="wash.length"
+      class="wash"
+      aria-hidden="true"
+      :style="{ '--wash-cols': wash.length }"
+    >
+      <img
+        v-for="title in wash"
+        :key="title.id"
+        :src="title.posterUrl || ''"
+        alt=""
+      />
+      <div class="wash-veil" />
     </div>
-    <div v-if="$slots.actions" class="player-actions">
-      <slot name="actions" />
+    <div class="identity">
+      <RouterLink
+        v-if="identiconTo"
+        class="identicon-link"
+        :to="identiconTo"
+        :aria-label="identiconLabel"
+      >
+        <Identicon :address="walletAddress" :size="56" alt="" />
+      </RouterLink>
+      <Identicon v-else :address="walletAddress" :size="56" alt="Identicon" />
+      <div class="meta">
+        <div class="name-row">
+          <h1>{{ handle }}</h1>
+          <button
+            v-if="achievementCount != null && achievementOpen"
+            type="button"
+            class="achievements"
+            :aria-label="achievementLine"
+            @click="$emit('open-credits')"
+          >
+            {{ achievementCount }}
+          </button>
+          <span
+            v-else-if="achievementCount != null"
+            class="achievements achievements--static"
+          >
+            {{ achievementCount }}
+          </span>
+        </div>
+        <p v-if="showStats" class="stats">
+          <span>{{ followerLabel }}</span>
+          <span>{{ followingLabel }}</span>
+        </p>
+      </div>
+      <div v-if="(showXLink && xUrl) || $slots.actions" class="actions">
+        <a
+          v-if="showXLink && xUrl"
+          class="icon-btn"
+          :href="xUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          :aria-label="`${handle} on X`"
+        >
+          <NqIcon name="logos-twitter-mono" :size="18" />
+        </a>
+        <slot name="actions" />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
-import { abbreviateWallet, formatWallet, normalizeWallet, xProfileUrl } from "@cinima/shared";
+import { computed } from "vue";
+import type { RouteLocationRaw } from "vue-router";
+import { RouterLink } from "vue-router";
+import type { TitleSummary } from "@cinima/shared";
+import { xProfileUrl } from "@cinima/shared";
 import Identicon from "@/components/Identicon.vue";
 import NqIcon from "@/components/NqIcon.vue";
+import { pickRecommendWashForProfile } from "@/lib/profileHeader";
 
 const props = withDefaults(
   defineProps<{
@@ -55,20 +81,22 @@ const props = withDefaults(
     handle: string;
     xHandle?: string | null;
     showXLink?: boolean;
+    recommends?: TitleSummary[];
     followerCount?: number;
     followingCount?: number;
     achievementCount?: number | null;
     achievementOpen?: boolean;
-    walletDisplay?: "copy" | "abbrev";
-    avatarSize?: number;
+    identiconTo?: RouteLocationRaw | null;
+    identiconLabel?: string;
   }>(),
   {
     xHandle: null,
     showXLink: true,
+    recommends: () => [],
     achievementCount: null,
     achievementOpen: false,
-    walletDisplay: "abbrev",
-    avatarSize: 72,
+    identiconTo: null,
+    identiconLabel: "View profile",
   }
 );
 
@@ -76,120 +104,189 @@ defineEmits<{
   "open-credits": [];
 }>();
 
-const copied = ref(false);
-
 const xUrl = computed(() => xProfileUrl(props.xHandle));
 
-const statsLine = computed(() => {
-  if (props.followerCount == null || props.followingCount == null) return null;
-  return `${props.followerCount} followers · ${props.followingCount} following`;
+const wash = computed(() =>
+  pickRecommendWashForProfile(props.walletAddress, props.recommends)
+);
+
+const showStats = computed(
+  () => props.followerCount != null && props.followingCount != null
+);
+
+const followerLabel = computed(() => {
+  const n = props.followerCount ?? 0;
+  return n === 1 ? "1 follower" : `${n} followers`;
+});
+
+const followingLabel = computed(() => {
+  const n = props.followingCount ?? 0;
+  return n === 1 ? "1 following" : `${n} following`;
 });
 
 const achievementLine = computed(() => {
   const n = props.achievementCount ?? 0;
   return n === 1 ? "1 Achievement" : `${n} Achievements`;
 });
-
-const copyWallet = async () => {
-  try {
-    await navigator.clipboard.writeText(normalizeWallet(props.walletAddress));
-    copied.value = true;
-    window.setTimeout(() => {
-      copied.value = false;
-    }, 1600);
-  } catch {
-    copied.value = false;
-  }
-};
 </script>
 
 <style scoped>
-.player-card {
+.profile-header {
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 1.15rem;
-  padding: 1.35rem 1.5rem;
-  text-align: left;
+  flex-direction: column;
+  gap: 0;
+  margin-inline: calc(var(--column-pad) * -1);
 }
 
-.player-card :deep(.identicon) {
+.profile-header.has-wash {
+  margin-top: -1rem;
+}
+
+.wash {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--wash-cols, 4), 1fr);
+  height: 8.25rem;
+  overflow: hidden;
+}
+
+.wash img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.wash-veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklch, var(--bg-primary) 8%, transparent) 0%,
+    color-mix(in oklch, var(--bg-primary) 28%, transparent) 48%,
+    var(--bg-primary) 100%
+  );
+}
+
+.identity {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.15rem var(--column-pad) 0.35rem;
+}
+
+.has-wash .identity {
+  margin-top: -2rem;
+  padding-bottom: 0.75rem;
+}
+
+.identity :deep(.identicon) {
   flex-shrink: 0;
 }
 
-.player-meta {
+.identicon-link {
+  display: flex;
+  flex-shrink: 0;
+  border-radius: 50%;
+  line-height: 0;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.identicon-link:hover {
+  text-decoration: none;
+}
+
+.has-wash .identity :deep(.identicon) {
+  box-shadow: 0 0 0 3px var(--bg-primary);
+}
+
+.meta {
   min-width: 0;
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.08rem;
 }
 
-.player-meta h1 {
+.name-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.meta h1 {
   margin: 0;
-  font-size: 1.35rem;
-}
-
-.wallet {
-  margin: 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  color: var(--text-secondary);
-  font-size: 0.8rem;
-  line-height: 1.45;
-}
-
-.wallet--copy {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  text-align: left;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  cursor: pointer;
-}
-
-.stats,
-.achievements {
-  margin: 0;
-  font-size: 0.85rem;
-  color: var(--text-secondary);
+  font-size: 1.15rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .achievements {
-  padding: 0;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0.05rem 0.45rem;
   border: 0;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-  font: inherit;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--gold) 18%, transparent);
   color: var(--gold);
-  font-weight: 600;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+button.achievements {
+  cursor: pointer;
 }
 
 .achievements--static {
   cursor: default;
-  color: var(--text-secondary);
-  font-weight: 500;
 }
 
-.x-link {
-  display: inline-flex;
+.stats {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  color: var(--text-secondary);
+}
+
+.actions {
+  display: flex;
   align-items: center;
-  gap: 0.35rem;
-  margin-top: 0.2rem;
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-decoration: none;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
-.x-link:hover {
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.icon-btn:hover {
   color: var(--text-primary);
   text-decoration: none;
 }
 
-.player-actions {
-  flex-shrink: 0;
-  align-self: center;
+.icon-btn :deep(.nq-icon) {
+  width: 18px;
+  height: 18px;
 }
 </style>

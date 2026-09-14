@@ -541,6 +541,9 @@ const toggleFavorite = async (titleId: string) => {
 };
 
 const toggleWatchlist = async (title: TitleSummary) => {
+  if (!watchlistStore.isOnWatchlist(title.id)) {
+    await catalogStore.recordSearchOpen(title.id);
+  }
   await requestToggleWatchlist(title.id, {
     title,
     isWatchlisted: watchlistStore.isOnWatchlist(title.id),
@@ -558,12 +561,14 @@ const goToTitle = async (titleId: string) => {
   if (title) {
     titleLookups.value = pushTitleLookup(title);
   }
+  await catalogStore.recordSearchOpen(titleId);
   await syncSearchRoute(searchQuery.value);
   await router.push({ name: "title", params: { id: titleId } });
 };
 
 const openLookup = async (item: TitleLookup) => {
   titleLookups.value = pushTitleLookup(item);
+  await catalogStore.recordSearchOpen(item.id);
   await router.push({ name: "title", params: { id: item.id } });
 };
 
