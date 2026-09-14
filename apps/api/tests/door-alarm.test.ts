@@ -256,7 +256,7 @@ describe("Door alarm copy", () => {
         kind: "sent-join",
         handle: "alice",
         walletAddress: "NQ05USAGETESTWALLET000000000000001",
-        memo: "Joined Cinima",
+        memo: "Thanks for joining Cinima! - Creator",
       })
     ).toBe("Join grant sent to alice");
   });

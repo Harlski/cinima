@@ -29,9 +29,7 @@
           @select="onSelectTitle"
         />
 
-        <RouterLink class="nq-pill-blue nq-pill-lg nq-pill-stretch profile-cta" :to="profilePath">
-          View their profile
-        </RouterLink>
+        <ExploreCinimaPayBar placement="inline" :already-installed-url="payUrl" />
 
         <TmdbAttribution variant="compact" />
       </div>
@@ -39,9 +37,11 @@
       <div v-else class="app-column error">
         Watchlist Share not found
       </div>
-    </div>
 
-    <ExploreCinimaPayBar :already-installed-url="payUrl" />
+      <div v-if="!payload" class="app-column explore-fallback">
+        <ExploreCinimaPayBar placement="inline" :already-installed-url="payUrl" />
+      </div>
+    </div>
 
     <PayTitleModal
       v-if="gateTitle"
@@ -176,9 +176,13 @@ watch(handle, loadShare, { immediate: true });
   color: var(--text-secondary);
 }
 
+.explore-fallback {
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+}
+
 .content {
   padding-top: 1.25rem;
-  padding-bottom: 1.5rem;
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -214,13 +218,6 @@ watch(handle, loadShare, { immediate: true });
 .invite-handle {
   font-weight: 700;
   font-size: 1.05rem;
-}
-
-.profile-cta {
-  margin-top: 0.35rem;
-  max-width: 19.25rem;
-  text-align: center;
-  color: #fff;
 }
 
 .content :deep(.poster-slider),

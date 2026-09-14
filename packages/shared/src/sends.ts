@@ -9,7 +9,7 @@ export const REWARD_LUNA = REWARD_NIM * LUNA_PER_NIM;
 export const JOIN_GRANT_NIM = 10;
 export const JOIN_GRANT_LUNA = JOIN_GRANT_NIM * LUNA_PER_NIM;
 
-export const JOIN_GRANT_MEMO = "Joined Cinima";
+export const JOIN_GRANT_MEMO = "Thanks for joining Cinima! - Creator";
 export const JOIN_GRANT_HOW = "Joined Cinima";
 export const JOIN_OVERLAY_TITLE = "Thanks for joining Cinima";
 export const JOIN_OVERLAY_SUB = "Thanks for coming back!";

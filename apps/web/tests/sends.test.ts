@@ -140,8 +140,11 @@ describe("Send memos", () => {
   it("names a 10 NIM Join grant and the returning Join overlay", () => {
     expect(JOIN_GRANT_NIM).toBe(10);
     expect(JOIN_GRANT_LUNA).toBe(1_000_000);
-    expect(joinGrantMemo()).toBe("Joined Cinima");
-    expect(JOIN_GRANT_MEMO).toBe("Joined Cinima");
+    expect(joinGrantMemo()).toBe("Thanks for joining Cinima! - Creator");
+    expect(JOIN_GRANT_MEMO).toBe("Thanks for joining Cinima! - Creator");
+    expect(new TextEncoder().encode(JOIN_GRANT_MEMO).length).toBeLessThanOrEqual(
+      SEND_MEMO_MAX_BYTES
+    );
     expect(JOIN_GRANT_HOW).toBe("Joined Cinima");
     expect(joinGrantIdempotencyKey("NQ05JOINTESTWALLET000000000000001")).toBe(
       "join:NQ05JOINTESTWALLET000000000000001"

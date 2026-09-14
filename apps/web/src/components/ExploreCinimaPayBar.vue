@@ -1,6 +1,6 @@
 <template>
-  <nav class="explore-pay-float">
-    <div class="app-column explore-pay-float-inner">
+  <nav :class="rootClass">
+    <div :class="innerClass">
       <button
         type="button"
         class="explore-pay-btn"
@@ -22,20 +22,30 @@
 </template>
 
 <script setup lang="ts">
-import { inject, ref } from "vue";
+import { computed, inject, ref } from "vue";
 import BrandWordmark from "@/components/BrandWordmark.vue";
 import PayOnlyGateModal from "@/components/PayOnlyGateModal.vue";
 import { landingCopy } from "@/lib/contact";
 import { shareVisitPayIntentKey } from "@/lib/shareVisit";
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     alreadyInstalledUrl: string;
     socialVariant?: "landing" | "payGate";
+    placement?: "float" | "inline";
   }>(),
   {
     socialVariant: "payGate",
+    placement: "float",
   }
+);
+
+const inline = computed(() => props.placement === "inline");
+const rootClass = computed(() =>
+  inline.value ? "explore-pay-inline" : "explore-pay-float"
+);
+const innerClass = computed(() =>
+  inline.value ? "explore-pay-inline-inner" : "app-column explore-pay-float-inner"
 );
 
 const open = ref(false);
@@ -65,6 +75,21 @@ function onExplore() {
   flex-direction: column;
   align-items: stretch;
   pointer-events: none;
+}
+
+.explore-pay-inline {
+  width: 100%;
+  margin-top: 0.35rem;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.explore-pay-inline-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
 }
 
 .explore-pay-btn {

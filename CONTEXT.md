@@ -17,7 +17,7 @@ The unauthenticated share page for a Handle: identity, Recommends, Favorites, an
 _Avoid_: Feed, Followee peek, heatmap, Me, User page, Watchlist on Public Profile
 
 **Title Share**:
-The unauthenticated share page for one Handle plus one Title. It tells the recipient that the Handle wants them to check out that Title, and links to the Handle's Public Profile.
+The unauthenticated share page for one Handle plus one Title. It tells the recipient that the Handle wants them to check out that Title. Identicon and Handle open Public Profile; Explore CINIMA is the page CTA.
 _Avoid_: Public Profile, invite, checkout page, OG page, Watchlist Share
 
 **Title Share link**:
@@ -69,7 +69,7 @@ After a Watchlist leave, if the Title is not a Favorite, a second confirm asks w
 _Avoid_: auto-favorite on leave, combining Favorite into the leave confirm
 
 **Watchlist Share**:
-The unauthenticated share page for one Handle plus their current Watchlist. It asks the recipient to help pick what to watch next, and links to the Handle's Public Profile. Live with the Watchlist, not a frozen snapshot.
+The unauthenticated share page for one Handle plus their current Watchlist. It asks the recipient to help pick what to watch next. Identicon and Handle open Public Profile; Explore CINIMA is the page CTA. Live with the Watchlist, not a frozen snapshot.
 _Avoid_: Public Profile, Title Share, My List as a public URL, Watchlist as automatically public
 
 **Watchlist Share link**:
@@ -181,7 +181,7 @@ A Send of 0.0001 NIM whose job is the memo, not the amount. System or Creator. N
 _Avoid_: notification, Door alarm, Marquee, Reward, Join grant
 
 **Join grant**:
-A one-time 10 NIM Send to a wallet for first signing into Cinima in Nimiq Pay. One per wallet, forever; funded by the Sender wallet. The Nimiq Pay memo is "Joined Cinima". Distinct from Reward, Ping, and User Send.
+A one-time 10 NIM Send to a wallet for first signing into Cinima in Nimiq Pay. One per wallet, forever; funded by the Sender wallet. The Nimiq Pay memo is "Thanks for joining Cinima! - Creator". Distinct from Reward, Ping, and User Send.
 _Avoid_: signup bonus, airdrop, Reward, tip, device grant, Welcome NIM
 
 **Sender wallet**:
@@ -249,5 +249,5 @@ Time a signed-in Handle spent with Cinima in the foreground, counted in Studio. 
 _Avoid_: session duration, screen time, DAU as a product term
 
 **Landing**:
-The public root page (`/` and `/gate`) that explains what Cinima is. Shows a scrolling strip of title-card posters loaded from the TMDB image CDN (curated `poster_path` list; not vendored in the repo), with TMDB attribution on the page. Outside Nimiq Pay the CTA is Explore (same Enter styling; opens a centered pay-only gate modal with Already Installed? (open) in a gold glow via HTTPS Pay intent (`https://nimpay.app/miniapps/open/…`), Get Nimiq Pay, and Inquiries; on a desktop, clicking Already Installed? shows a Full access only on mobile tooltip, then moves the gold glow to Get Nimiq Pay with a Learn about Nimiq Pay tooltip); inside Pay the CTA is Enter, which connects the wallet while staying on Landing, shows a Welcome / Welcome Back identicon overlay, then enters Discover (Favorites onboarding or For You). Landing never auto-boots auth. Contact is X (https://x.com/cinima_app) and Email (cinima.app@gmail.com). Public Profile / Title Share / Short Share show a floating Explore CINIMA button (no bar chrome; `2.75rem + safe-area-inset-bottom` lift). Outside Pay, title taps open a gate modal that matches Title Share layout (poster, year / media / rating, overview) plus Already Installed / Get Nimiq Pay, X + Telegram, and View on IMDb.
+The public root page (`/` and `/gate`) that explains what Cinima is. Shows a scrolling strip of title-card posters loaded from the TMDB image CDN (curated `poster_path` list; not vendored in the repo), with TMDB attribution on the page. Outside Nimiq Pay the CTA is Explore (same Enter styling; opens a centered pay-only gate modal with Already Installed? (open) in a gold glow via HTTPS Pay intent (`https://nimpay.app/miniapps/open/…`), Get Nimiq Pay, and Inquiries; on a desktop, clicking Already Installed? shows a Full access only on mobile tooltip, then moves the gold glow to Get Nimiq Pay with a Learn about Nimiq Pay tooltip); inside Pay the CTA is Enter, which connects the wallet while staying on Landing, shows a Welcome / Welcome Back identicon overlay, then enters Discover (Favorites onboarding or For You). Landing never auto-boots auth. Contact is X (https://x.com/cinima_app) and Email (cinima.app@gmail.com). Public Profile shows a floating Explore CINIMA button (no bar chrome; `2.75rem + safe-area-inset-bottom` lift). Title Share and Watchlist Share show Explore CINIMA in the page content; Identicon and Handle still open Public Profile. A Short Share that opens a Title Share uses that Title Share layout. Outside Pay, title taps open a gate modal that matches Title Share layout (poster, year / media / rating, overview) plus Already Installed / Get Nimiq Pay, X + Telegram, and View on IMDb.
 _Avoid_: marketing site, splash, home feed, auto sign-in on open, navigating into the app before wallet connect, vendoring studio posters in git
