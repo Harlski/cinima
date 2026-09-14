@@ -10,7 +10,10 @@ export const useReturnDigestStore = defineStore("returnDigest", () => {
   const meTabHint = ref(false);
   let hintTimer: ReturnType<typeof setTimeout> | null = null;
 
-  function apply(next: ReturnDigest | null, opts: { onboarding: boolean; tourActive: boolean }) {
+  function apply(
+    next: ReturnDigest | null,
+    opts: { onboarding: boolean; tourActive: boolean; joinOverlayPending?: boolean }
+  ) {
     if (!next) return;
     if (
       !shouldShowReturnDigest({
@@ -18,6 +21,7 @@ export const useReturnDigestStore = defineStore("returnDigest", () => {
         nimReceived: next.nimReceived,
         onboarding: opts.onboarding,
         tourActive: opts.tourActive,
+        joinOverlayPending: opts.joinOverlayPending,
       })
     ) {
       return;

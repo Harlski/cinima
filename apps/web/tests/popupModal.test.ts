@@ -33,7 +33,14 @@ describe("popup modal chrome", () => {
     expect(css).toContain("0 0 18px rgba(255, 255, 255, 0.42)");
     expect(css).toContain('url("./hex-pattern.svg")');
     expect(css).toContain("mix-blend-mode: screen");
-    expect(css).toContain("mask-image:");
+    expect(css).toMatch(
+      /#app::before \{[\s\S]*?mask-image: linear-gradient\(\s*to bottom,[\s\S]*?transparent 42%,[\s\S]*?#000 100%/
+    );
+    expect(css).toMatch(
+      /\.confirm-modal > \.nq-card::before,[\s\S]*?\.join-overlay-modal > \.join-overlay-panel::before,[\s\S]*?mask-image: linear-gradient\(\s*to bottom,[\s\S]*?transparent 42%,[\s\S]*?#000 100%/
+    );
+    expect(css).not.toContain("radial-gradient(ellipse 80% 70% at 12% 8%");
+    expect(css).not.toContain("ellipse 85% 75% at 50% 28%");
 
     const leave = readFileSync(
       path.join(webRoot, "src/components/WatchlistLeaveDialog.vue"),
@@ -54,5 +61,23 @@ describe("popup modal chrome", () => {
         /-(modal|offer|done)\s*\{[^}]*background:\s*color-mix/s
       );
     }
+  });
+
+  it("styles Join overlay thanks without Achievement copy", () => {
+    const src = readFileSync(
+      path.join(webRoot, "src/components/JoinOverlayHost.vue"),
+      "utf8"
+    );
+    expect(src).toContain("join-overlay-sub");
+    expect(src).toContain("text-transform: uppercase");
+    expect(src).toContain("letter-spacing: 0.06em");
+    expect(src).not.toMatch(/Achievement unlocked/i);
+    expect(src).not.toContain("Joined the crew");
+    expect(src).not.toContain("join-overlay-unlock");
+    expect(src).not.toContain("join-overlay-achievement");
+    expect(src).toContain("animation: join-overlay-hover");
+    expect(src).toMatch(
+      /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.join-overlay-panel \{[\s\S]*?animation: none/
+    );
   });
 });

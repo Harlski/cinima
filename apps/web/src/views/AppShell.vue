@@ -84,6 +84,7 @@ import { useViewportChromeLock } from "@/composables/useViewportChromeLock";
 import { useFavoritesStore } from "@/stores/favorites";
 import { useWatchlistStore } from "@/stores/watchlist";
 import { useAuthStore } from "@/stores/auth";
+import { useJoinOverlayStore } from "@/stores/joinOverlay";
 import { useApi } from "@/composables/useApi";
 import AppBrandHeader from "@/components/AppBrandHeader.vue";
 import GuidedTourHost from "@/components/GuidedTourHost.vue";
@@ -129,6 +130,7 @@ function sendHeartbeat() {
       useReturnDigestStore().apply(data.digest ?? null, {
         onboarding,
         tourActive: useGuidedTourStore().active || useGuidedTourStore().offering,
+        joinOverlayPending: useJoinOverlayStore().open,
       });
     })
     .catch(() => {});

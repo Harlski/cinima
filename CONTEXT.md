@@ -181,7 +181,7 @@ A Send of 0.0001 NIM whose job is the memo, not the amount. System or Creator. N
 _Avoid_: notification, Door alarm, Marquee, Reward, Join grant
 
 **Join grant**:
-A one-time 10 NIM Send to a wallet for first signing into Cinima in Nimiq Pay. One per wallet, forever; funded by the Sender wallet. The Nimiq Pay memo is "Joined Cinima". Skips the Creator. Distinct from Reward, Ping, and User Send.
+A one-time 10 NIM Send to a wallet for first signing into Cinima in Nimiq Pay. One per wallet, forever; funded by the Sender wallet. The Nimiq Pay memo is "Joined Cinima". Distinct from Reward, Ping, and User Send.
 _Avoid_: signup bonus, airdrop, Reward, tip, device grant, Welcome NIM
 
 **Sender wallet**:
@@ -229,11 +229,11 @@ The Pay-only screen of the Achievement catalog for a Handle: earned rows with da
 _Avoid_: trophy case, badge wall, activity feed, heatmap, earned-only list
 
 **Marquee**:
-A gold bar that slides down from the Cinima brand header when the signed-in Handle earns an Achievement. Dark type on gold; quiet Achievement eyebrow, then the name and how they earned it. One at a time, queued, dismissible with X, auto-dismiss after a short wait. Tapping it dismisses the bar, clears any remaining queue, and opens that Handle's Credits. Can show at the same time as Recommend cue. Not shown on public web pages. Joined the crew is not Marquee'd in the session it is earned: a new wallet waits until the next login; a returning wallet sees it on the Join overlay instead.
+A gold bar that slides down from the Cinima brand header when the signed-in Handle earns an Achievement. Dark type on gold; quiet Achievement eyebrow, then the name and how they earned it. One at a time, queued, dismissible with X, auto-dismiss after a short wait. Tapping it dismisses the bar, clears any remaining queue, and opens that Handle's Credits. Can show at the same time as Recommend cue. Not shown on public web pages. Joined the crew is not Marquee'd in the session it is earned: a new wallet waits until the next login; a returning wallet sees Credits only.
 _Avoid_: toast, modal, floating gold card, confetti blast, blocking dialog, slide-up above the tab bar, surface-colored Achievement bar, gold glow, white type on gold, Join overlay
 
 **Join overlay**:
-The one-time Pay-only screen for a wallet that already existed when its Join grant is given: "Thanks for joining Cinima", then small italic "Thanks for coming back!", +10 NIM, and Joined the crew unlocked. Shown after Welcome, once. Not shown to a wallet created in that same session. Skip during Favorites onboarding and the Guided tour until those clear. Not Welcome, Return digest, or Marquee.
+The one-time Pay-only screen for a wallet that already existed when its Join grant is given: "Thanks for joining Cinima", then small uppercase "Thanks for coming back!", then +10 NIM. Shown after Welcome, once. Not shown to a wallet created in that same session. Skip during Favorites onboarding and the Guided tour until those clear. Not Welcome, Return digest, or Marquee.
 _Avoid_: splash, Welcome overlay, login modal, Return digest, Marquee
 
 **Recommend cue**:

@@ -137,15 +137,19 @@ body {
   background-size: 5.25rem 4.5rem;
   background-position: 0 0;
   opacity: 0.14;
-  mask-image: radial-gradient(
-    ellipse 85% 75% at 50% 28%,
-    #000 12%,
-    transparent 78%
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    transparent 42%,
+    rgba(0, 0, 0, 0.22) 58%,
+    #000 100%
   );
-  -webkit-mask-image: radial-gradient(
-    ellipse 85% 75% at 50% 28%,
-    #000 12%,
-    transparent 78%
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    transparent 42%,
+    rgba(0, 0, 0, 0.22) 58%,
+    #000 100%
   );
 }
 
@@ -377,14 +381,20 @@ a.nq-pill-orange:hover {
   background-position: 50% 0;
   opacity: 0.4;
   mix-blend-mode: screen;
-  mask-image:
-    radial-gradient(ellipse 80% 70% at 12% 8%, #000 0%, transparent 72%),
-    radial-gradient(ellipse 70% 55% at 96% 28%, #000 0%, transparent 68%),
-    radial-gradient(ellipse 90% 60% at 48% 108%, #000 0%, transparent 74%);
-  -webkit-mask-image:
-    radial-gradient(ellipse 80% 70% at 12% 8%, #000 0%, transparent 72%),
-    radial-gradient(ellipse 70% 55% at 96% 28%, #000 0%, transparent 68%),
-    radial-gradient(ellipse 90% 60% at 48% 108%, #000 0%, transparent 74%);
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    transparent 42%,
+    rgba(0, 0, 0, 0.22) 58%,
+    #000 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    transparent 42%,
+    rgba(0, 0, 0, 0.22) 58%,
+    #000 100%
+  );
 }
 
 .confirm-modal > .nq-card > *,

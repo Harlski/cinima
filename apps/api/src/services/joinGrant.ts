@@ -1,7 +1,6 @@
 import {
   JOIN_GRANT_LUNA,
   JOIN_GRANT_MEMO,
-  isCreatorWallet,
   joinGrantIdempotencyKey,
   normalizeWallet,
   shouldAwardJoinedTheCrew,
@@ -16,7 +15,7 @@ export async function grantJoinIfNeeded(
   opts: { returning: boolean; at?: Date }
 ): Promise<{ granted: boolean; overlay: boolean }> {
   const wallet = normalizeWallet(walletRaw);
-  if (!wallet || isCreatorWallet(wallet)) {
+  if (!wallet) {
     return { granted: false, overlay: false };
   }
 

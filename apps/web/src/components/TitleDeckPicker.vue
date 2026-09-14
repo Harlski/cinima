@@ -664,10 +664,9 @@ function onResize() {
   z-index: 44;
   padding-bottom: 0.15rem;
   background: linear-gradient(
-    to top,
-    var(--bg-primary) 0%,
-    var(--bg-primary) 48%,
-    transparent 100%
+    to bottom,
+    color-mix(in oklch, var(--bg-primary) 78%, transparent) 0%,
+    transparent 42%
   );
   touch-action: none;
   overscroll-behavior: none;

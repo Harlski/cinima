@@ -15,6 +15,7 @@ process.env.DEMO_MODE = "true";
 
 const NEW_WALLET = "NQ05JOINGRANTNEWWALLET000000000001";
 const RETURNING_WALLET = "NQ05JOINGRANTRETURNWALLET00000001";
+const LATER_RETURN_WALLET = "NQ05JOINGRANTLATERRETURNWALLET001";
 const RETURNING_TOKEN = "join-grant-returning-token";
 const TITLE_ID = "tmdb:movie:550";
 
@@ -46,6 +47,12 @@ describe("Join grant HTTP API", () => {
       {
         walletAddress: RETURNING_WALLET,
         handle: "back",
+        lifetimeUnlockedAt: null,
+        createdAt: new Date(now.getTime() - 86400000),
+      },
+      {
+        walletAddress: LATER_RETURN_WALLET,
+        handle: "later",
         lifetimeUnlockedAt: null,
         createdAt: new Date(now.getTime() - 86400000),
       },
@@ -222,19 +229,39 @@ describe("Join grant HTTP API", () => {
     expect(afterBody.pendingJoinOverlay ?? false).toBe(false);
   });
 
-  it("skips the Creator", async () => {
+  it("keeps Join overlay pending on a later login until Continue", async () => {
+    const first = await verify(LATER_RETURN_WALLET);
+    expect(first.status).toBe(200);
+    const firstBody = (await first.json()) as { token: string; pendingJoinOverlay?: boolean };
+    expect(firstBody.pendingJoinOverlay).toBe(true);
+
+    const later = await verify(LATER_RETURN_WALLET);
+    expect(later.status).toBe(200);
+    const laterBody = (await later.json()) as { token: string; pendingJoinOverlay?: boolean };
+    expect(laterBody.pendingJoinOverlay).toBe(true);
+
+    const headers = {
+      Authorization: `Bearer ${laterBody.token}`,
+      "X-Cinima-Demo": "1",
+    };
+    const me = await app.fetch(new Request("http://test/api/me", { headers }));
+    const meBody = (await me.json()) as { pendingJoinOverlay?: boolean };
+    expect(meBody.pendingJoinOverlay).toBe(true);
+  });
+
+  it("gives the Creator the Join grant and overlay like any returning wallet", async () => {
     const res = await verify(CREATOR_WALLET);
     expect(res.status).toBe(200);
     const body = (await res.json()) as { token: string; pendingJoinOverlay?: boolean };
-    expect(body.pendingJoinOverlay ?? false).toBe(false);
+    expect(body.pendingJoinOverlay).toBe(true);
     const me = await app.fetch(
       new Request("http://test/api/me", {
         headers: { Authorization: `Bearer ${body.token}`, "X-Cinima-Demo": "1" },
       })
     );
     const meBody = (await me.json()) as { achievementCount: number; pendingJoinOverlay?: boolean };
-    expect(meBody.pendingJoinOverlay ?? false).toBe(false);
-    expect(meBody.achievementCount).toBe(0);
+    expect(meBody.pendingJoinOverlay).toBe(true);
+    expect(meBody.achievementCount).toBe(1);
   });
 
   it("names a Join grant after it broadcasts", async () => {

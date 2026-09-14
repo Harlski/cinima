@@ -49,7 +49,7 @@
         </p>
         <p v-if="group.group === 'Welcome'" class="hint">
           Welcome is the Enter identicon overlay. Join overlay is the one-time
-          returning grant: thanks for coming back, +10 NIM, Joined the crew.
+          returning grant: thanks for coming back and +10 NIM.
         </p>
         <p v-if="group.group === 'Guided tour'" class="hint">
           Offer and skipped notice overlay here. Start tour runs the real walkthrough

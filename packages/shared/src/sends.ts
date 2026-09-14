@@ -14,7 +14,6 @@ export const JOIN_GRANT_HOW = "Joined Cinima";
 export const JOIN_OVERLAY_TITLE = "Thanks for joining Cinima";
 export const JOIN_OVERLAY_SUB = "Thanks for coming back!";
 export const JOIN_OVERLAY_NIM_LABEL = "+10 NIM";
-export const JOIN_OVERLAY_UNLOCKED = "Achievement unlocked";
 
 export function joinGrantMemo(): string {
   return JOIN_GRANT_MEMO;
@@ -238,8 +237,9 @@ export function shouldShowReturnDigest(input: {
   nimReceived: number;
   onboarding: boolean;
   tourActive: boolean;
+  joinOverlayPending?: boolean;
 }): boolean {
-  if (input.onboarding || input.tourActive) return false;
+  if (input.onboarding || input.tourActive || input.joinOverlayPending) return false;
   return input.thanksCount > 0 || input.nimReceived > 0;
 }
 
