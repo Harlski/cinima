@@ -1,14 +1,13 @@
 import { computed, ref } from "vue";
 import type { TitleSummary, WatchlistLeaveReason } from "@cinima/shared";
 import {
-  favoriteAfterWatchlistLeaveMessage,
   removeFromFavoritesMessage,
   removeFromWatchlistMessage,
 } from "@/lib/titleActionLabels";
 import { useFavoritesStore } from "@/stores/favorites";
 import { useWatchlistStore } from "@/stores/watchlist";
 
-export type TitleActionConfirmKind = "unfavorite" | "watchlist" | "favorite-after-leave";
+export type TitleActionConfirmKind = "unfavorite" | "watchlist";
 
 type TitleRef = Pick<TitleSummary, "title"> | TitleSummary;
 
@@ -34,7 +33,6 @@ type WatchlistToggleOpts = {
 type ConfirmHandlers = {
   onUnfavorite?: () => void | Promise<void>;
   onRemoveFromWatchlist?: () => void | Promise<void>;
-  onFavoriteAfterLeave?: () => void | Promise<void>;
 };
 
 function titleName(title?: TitleRef | null): string {
@@ -51,7 +49,6 @@ export function useTitleActionConfirm() {
     if (!pendingConfirm.value) return "";
     const { kind, titleName: name } = pendingConfirm.value;
     if (kind === "unfavorite") return removeFromFavoritesMessage(name);
-    if (kind === "favorite-after-leave") return favoriteAfterWatchlistLeaveMessage(name);
     return removeFromWatchlistMessage(pendingConfirm.value.title ? null : name);
   });
 
@@ -102,27 +99,11 @@ export function useTitleActionConfirm() {
       return;
     }
 
-    if (action.kind === "favorite-after-leave") {
-      pendingConfirm.value = null;
-      await favoritesStore.toggle(action.titleId);
-      await handlers?.onFavoriteAfterLeave?.();
-      return;
-    }
-
     const reason = leaveReason.value;
-    const offerFavorite = !favoritesStore.isFavorite(action.titleId);
     pendingConfirm.value = null;
     leaveReason.value = null;
-    const left = await watchlistStore.toggle(action.titleId, action.title, reason);
+    await watchlistStore.toggle(action.titleId, action.title, reason);
     await handlers?.onRemoveFromWatchlist?.();
-    if (offerFavorite && left) {
-      pendingConfirm.value = {
-        kind: "favorite-after-leave",
-        titleId: action.titleId,
-        titleName: action.titleName,
-        title: action.title,
-      };
-    }
   }
 
   return {

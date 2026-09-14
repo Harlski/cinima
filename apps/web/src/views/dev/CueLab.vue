@@ -143,6 +143,7 @@ import {
   cueLabProfileHeaderVariant,
   cueLabReturnDigest,
   cueLabSendPreview,
+  CUE_LAB_SEND_TX_HASH,
   type CueLabOverlayId,
 } from "@/lib/cueLab";
 import {
@@ -320,6 +321,10 @@ function previewOverlay(id: CueLabOverlayId) {
   }
   if (id === "send-nim") {
     userSend.offer(cueLabSendPreview(), { preview: true });
+    return;
+  }
+  if (id === "send-nim-sent") {
+    userSend.showReceipt(CUE_LAB_SEND_TX_HASH);
     return;
   }
   if (id === "watchlist-leave") {

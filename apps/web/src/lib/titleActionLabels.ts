@@ -13,10 +13,6 @@ export function removeFromFavoritesMessage(titleName: string): string {
   return `Remove ${titleName} from favorites?`;
 }
 
-export function favoriteAfterWatchlistLeaveMessage(titleName: string): string {
-  return `Favorite ${titleName}?`;
-}
-
 export function watchlistAddAriaLabel(): string {
   return "Add to Watchlist";
 }

@@ -191,11 +191,11 @@ onUnmounted(() => {
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
+  overflow-x: clip;
   overscroll-behavior: none;
   touch-action: pan-y;
   overflow-anchor: none;
   -webkit-overflow-scrolling: touch;
-  isolation: isolate;
   padding-top: calc(var(--app-brand-row) + var(--vv-offset-top, 0px));
   padding-bottom: var(--bottom-tabs-inset);
   transition: padding-bottom 0.38s cubic-bezier(0.25, 0, 0, 1);

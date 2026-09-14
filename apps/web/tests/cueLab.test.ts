@@ -7,6 +7,7 @@ import {
   cueLabProfileHeaderVariant,
   cueLabReturnDigest,
   cueLabSendPreview,
+  CUE_LAB_SEND_TX_HASH,
   digestContinueGoesToDiscover,
 } from "../src/lib/cueLab";
 import {
@@ -54,6 +55,7 @@ describe("Cue lab", () => {
       "tour-start",
       "confirm",
       "send-nim",
+      "send-nim-sent",
       "watchlist-leave",
       "pay-only-gate",
       "pay-title",
@@ -83,6 +85,7 @@ describe("Cue lab", () => {
       handle: "cinephile",
       titleId: "tmdb:movie:550",
     });
+    expect(CUE_LAB_SEND_TX_HASH).toHaveLength(64);
   });
 
   it("keeps Return digest Continue on Cue lab and Discover", () => {

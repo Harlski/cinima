@@ -147,6 +147,14 @@ export function userSendMemoOrDefault(memo: string, kind: "title" | "comment"): 
   return userSendMemoForNote(defaultPaidUserSendNoteId(kind));
 }
 
+/** Mainnet explorer for a User Send hash. Demo hashes have no chain page. */
+export function nimiqWatchTxUrl(txHash: string): string | null {
+  let hex = String(txHash ?? "").trim();
+  if (hex.startsWith("0x") || hex.startsWith("0X")) hex = hex.slice(2);
+  if (!/^[0-9a-fA-F]{64}$/.test(hex)) return null;
+  return `https://nimiq.watch/#${hex.toLowerCase()}`;
+}
+
 /** Me Guestbook heading: cinema guestbook as a Handle's received history. */
 export const RECEIVED_LIST_HEADING = "Guestbook";
 

@@ -730,9 +730,6 @@ const onConfirmAction = async () => {
     onUnfavorite: () => {
       favoriteCount.value = favoritesStore.count;
     },
-    onFavoriteAfterLeave: () => {
-      favoriteCount.value = favoritesStore.count;
-    },
   });
 };
 

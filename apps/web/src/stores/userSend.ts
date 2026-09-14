@@ -35,6 +35,7 @@ export type PendingUserSend =
 export const useUserSendStore = defineStore("userSend", () => {
   const pending = ref<PendingUserSend | null>(null);
   const lastAttached = ref<PendingUserSend | null>(null);
+  const receiptHash = ref<string | null>(null);
   const busy = ref(false);
   const error = ref<string | null>(null);
   const { request } = useApi();
@@ -45,6 +46,7 @@ export const useUserSendStore = defineStore("userSend", () => {
   function offer(next: PendingUserSend, opts?: { preview?: boolean }) {
     pending.value = next;
     error.value = null;
+    receiptHash.value = null;
     previewing.value = !!opts?.preview;
     noteId.value = defaultUserSendNoteId(next.kind);
   }
@@ -56,8 +58,17 @@ export const useUserSendStore = defineStore("userSend", () => {
   function cancel() {
     if (busy.value) return;
     pending.value = null;
+    receiptHash.value = null;
     error.value = null;
     previewing.value = false;
+  }
+
+  function showReceipt(txHash: string) {
+    const hash = String(txHash ?? "").trim();
+    pending.value = null;
+    error.value = null;
+    previewing.value = false;
+    receiptHash.value = hash || null;
   }
 
   async function payTo(toWallet: string): Promise<string> {
@@ -105,8 +116,8 @@ export const useUserSendStore = defineStore("userSend", () => {
           body: JSON.stringify({ txHash }),
         });
       }
-      pending.value = null;
       lastAttached.value = current;
+      showReceipt(txHash);
       return true;
     } catch (err) {
       error.value = payUserMessage(err);
@@ -119,12 +130,14 @@ export const useUserSendStore = defineStore("userSend", () => {
   return {
     pending,
     lastAttached,
+    receiptHash,
     busy,
     error,
     noteId,
     offer,
     selectNote,
     cancel,
+    showReceipt,
     confirm,
   };
 });

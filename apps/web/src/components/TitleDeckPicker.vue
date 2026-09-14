@@ -693,7 +693,6 @@ function onResize() {
   position: relative;
   flex: 0 0 var(--picker-poster);
   scroll-snap-align: center;
-  scroll-snap-stop: always;
 }
 
 .strip-poster {

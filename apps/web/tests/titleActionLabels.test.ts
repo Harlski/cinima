@@ -3,10 +3,7 @@ import {
   parseWatchlistLeaveReason,
   WATCHLIST_LEAVE_REASON_LABELS,
 } from "@cinima/shared";
-import {
-  favoriteAfterWatchlistLeaveMessage,
-  removeFromWatchlistMessage,
-} from "../src/lib/titleActionLabels";
+import { removeFromWatchlistMessage } from "../src/lib/titleActionLabels";
 
 describe("Watchlist leave copy", () => {
   it("uses short leave-reason labels", () => {
@@ -22,9 +19,10 @@ describe("Watchlist leave copy", () => {
     expect(parseWatchlistLeaveReason("watched")).toEqual({ ok: false });
   });
 
-  it("keeps leave and Favorite-cue copy short", () => {
-    expect(removeFromWatchlistMessage("Inception")).toBe("Remove Inception from Watchlist?");
-    expect(favoriteAfterWatchlistLeaveMessage("Inception")).toBe("Favorite Inception?");
+  it("keeps leave copy short", () => {
+    expect(removeFromWatchlistMessage("Inception")).toBe(
+      "Remove Inception from Watchlist?"
+    );
   });
 
   it("omits the Title name when the leave dialog already shows a title card", () => {

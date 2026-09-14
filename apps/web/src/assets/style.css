@@ -100,6 +100,7 @@ body {
   margin-inline: auto;
   padding-inline: var(--column-pad);
   box-sizing: border-box;
+  isolation: isolate;
 }
 
 #app::before {

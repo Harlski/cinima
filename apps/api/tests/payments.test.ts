@@ -102,18 +102,17 @@ describe("User Send chain verify", () => {
     ).rejects.toThrow("tx_not_found");
   });
 
-  it("rejects a User Send paid from a different wallet", async () => {
+  it("accepts a User Send when Pay hops through another wallet", async () => {
     vi.stubEnv("DEMO_MODE", "false");
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const hop = "NQ98 DSPQ 8JLQ G9AX GP18 MD31 NADE E6RD F30D";
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
     vi.stubGlobal(
       "fetch",
       vi.fn(async (_url: string, init?: RequestInit) => {
         if (!init || String(init.method || "GET").toUpperCase() !== "POST") {
           return new Response(null, { status: 404 });
         }
-        return Response.json(
-          nimiqWatchTxEnvelope({ from: "14a404b0f2cc2b70920468e4971874b09477a476" })
-        );
+        return Response.json(nimiqWatchTxEnvelope({ from: hop }));
       })
     );
 
@@ -124,12 +123,17 @@ describe("User Send chain verify", () => {
         toWallet: normalizeWallet(THANKEE),
         minLuna: USER_SEND_LUNA,
       })
-    ).rejects.toThrow("wrong_send_payer");
-    const line = warn.mock.calls.map((c) => String(c[0])).find((s) => s.includes("[user-send] wrong_send_payer"));
-    expect(line).toBeTruthy();
+    ).resolves.toMatchObject({
+      from: normalizeWallet(hop),
+      to: normalizeWallet(THANKEE),
+      memo: MEMO,
+    });
+    const line = info.mock.calls
+      .map((c) => String(c[0]))
+      .find((s) => s.includes("[user-send] chain_payer_differs"));
     expect(line).toContain(`session=${normalizeWallet(PAYER)}`);
-    expect(line).toContain(`chainFrom=${normalizeWallet(THANKEE)}`);
-    warn.mockRestore();
+    expect(line).toContain(`chainFrom=${normalizeWallet(hop)}`);
+    info.mockRestore();
   });
 
   it("rejects a NimiqWatch tx that did not pay the thankee", async () => {

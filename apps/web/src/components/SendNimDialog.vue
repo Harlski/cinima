@@ -1,12 +1,40 @@
 <template>
   <Teleport to="body">
     <div
-      v-if="pending"
+      v-if="pending || receiptHash"
       class="send-nim-modal"
       role="presentation"
       @click.self="onCancel"
     >
       <div
+        v-if="receiptHash"
+        class="send-nim-dialog nq-card send-nim-sent"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="send-nim-sent-title"
+      >
+        <div class="send-nim-tick" aria-hidden="true">
+          <NqIcon name="check" :size="36" />
+        </div>
+        <h2 id="send-nim-sent-title">Sent</h2>
+        <p class="send-nim-copy">1 NIM is on the way.</p>
+        <a
+          v-if="watchUrl"
+          class="send-nim-watch"
+          :href="watchUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          View on Nimiq Watch
+        </a>
+        <div class="send-nim-actions">
+          <button type="button" class="nq-pill-blue nq-pill-lg" @click="onCancel">
+            Done
+          </button>
+        </div>
+      </div>
+      <div
+        v-else
         class="send-nim-dialog nq-card"
         role="dialog"
         aria-modal="true"
@@ -108,6 +136,7 @@ import { storeToRefs } from "pinia";
 import {
   USER_SEND_CTA,
   USER_SEND_NOTES,
+  nimiqWatchTxUrl,
   userSendNoteCostLabel,
   userSendNoteLabel,
   type UserSendNoteId,
@@ -118,12 +147,13 @@ import { PAY_CANCELLED_MESSAGE } from "@/lib/nimiqPay";
 import { useUserSendStore } from "@/stores/userSend";
 
 const store = useUserSendStore();
-const { pending, busy, error, noteId } = storeToRefs(store);
+const { pending, busy, error, noteId, receiptHash } = storeToRefs(store);
 
 const userSendCta = USER_SEND_CTA;
 const cancelledCopy = PAY_CANCELLED_MESSAGE;
 const notes = USER_SEND_NOTES;
 const costLabel = computed(() => userSendNoteCostLabel(noteId.value));
+const watchUrl = computed(() => (receiptHash.value ? nimiqWatchTxUrl(receiptHash.value) : null));
 const infoCopy =
   "If this Handle has notifications enabled, they may see this message.";
 
@@ -437,5 +467,66 @@ async function onSend() {
 .send-nim-actions .nq-pill-lg {
   flex: 1;
   max-width: 9rem;
+}
+
+.send-nim-sent {
+  align-items: center;
+}
+
+.send-nim-tick {
+  width: 4.35rem;
+  height: 4.35rem;
+  margin: 0.15rem auto 0;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--success, #3ecf8e);
+  background: color-mix(in oklch, var(--success, #3ecf8e) 18%, transparent);
+  animation: send-nim-tick-pop 0.55s cubic-bezier(0.22, 1.35, 0.36, 1) both;
+}
+
+.send-nim-tick :deep(.nq-icon) {
+  animation: send-nim-tick-draw 0.4s 0.12s ease-out both;
+}
+
+.send-nim-watch {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--colors-blue);
+  text-decoration: none;
+}
+
+.send-nim-watch:hover,
+.send-nim-watch:focus-visible {
+  text-decoration: underline;
+}
+
+@keyframes send-nim-tick-pop {
+  from {
+    transform: scale(0.35);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes send-nim-tick-draw {
+  from {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .send-nim-tick,
+  .send-nim-tick :deep(.nq-icon) {
+    animation: none;
+  }
 }
 </style>

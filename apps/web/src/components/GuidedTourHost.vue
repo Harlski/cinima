@@ -464,3 +464,12 @@ watch(
   height: 18px;
 }
 </style>
+
+<style>
+/* Unscoped. Vue :global() treats the ) in :has() as the end of :global(),
+ * which compiled to hiding the whole body when a confirm was open. */
+body:has(.confirm-modal) .tour-coach {
+  visibility: hidden;
+  pointer-events: none;
+}
+</style>

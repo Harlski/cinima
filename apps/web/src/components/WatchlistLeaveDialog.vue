@@ -211,7 +211,8 @@ function onTriggerKeydown(event: KeyboardEvent) {
 .confirm-modal {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  /* Above GuidedTourHost coach (100) so Remove stays tappable during the tour. */
+  z-index: 110;
   display: grid;
   place-items: center;
   padding: 1.25rem;

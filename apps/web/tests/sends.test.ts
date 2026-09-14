@@ -35,6 +35,7 @@ import {
   userSendNoteLuna,
   USER_SEND_NOTES,
   watchlistPingMemo,
+  nimiqWatchTxUrl,
 } from "@cinima/shared";
 
 describe("Reward quota", () => {
@@ -99,6 +100,10 @@ describe("Send memos", () => {
     expect(new TextEncoder().encode(userSendMemoForNote("loved-take", "a".repeat(80))).length).toBeLessThanOrEqual(
       SEND_MEMO_MAX_BYTES
     );
+    expect(
+      nimiqWatchTxUrl("0xF6AB3B34E0569E6E5733820D90C8A5BF98EADC317E398464A9A405423B5E5D37")
+    ).toBe("https://nimiq.watch/#f6ab3b34e0569e6e5733820d90c8a5bf98eadc317e398464a9a405423b5e5d37");
+    expect(nimiqWatchTxUrl("demo:user-send:1")).toBeNull();
     for (const note of USER_SEND_NOTES) {
       expect(new TextEncoder().encode(userSendMemoForNote(note.id)).length).toBeLessThanOrEqual(
         SEND_MEMO_MAX_BYTES

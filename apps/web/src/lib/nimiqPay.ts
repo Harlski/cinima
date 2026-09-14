@@ -12,6 +12,10 @@ export type ProviderError = { error: { type?: string; message?: string } };
 
 export const PAY_CANCELLED_MESSAGE = "Cancelled";
 
+/** Attach failed because Pay broadcast from a different wallet than the Cinima session. */
+export const WRONG_SEND_PAYER_MESSAGE =
+  "Pay sent from a different wallet than the one signed into Cinima. In the Pay sheet, pick that wallet. 1 NIM already left the other wallet.";
+
 export class PayCancelledError extends Error {
   constructor() {
     super(PAY_CANCELLED_MESSAGE);
@@ -72,6 +76,9 @@ export function isPayCancelled(err: unknown): boolean {
 export function payUserMessage(err: unknown, fallback = "Send failed"): string {
   if (isPayCancelled(err)) return PAY_CANCELLED_MESSAGE;
   const { message, type } = payErrorParts(err);
+  if (message === "wrong_send_payer" || type === "wrong_send_payer") {
+    return WRONG_SEND_PAYER_MESSAGE;
+  }
   if (message === "pay_failed" || message === "provider_error") return fallback;
   return message || type || fallback;
 }

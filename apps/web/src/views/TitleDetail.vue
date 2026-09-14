@@ -542,9 +542,6 @@ const onConfirmAction = async () => {
       if (title.value) title.value.watchlisted = false;
       tour.reportAction("watchlist-remove");
     },
-    onFavoriteAfterLeave: () => {
-      if (title.value) title.value.favorited = true;
-    },
   });
 };
 

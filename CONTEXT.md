@@ -161,7 +161,7 @@ An outgoing NIM transfer from the Sender wallet to a Handle's wallet, with a mem
 _Avoid_: notification, tip, payout, treasury transfer, like, User Send
 
 **User Send**:
-A 1 NIM transfer from a thanker's own wallet to the thankee, approved in Nimiq Pay, with an optional custom memo picked from a fixed list. UI: Send Custom Message. Optional extra on one-to-one Thanks or Comment Thanks; at most one successful User Send per Thanks. Cancel or fail leaves Thanks in place. Never paid to Cinima.
+A 1 NIM transfer the thanker approves in Nimiq Pay to the thankee, with an optional custom memo picked from a fixed list. Pay may broadcast from a hop wallet rather than the signed-in address. UI: Send Custom Message. Optional extra on one-to-one Thanks or Comment Thanks; at most one successful User Send per Thanks. Cancel or fail leaves Thanks in place. Never paid to Cinima.
 _Avoid_: tip, gift, Reward, Send, profile gift, payment to Cinima, free-text memo
 
 **Received list**:

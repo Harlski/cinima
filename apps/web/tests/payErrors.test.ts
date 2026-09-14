@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   PAY_CANCELLED_MESSAGE,
+  WRONG_SEND_PAYER_MESSAGE,
   PayCancelledError,
   isPayCancelled,
   payUserMessage,
@@ -42,5 +43,6 @@ describe("Pay cancel vs failure", () => {
     );
     expect(payUserMessage(new Error("pay_failed"))).toBe("Send failed");
     expect(payUserMessage({ foo: 1 })).toBe("Send failed");
+    expect(payUserMessage(new Error("wrong_send_payer"))).toBe(WRONG_SEND_PAYER_MESSAGE);
   });
 });

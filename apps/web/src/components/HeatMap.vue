@@ -1,5 +1,5 @@
 <template>
-  <section class="heatmap-section">
+  <section ref="sectionEl" class="heatmap-section">
     <div class="heatmap-header">
       <h3>Episode Ratings</h3>
       <p v-if="focusSeason != null" class="heatmap-sub">
@@ -179,6 +179,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { imdbTitleUrl, type EpisodeCell } from "@cinima/shared";
 import ExpandableText from "@/components/ExpandableText.vue";
+import { useNestedScrollChain } from "@/composables/useNestedScrollChain";
 import {
   episodeCountInSeasons,
   hideAllSeasonsTab,
@@ -193,12 +194,15 @@ const props = defineProps<{
 }>();
 
 const selected = ref<EpisodeCell | null>(null);
+const sectionEl = ref<HTMLElement | null>(null);
 const focusSeason = ref<number | null>(null);
 const longSeriesDefaulted = ref(false);
 const dialogEl = ref<HTMLElement | null>(null);
 const dialogBottomPad = ref(
   "calc(1.25rem + env(safe-area-inset-bottom, 0px) + 5.25rem)"
 );
+
+useNestedScrollChain(sectionEl);
 
 const imdbUrl = computed(() => imdbTitleUrl(selected.value?.imdbId));
 const dialogLabel = computed(() => {

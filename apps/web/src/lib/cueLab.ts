@@ -36,6 +36,7 @@ export const CUE_LAB_OVERLAYS = [
   { id: "tour-start", label: "Start tour", group: "Guided tour" },
   { id: "confirm", label: "Confirm dialog", group: "Modals" },
   { id: "send-nim", label: "Send Custom Message", group: "Modals" },
+  { id: "send-nim-sent", label: "Send sent", group: "Modals" },
   { id: "watchlist-leave", label: "Watchlist leave", group: "Modals" },
   { id: "pay-only-gate", label: "Pay-only gate", group: "Modals" },
   { id: "pay-title", label: "Title gate", group: "Modals" },
@@ -91,6 +92,10 @@ export function cueLabSendPreview(): {
     titleId: makeTitleId("movie", 550),
   };
 }
+
+/** Chain hash for the Cue lab Sent screen (Nimiq Watch link). */
+export const CUE_LAB_SEND_TX_HASH =
+  "2cdb91140166c30326b0749627784f9f23334e5f37490b3a142883462eed9b59";
 
 /** Local Cue lab fixture: eight Identicons, ninth Thanker only counted. */
 export function cueLabReturnDigest(): ReturnDigest {

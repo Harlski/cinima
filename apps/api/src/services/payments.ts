@@ -100,7 +100,7 @@ export async function verifyPayment(opts: {
   };
 }
 
-/** Verify a User Send: 1 NIM from thanker to thankee with the human Pay memo. */
+/** Verify a User Send: 1 NIM to the thankee with a catalog Pay memo. Pay may hop. */
 export async function verifyUserSend(opts: {
   txHash: string;
   payerWallet: string;
@@ -128,10 +128,9 @@ export async function verifyUserSend(opts: {
   const from = await canonicalWallet(tx.from);
   if (to !== toWallet) throw new Error("wrong_send_recipient");
   if (from && from !== payerWallet) {
-    console.warn(
-      `[user-send] wrong_send_payer hash=${hash} session=${payerWallet} chainFrom=${from} rawFrom=${tx.from} chainTo=${to} rawTo=${tx.to} luna=${tx.valueLuna} memo=${JSON.stringify(tx.memo || "")}`
+    console.info(
+      `[user-send] chain_payer_differs hash=${hash} session=${payerWallet} chainFrom=${from} rawFrom=${tx.from} chainTo=${to} rawTo=${tx.to} luna=${tx.valueLuna} memo=${JSON.stringify(tx.memo || "")}`
     );
-    throw new Error("wrong_send_payer");
   }
   if (tx.valueLuna < opts.minLuna) throw new Error("insufficient_amount");
   if (!isUserSendMemo(tx.memo || "")) throw new Error("memo_mismatch");

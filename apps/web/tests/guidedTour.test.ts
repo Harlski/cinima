@@ -619,6 +619,26 @@ describe("Guided tour persistence and force arm", () => {
 });
 
 describe("Guided tour spotlight targets in source", () => {
+  it("hides the coach while a confirm is open so Watchlist leave stays tappable", () => {
+    const host = fs.readFileSync(
+      path.join(srcRoot, "components/GuidedTourHost.vue"),
+      "utf8"
+    );
+    const leave = fs.readFileSync(
+      path.join(srcRoot, "components/WatchlistLeaveDialog.vue"),
+      "utf8"
+    );
+    const confirm = fs.readFileSync(
+      path.join(srcRoot, "components/ConfirmDialog.vue"),
+      "utf8"
+    );
+    expect(host).toContain("body:has(.confirm-modal) .tour-coach");
+    expect(host).not.toMatch(/:global\(body:has\(/);
+    expect(host).not.toMatch(/body:has\(\.confirm-modal\)\s*\{/);
+    expect(leave).toMatch(/z-index:\s*110/);
+    expect(confirm).toMatch(/z-index:\s*110/);
+  });
+
   it("every TOUR_SPOTLIGHT id appears as data-tour in templates", () => {
     const files = walkVueAndTsFiles(srcRoot);
     const blob = files.map((f) => fs.readFileSync(f, "utf8")).join("\n");
