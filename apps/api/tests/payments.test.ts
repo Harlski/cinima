@@ -32,10 +32,74 @@ function nimiqWatchTxEnvelope(overrides?: Record<string, unknown>) {
   };
 }
 
+function rpcError(data: string) {
+  return {
+    jsonrpc: "2.0",
+    error: { code: -32603, message: "Internal error", data },
+    id: 1,
+  };
+}
+
 describe("User Send chain verify", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
+  });
+
+  it("finds a User Send after NimiqWatch first says Transaction not found", async () => {
+    vi.stubEnv("DEMO_MODE", "false");
+    vi.stubEnv("CINIMA_TX_LOOKUP_DELAY_MS", "0");
+    let posts = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        if (!init || String(init.method || "GET").toUpperCase() !== "POST") {
+          return new Response(null, { status: 404 });
+        }
+        posts += 1;
+        if (posts < 3) {
+          return Response.json(rpcError(`Transaction not found: ${TX_HASH}`));
+        }
+        return Response.json(nimiqWatchTxEnvelope());
+      })
+    );
+
+    await expect(
+      verifyUserSend({
+        txHash: `0x${TX_HASH.toUpperCase()}`,
+        payerWallet: normalizeWallet(PAYER),
+        toWallet: normalizeWallet(THANKEE),
+        minLuna: USER_SEND_LUNA,
+      })
+    ).resolves.toMatchObject({
+      to: normalizeWallet(THANKEE),
+      memo: MEMO,
+      valueLuna: USER_SEND_LUNA,
+    });
+  });
+
+  it("still errors when the tx never appears on NimiqWatch", async () => {
+    vi.stubEnv("DEMO_MODE", "false");
+    vi.stubEnv("CINIMA_TX_LOOKUP_DELAY_MS", "0");
+    vi.stubEnv("CINIMA_TX_LOOKUP_ATTEMPTS", "2");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        if (!init || String(init.method || "GET").toUpperCase() !== "POST") {
+          return new Response(null, { status: 404 });
+        }
+        return Response.json(rpcError(`Transaction not found: ${TX_HASH}`));
+      })
+    );
+
+    await expect(
+      verifyUserSend({
+        txHash: TX_HASH,
+        payerWallet: normalizeWallet(PAYER),
+        toWallet: normalizeWallet(THANKEE),
+        minLuna: USER_SEND_LUNA,
+      })
+    ).rejects.toThrow("tx_not_found");
   });
 
   it("rejects a NimiqWatch tx that did not pay the thankee", async () => {

@@ -70,6 +70,15 @@ export const config = {
   get nimiqRpcUrl() {
     return envString("NIMIQ_RPC_URL", "https://rpc.nimiqwatch.com");
   },
+  /** Pay returns a hash before NimiqWatch has indexed the block. */
+  get txLookupAttempts() {
+    const n = Number(process.env.CINIMA_TX_LOOKUP_ATTEMPTS || 12);
+    return Number.isFinite(n) && n > 0 ? Math.min(30, Math.floor(n)) : 12;
+  },
+  get txLookupDelayMs() {
+    const n = Number(process.env.CINIMA_TX_LOOKUP_DELAY_MS ?? 500);
+    return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 500;
+  },
   get tmdbApiKey() {
     return envString("TMDB_API_KEY");
   },

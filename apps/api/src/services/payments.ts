@@ -180,22 +180,52 @@ export function readChainTx(raw: unknown): ChainTx | null {
   };
 }
 
-async function fetchTx(hash: string): Promise<ChainTx | null> {
-  try {
-    const res = await fetch(`${config.nimiqRpcUrl.replace(/\/$/, "")}/tx/${hash}`);
-    if (res.ok) {
-      const parsed = readChainTx(await res.json());
-      if (parsed) return parsed;
-    }
-  } catch {
-    /* fall through */
-  }
+export function normalizeTxHash(raw: string): string {
+  let h = String(raw ?? "").trim();
+  if (h.startsWith("0x") || h.startsWith("0X")) h = h.slice(2);
+  if (/^[0-9a-fA-F]+$/.test(h) && h.length % 2 === 0) return h.toLowerCase();
+  return h;
+}
 
+async function resolveLookupHash(raw: string): Promise<string> {
+  const hex = normalizeTxHash(raw);
+  if (hex.length === 64) return hex;
+  if (hex.length > 64 && /^[0-9a-f]+$/.test(hex)) {
+    try {
+      const Nimiq = await import("@nimiq/core");
+      return normalizeTxHash(Nimiq.Transaction.fromAny(hex).hash());
+    } catch {
+      return hex;
+    }
+  }
+  return hex;
+}
+
+async function rpcLookup(method: string, hash: string): Promise<ChainTx | null> {
   try {
-    return readChainTx(await nimiqRpcCall(config.nimiqRpcUrl, "getTransactionByHash", [hash]));
+    return readChainTx(await nimiqRpcCall(config.nimiqRpcUrl, method, [hash]));
   } catch {
     return null;
   }
+}
+
+async function sleep(ms: number): Promise<void> {
+  if (ms <= 0) return;
+  await new Promise((r) => setTimeout(r, ms));
+}
+
+async function fetchTx(hash: string): Promise<ChainTx | null> {
+  const lookupHash = await resolveLookupHash(hash);
+  const attempts = config.txLookupAttempts;
+  const delayMs = config.txLookupDelayMs;
+  for (let i = 0; i < attempts; i++) {
+    const mined = await rpcLookup("getTransactionByHash", lookupHash);
+    if (mined) return mined;
+    const pooled = await rpcLookup("getTransactionFromMempool", lookupHash);
+    if (pooled) return pooled;
+    if (i < attempts - 1) await sleep(delayMs);
+  }
+  return null;
 }
 
 function decodeMemo(raw: unknown): string {
