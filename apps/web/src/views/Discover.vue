@@ -21,7 +21,7 @@
     />
 
     <template v-else-if="mode === 'onboarding'">
-      <div v-if="onboardingBusy || loading" class="loading">
+      <div v-if="onboardingBusy || loading" class="tab-pane-wait">
         <LoadingWait />
       </div>
       <FavoritesOnboarding
@@ -35,7 +35,7 @@
       />
     </template>
 
-    <div v-else-if="loading" class="loading">
+    <div v-else-if="loading" class="tab-pane-wait">
       <LoadingWait />
     </div>
 

@@ -1,6 +1,6 @@
 <template>
   <div class="me">
-    <div v-if="loading" class="loading">
+    <div v-if="loading" class="tab-pane-wait">
       <LoadingWait />
     </div>
 
@@ -413,12 +413,6 @@ onUnmounted(() => {
 .me {
   min-height: 100%;
   padding-bottom: 2rem;
-}
-
-.loading {
-  text-align: center;
-  padding: 3rem 0;
-  color: var(--text-secondary);
 }
 
 .content {

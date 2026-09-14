@@ -6,7 +6,7 @@
       'my-list--deck': showDeck,
     }"
   >
-    <div v-if="loading && !hasAnyItems" class="loading">
+    <div v-if="loading && !hasAnyItems" class="tab-pane-wait">
       <LoadingWait />
     </div>
 
@@ -352,11 +352,6 @@ onActivated(() => {
 
 .my-list--deck {
   padding-bottom: 0;
-}
-
-.loading {
-  text-align: center;
-  padding: 3rem 0;
 }
 
 .empty,

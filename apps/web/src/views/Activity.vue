@@ -1,6 +1,6 @@
 <template>
   <div class="activity">
-    <div v-if="loading" class="loading">
+    <div v-if="loading" class="tab-pane-wait">
       <LoadingWait />
     </div>
 
@@ -121,7 +121,6 @@ onMounted(() => {
   padding-bottom: 2rem;
 }
 
-.loading,
 .empty {
   text-align: center;
   padding: 3rem 0;

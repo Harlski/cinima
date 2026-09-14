@@ -106,6 +106,26 @@ body {
   isolation: isolate;
 }
 
+/* Fill the AppShell pane between brand header and tab bar, then center the wait. */
+.tab-pane-wait {
+  min-height: calc(
+    100dvh - var(--app-brand-row, 2.75rem) - var(--vv-offset-top, 0px) -
+      var(--bottom-tabs-inset)
+  );
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+
+.me:has(.tab-pane-wait),
+.activity:has(.tab-pane-wait),
+.discover:has(.tab-pane-wait),
+.my-list:has(.tab-pane-wait) {
+  padding-bottom: 0;
+}
+
 #app::before {
   content: "";
   position: fixed;
