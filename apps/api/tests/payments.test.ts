@@ -104,6 +104,7 @@ describe("User Send chain verify", () => {
 
   it("rejects a User Send paid from a different wallet", async () => {
     vi.stubEnv("DEMO_MODE", "false");
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.stubGlobal(
       "fetch",
       vi.fn(async (_url: string, init?: RequestInit) => {
@@ -124,6 +125,11 @@ describe("User Send chain verify", () => {
         minLuna: USER_SEND_LUNA,
       })
     ).rejects.toThrow("wrong_send_payer");
+    const line = warn.mock.calls.map((c) => String(c[0])).find((s) => s.includes("[user-send] wrong_send_payer"));
+    expect(line).toBeTruthy();
+    expect(line).toContain(`session=${normalizeWallet(PAYER)}`);
+    expect(line).toContain(`chainFrom=${normalizeWallet(THANKEE)}`);
+    warn.mockRestore();
   });
 
   it("rejects a NimiqWatch tx that did not pay the thankee", async () => {
@@ -148,6 +154,35 @@ describe("User Send chain verify", () => {
         minLuna: USER_SEND_LUNA,
       })
     ).rejects.toThrow("wrong_send_recipient");
+  });
+
+  it("accepts a User Send when NimiqWatch reports the payer as a public key", async () => {
+    vi.stubEnv("DEMO_MODE", "false");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        if (!init || String(init.method || "GET").toUpperCase() !== "POST") {
+          return new Response(null, { status: 404 });
+        }
+        return Response.json(
+          nimiqWatchTxEnvelope({
+            from: "4b93586f7555e72b218bb522d66bf52d9c38b8396bd8bfd45c99c3c282c53ba1",
+          })
+        );
+      })
+    );
+
+    await expect(
+      verifyUserSend({
+        txHash: TX_HASH,
+        payerWallet: normalizeWallet(PAYER),
+        toWallet: normalizeWallet(THANKEE),
+        minLuna: USER_SEND_LUNA,
+      })
+    ).resolves.toMatchObject({
+      from: normalizeWallet(PAYER),
+      to: normalizeWallet(THANKEE),
+    });
   });
 
   it("accepts a User Send when NimiqWatch reports the payer as hex", async () => {
@@ -207,5 +242,32 @@ describe("User Send chain verify", () => {
       valueLuna: USER_SEND_LUNA,
       memo: MEMO,
     });
+  });
+
+  it("accepts a catalog note that names the thanker's Handle", async () => {
+    vi.stubEnv("DEMO_MODE", "false");
+    const memo = "Loved this take - alice";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        if (!init || String(init.method || "GET").toUpperCase() !== "POST") {
+          return new Response(null, { status: 404 });
+        }
+        return Response.json(
+          nimiqWatchTxEnvelope({
+            recipientData: Buffer.from(memo, "utf8").toString("hex"),
+          })
+        );
+      })
+    );
+
+    await expect(
+      verifyUserSend({
+        txHash: TX_HASH,
+        payerWallet: normalizeWallet(PAYER),
+        toWallet: normalizeWallet(THANKEE),
+        minLuna: USER_SEND_LUNA,
+      })
+    ).resolves.toMatchObject({ memo });
   });
 });

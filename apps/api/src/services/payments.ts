@@ -109,8 +109,8 @@ export async function verifyUserSend(opts: {
 }): Promise<VerifiedTx> {
   const hash = String(opts.txHash ?? "").trim();
   if (!hash) throw new Error("missing_tx_hash");
-  const toWallet = normalizeWallet(opts.toWallet);
-  const payerWallet = normalizeWallet(opts.payerWallet);
+  const toWallet = await canonicalWallet(opts.toWallet);
+  const payerWallet = await canonicalWallet(opts.payerWallet);
 
   if (config.demoMode && (hash.startsWith("demo:") || hash.startsWith("dev:"))) {
     return {
@@ -127,7 +127,12 @@ export async function verifyUserSend(opts: {
   const to = await canonicalWallet(tx.to);
   const from = await canonicalWallet(tx.from);
   if (to !== toWallet) throw new Error("wrong_send_recipient");
-  if (from && from !== payerWallet) throw new Error("wrong_send_payer");
+  if (from && from !== payerWallet) {
+    console.warn(
+      `[user-send] wrong_send_payer hash=${hash} session=${payerWallet} chainFrom=${from} rawFrom=${tx.from} chainTo=${to} rawTo=${tx.to} luna=${tx.valueLuna} memo=${JSON.stringify(tx.memo || "")}`
+    );
+    throw new Error("wrong_send_payer");
+  }
   if (tx.valueLuna < opts.minLuna) throw new Error("insufficient_amount");
   if (!isUserSendMemo(tx.memo || "")) throw new Error("memo_mismatch");
 
@@ -185,8 +190,22 @@ async function canonicalWallet(addr: string): Promise<string> {
   if (!compact) return "";
   const raw = compact.startsWith("0X") ? compact.slice(2) : compact;
   try {
-    const { Address } = await import("@nimiq/core");
-    return normalizeWallet(Address.fromAny(raw).toUserFriendlyAddress());
+    const { Address, PublicKey } = await import("@nimiq/core");
+    try {
+      return normalizeWallet(Address.fromAny(raw).toUserFriendlyAddress());
+    } catch {
+      if (/^[0-9A-F]{64}$/.test(raw)) {
+        return normalizeWallet(
+          PublicKey.fromHex(raw.toLowerCase()).toAddress().toUserFriendlyAddress()
+        );
+      }
+      if (/^00[0-9A-F]{64}$/.test(raw)) {
+        return normalizeWallet(
+          PublicKey.fromHex(raw.slice(2).toLowerCase()).toAddress().toUserFriendlyAddress()
+        );
+      }
+      return compact;
+    }
   } catch {
     return compact;
   }

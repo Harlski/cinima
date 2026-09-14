@@ -68,9 +68,13 @@ describe("Send memos", () => {
     expect(userSendMemoForNote("thanks")).toBe("Thanks");
     expect(userSendMemoForNote("thanks-rec")).toBe("Thanks for the rec");
     expect(userSendMemoForNote("loved-take")).toBe("Loved this take");
+    expect(userSendMemoForNote("loved-take", "alice")).toBe("Loved this take - alice");
+    expect(userSendMemoForNote("thanks-rec", "alice")).toBe("Thanks for the rec - alice");
     expect(isUserSendMemo("Thanks")).toBe(true);
     expect(isUserSendMemo("Thanks for the rec")).toBe(true);
     expect(isUserSendMemo("Loved this take")).toBe(true);
+    expect(isUserSendMemo("Loved this take - alice")).toBe(true);
+    expect(isUserSendMemo("Thanks for the rec - alice")).toBe(true);
     expect(isUserSendMemo("alice thanked you on Cinima")).toBe(false);
     expect(isUserSendMemo("alice sent 1 NIM on Cinima")).toBe(false);
     expect(USER_SEND_LUNA).toBe(100_000);
@@ -90,6 +94,11 @@ describe("Send memos", () => {
     expect(userSendMemoOrDefault("demo-user-send", "title")).toBe("Thanks for the rec");
     expect(userSendMemoOrDefault("demo-user-send", "comment")).toBe("Loved this take");
     expect(userSendMemoOrDefault("Thanks for the rec", "comment")).toBe("Thanks for the rec");
+    expect(userSendMemoOrDefault("Loved this take - alice", "comment")).toBe("Loved this take - alice");
+    expect(isUserSendMemo("Thanks - alice")).toBe(true);
+    expect(new TextEncoder().encode(userSendMemoForNote("loved-take", "a".repeat(80))).length).toBeLessThanOrEqual(
+      SEND_MEMO_MAX_BYTES
+    );
     for (const note of USER_SEND_NOTES) {
       expect(new TextEncoder().encode(userSendMemoForNote(note.id)).length).toBeLessThanOrEqual(
         SEND_MEMO_MAX_BYTES

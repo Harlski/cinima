@@ -123,13 +123,22 @@ export function userSendMemo(noteLabel: string): string {
   return truncateMemo(text);
 }
 
-export function userSendMemoForNote(id: UserSendNoteId): string {
-  return userSendMemo(userSendNoteLabel(id));
+export function userSendMemoForNote(id: UserSendNoteId, senderName?: string): string {
+  const label = userSendNoteLabel(id);
+  const name = String(senderName ?? "").trim();
+  if (!name) return userSendMemo(label);
+  return truncateMemo(`${label} - ${name}`);
 }
 
 export function isUserSendMemo(memo: string): boolean {
   const text = String(memo ?? "");
-  return USER_SEND_NOTES.some((note) => userSendMemoForNote(note.id) === text);
+  const notes = [...USER_SEND_NOTES].sort((a, b) => b.label.length - a.label.length);
+  return notes.some((note) => {
+    const label = userSendNoteLabel(note.id);
+    if (text === userSendMemo(label)) return true;
+    const prefix = `${label} - `;
+    return text.startsWith(prefix) && text.slice(prefix.length).trim().length > 0;
+  });
 }
 
 /** Persist a catalog note; demo hashes fall back to a paid note for that kind. */

@@ -3,6 +3,7 @@ import { ref } from "vue";
 import {
   USER_SEND_LUNA,
   defaultUserSendNoteId,
+  displayName,
   formatWallet,
   userSendMemoForNote,
   userSendNoteLuna,
@@ -15,6 +16,7 @@ import {
   sendPayTransaction,
 } from "@/lib/nimiqPay";
 import { useApi } from "@/composables/useApi";
+import { useAuthStore } from "@/stores/auth";
 
 export type PendingUserSend =
   | {
@@ -59,7 +61,11 @@ export const useUserSendStore = defineStore("userSend", () => {
   }
 
   async function payTo(toWallet: string): Promise<string> {
-    const memo = userSendMemoForNote(noteId.value);
+    const me = useAuthStore().user;
+    const memo = userSendMemoForNote(
+      noteId.value,
+      displayName(me?.handle, me?.walletAddress ?? "")
+    );
     if (demoEnabledOutsidePay()) {
       return `demo:user-send:${Date.now()}`;
     }
