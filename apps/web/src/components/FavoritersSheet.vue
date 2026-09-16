@@ -7,11 +7,12 @@
         aria-modal="true"
         aria-labelledby="favoriters-title"
       >
-        <button type="button" class="favoriters-close" aria-label="Close" @click="$emit('close')">
-          <NqIcon name="cross" :size="20" />
-        </button>
-
-        <h2 id="favoriters-title">Who marked this</h2>
+        <div class="popup-header">
+          <h2 id="favoriters-title">Who marked this</h2>
+          <button type="button" class="popup-close" aria-label="Close" @click="$emit('close')">
+            <NqIcon name="cross" :size="20" />
+          </button>
+        </div>
 
         <div class="taste-tabs" role="tablist" aria-label="Recommend or Favorite">
           <button
@@ -167,23 +168,8 @@ const visiblePeople = computed(() =>
   overflow: hidden;
 }
 
-.favoriters-close {
-  position: absolute;
-  top: 0.85rem;
-  right: 0.85rem;
-  width: 2rem;
-  height: 2rem;
-  display: grid;
-  place-items: center;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
 .favoriters-dialog h2 {
-  margin: 0 1.75rem 0 0;
+  margin: 0;
   font-size: 1.2rem;
 }
 

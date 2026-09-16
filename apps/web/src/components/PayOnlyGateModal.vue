@@ -6,11 +6,12 @@
       aria-modal="true"
       aria-labelledby="pay-only-title"
     >
-      <button type="button" class="pay-only-close" aria-label="Close" @click="$emit('close')">
-        <NqIcon name="cross" :size="20" />
-      </button>
-
-      <h2 id="pay-only-title">{{ payOnlyGateCopy.title }}</h2>
+      <div class="popup-header">
+        <h2 id="pay-only-title">{{ payOnlyGateCopy.title }}</h2>
+        <button type="button" class="popup-close" aria-label="Close" @click="$emit('close')">
+          <NqIcon name="cross" :size="20" />
+        </button>
+      </div>
       <p class="pay-only-body">{{ payOnlyGateCopy.body }}</p>
 
       <PayOnlyActions
@@ -61,7 +62,7 @@ defineEmits<{
   flex-direction: column;
   align-items: center;
   gap: 0.85rem;
-  padding: 2.25rem 1.75rem 1.75rem;
+  padding: 1.25rem 1.75rem 1.75rem;
   text-align: center;
   overflow: visible;
   background-color: color-mix(in oklch, var(--colors-neutral-50) 72%, transparent);
@@ -69,21 +70,11 @@ defineEmits<{
   -webkit-backdrop-filter: blur(16px);
 }
 
-.pay-only-close {
-  position: absolute;
-  top: 0.65rem;
-  right: 0.65rem;
-  padding: 0.35rem;
-  border: 0;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
 .pay-only-dialog h2 {
   margin: 0;
   font-size: 1.35rem;
   font-weight: 700;
+  text-align: left;
 }
 
 .pay-only-body {

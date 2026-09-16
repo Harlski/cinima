@@ -83,6 +83,36 @@ describe("popup modal chrome", () => {
     }
   });
 
+  it("keeps the close control on the same row as the heading", () => {
+    const css = readFileSync(path.join(webRoot, "src/assets/style.css"), "utf8");
+    expect(css).toMatch(
+      /\.popup-header \{[\s\S]*?display:\s*flex;[\s\S]*?align-items:\s*center;/
+    );
+    const headerSources = [
+      "src/components/FolloweePeekSheet.vue",
+      "src/components/FavoritersSheet.vue",
+      "src/components/FindPeopleSheet.vue",
+      "src/components/ShareLinkSheet.vue",
+      "src/components/ShareTitleSheet.vue",
+      "src/components/ShareWatchlistSheet.vue",
+      "src/components/PayOnlyGateModal.vue",
+      "src/views/Me.vue",
+    ];
+    for (const rel of headerSources) {
+      const src = readFileSync(path.join(webRoot, rel), "utf8");
+      expect(src, rel).toContain("popup-header");
+      expect(src, rel).toContain("popup-close");
+    }
+    const titleGate = readFileSync(
+      path.join(webRoot, "src/components/PayTitleModal.vue"),
+      "utf8"
+    );
+    expect(titleGate).toContain("gate-hero-row");
+    expect(titleGate).toContain("popup-close");
+    expect(titleGate.indexOf("gate-hero-row")).toBeLessThan(titleGate.indexOf("<h2"));
+    expect(titleGate.indexOf("gate-hero")).toBeLessThan(titleGate.indexOf("<h2"));
+  });
+
   it("styles Join overlay thanks without Achievement copy", () => {
     const src = readFileSync(
       path.join(webRoot, "src/components/JoinOverlayHost.vue"),

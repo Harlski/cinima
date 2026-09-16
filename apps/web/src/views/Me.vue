@@ -160,10 +160,12 @@
         aria-modal="true"
         aria-labelledby="x-edit-title"
       >
-        <button type="button" class="x-close" aria-label="Close" @click="xEditorOpen = false">
-          <NqIcon name="cross" :size="20" />
-        </button>
-        <h2 id="x-edit-title">X</h2>
+        <div class="popup-header">
+          <h2 id="x-edit-title">X</h2>
+          <button type="button" class="popup-close" aria-label="Close" @click="xEditorOpen = false">
+            <NqIcon name="cross" :size="20" />
+          </button>
+        </div>
         <p>Optional public link on your share page.</p>
         <input
           v-model="xDraft"
@@ -623,17 +625,5 @@ onUnmounted(() => {
   margin: 0;
   font-size: 0.9rem;
   color: var(--text-secondary);
-}
-
-.x-close {
-  position: absolute;
-  top: 0.65rem;
-  right: 0.65rem;
-  display: flex;
-  padding: 0.35rem;
-  border: 0;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
 }
 </style>

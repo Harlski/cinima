@@ -8,11 +8,12 @@
         aria-modal="true"
         aria-labelledby="find-people-title"
       >
-        <button type="button" class="find-close" aria-label="Close" @click="$emit('close')">
-          <NqIcon name="cross" :size="20" />
-        </button>
-
-        <h2 id="find-people-title">Find people</h2>
+        <div class="popup-header">
+          <h2 id="find-people-title">Find people</h2>
+          <button type="button" class="popup-close" aria-label="Close" @click="$emit('close')">
+            <NqIcon name="cross" :size="20" />
+          </button>
+        </div>
         <p class="hint">Follow people to peek their Recommends.</p>
 
         <div v-if="loading" class="state">
@@ -155,23 +156,8 @@ defineEmits<{
   position: relative;
 }
 
-.find-close {
-  position: absolute;
-  top: 0.85rem;
-  right: 0.85rem;
-  width: 2rem;
-  height: 2rem;
-  display: grid;
-  place-items: center;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
 .find-dialog h2 {
-  margin: 0 1.75rem 0 0;
+  margin: 0;
   font-size: 1.2rem;
 }
 

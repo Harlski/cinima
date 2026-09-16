@@ -7,9 +7,14 @@
         aria-modal="true"
         aria-labelledby="followee-peek-title"
       >
-        <button type="button" class="peek-close" aria-label="Close" @click="$emit('close')">
-          <NqIcon name="cross" :size="20" />
-        </button>
+        <div class="popup-header">
+          <h2 id="followee-peek-title">
+            {{ profile ? displayName(profile.handle, profile.walletAddress) : "Followee" }}
+          </h2>
+          <button type="button" class="popup-close" aria-label="Close" @click="$emit('close')">
+            <NqIcon name="cross" :size="20" />
+          </button>
+        </div>
 
         <div v-if="loading" class="state">
           <LoadingWait />
@@ -26,9 +31,6 @@
             >
               <Identicon :address="profile.walletAddress" :size="52" alt="" />
             </button>
-            <h2 id="followee-peek-title">
-              {{ displayName(profile.handle, profile.walletAddress) }}
-            </h2>
           </div>
 
           <section class="recommends">
@@ -126,19 +128,8 @@ watch(
   overflow: auto;
 }
 
-.peek-close {
-  position: absolute;
-  top: 0.85rem;
-  right: 0.85rem;
-  width: 2rem;
-  height: 2rem;
-  display: grid;
-  place-items: center;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
+.peek-dialog .popup-header h2 {
+  font-size: 1.15rem;
 }
 
 .who {
@@ -146,7 +137,6 @@ watch(
   flex-direction: column;
   align-items: center;
   gap: 0.55rem;
-  padding-top: 0.35rem;
 }
 
 .who-face {
@@ -157,12 +147,6 @@ watch(
   border-radius: 50%;
   line-height: 0;
   cursor: pointer;
-}
-
-.who h2 {
-  margin: 0 1.75rem 0;
-  font-size: 1.15rem;
-  text-align: center;
 }
 
 .state {

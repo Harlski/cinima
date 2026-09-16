@@ -23,11 +23,12 @@
       aria-modal="true"
       aria-labelledby="title-share-sheet"
     >
-      <button type="button" class="share-close" aria-label="Close" @click="$emit('close')">
-        <NqIcon name="cross" :size="20" />
-      </button>
-
-      <h2 id="title-share-sheet">Share</h2>
+      <div class="popup-header">
+        <h2 id="title-share-sheet">Share</h2>
+        <button type="button" class="popup-close" aria-label="Close" @click="$emit('close')">
+          <NqIcon name="cross" :size="20" />
+        </button>
+      </div>
       <p>Claim a shareable handle on Me so this Title Share can name you.</p>
       <button type="button" class="nq-pill-blue nq-pill-stretch" @click="$emit('claim')">
         Go to Me
@@ -119,21 +120,6 @@ onMounted(async () => {
   flex-direction: column;
   gap: 0.85rem;
   padding: 1.25rem 1.15rem 1.15rem;
-}
-
-.share-close {
-  position: absolute;
-  top: 0.65rem;
-  right: 0.65rem;
-  display: grid;
-  place-content: center;
-  width: 2rem;
-  height: 2rem;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
 }
 
 .share-dialog h2 {

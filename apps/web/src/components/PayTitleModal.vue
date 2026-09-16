@@ -6,21 +6,23 @@
       aria-modal="true"
       :aria-labelledby="titleId"
     >
-      <button type="button" class="gate-close" aria-label="Close" @click="$emit('close')">
-        <NqIcon name="cross" :size="20" />
-      </button>
-
-      <GoldGlowShell radius="12px">
-        <div class="gate-hero">
-          <PosterImg
-            v-if="title.posterUrl"
-            :src="title.posterUrl"
-            :alt="title.title"
-            :spinner-size="36"
-          />
-          <div v-else class="gate-hero-fallback">{{ title.title }}</div>
-        </div>
-      </GoldGlowShell>
+      <div class="gate-hero-row">
+        <span class="gate-hero-spacer" aria-hidden="true"></span>
+        <GoldGlowShell class="gate-hero-shell" radius="12px">
+          <div class="gate-hero">
+            <PosterImg
+              v-if="title.posterUrl"
+              :src="title.posterUrl"
+              :alt="title.title"
+              :spinner-size="36"
+            />
+            <div v-else class="gate-hero-fallback">{{ title.title }}</div>
+          </div>
+        </GoldGlowShell>
+        <button type="button" class="popup-close" aria-label="Close" @click="$emit('close')">
+          <NqIcon name="cross" :size="20" />
+        </button>
+      </div>
 
       <div class="gate-meta">
         <h2 :id="titleId">{{ title.title }}</h2>
@@ -103,22 +105,32 @@ const mediaLabel = computed(() => (props.title.mediaType === "tv" ? "TV" : "Movi
   flex-direction: column;
   align-items: center;
   gap: 0.85rem;
-  padding: 2.25rem 1.5rem 1.5rem;
+  padding: 1.25rem 1.5rem 1.5rem;
   text-align: center;
   background-color: color-mix(in oklch, var(--colors-neutral-50) 72%, transparent);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
 
-.gate-close {
-  position: absolute;
-  top: 0.65rem;
-  right: 0.65rem;
-  padding: 0.35rem;
-  border: 0;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
+.gate-hero-row {
+  display: grid;
+  grid-template-columns: 2rem 1fr 2rem;
+  align-items: start;
+  width: 100%;
+}
+
+.gate-hero-spacer {
+  width: 2rem;
+  height: 2rem;
+}
+
+.gate-hero-shell {
+  justify-self: center;
+}
+
+.gate-hero-row .popup-close {
+  justify-self: end;
+  align-self: start;
 }
 
 .gate-hero {
@@ -167,6 +179,7 @@ const mediaLabel = computed(() => (props.title.mediaType === "tv" ? "TV" : "Movi
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
+  text-align: center;
 }
 
 .gate-meta-line {
