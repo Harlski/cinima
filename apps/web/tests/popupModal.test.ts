@@ -29,9 +29,9 @@ describe("popup modal chrome", () => {
     expect(css).toContain(".confirm-modal,");
     expect(css).toContain(".confirm-modal > .nq-card,");
     expect(css).toMatch(
-      /\.confirm-modal,[\s\S]*?\.tour-done \{\s*background: transparent;/
+      /\.confirm-modal,[\s\S]*?\.tour-coach \{\s*background: transparent;/
     );
-    expect(css).toContain("0 0 18px rgba(255, 255, 255, 0.42)");
+    expect(css).toContain(".tour-coach > .tour-coach-card");
     expect(css).toContain('url("./hex-pattern.svg")');
     expect(css).toContain("mix-blend-mode: screen");
     expect(css).toMatch(

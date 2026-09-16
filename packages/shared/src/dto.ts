@@ -104,6 +104,11 @@ export type CommentFeedResponse = {
   items: CommentFeedItem[];
 };
 
+export type HandleCommentsResponse = {
+  items: CommentFeedItem[];
+  hasMore: boolean;
+};
+
 export type TitleSuggester = {
   walletAddress: string;
   handle: string | null;
@@ -130,6 +135,17 @@ export type DiscoverResponse = {
   minFavorites: number;
   onboardingCandidates?: TitleSummary[];
   suggestions?: OverlapSuggestion[];
+};
+
+export type ForYouPassResponse = {
+  suggestions: OverlapSuggestion[];
+  refilled: boolean;
+  upcoming?: OverlapSuggestion[];
+  earnedAchievements?: AchievementKind[];
+};
+
+export type ForYouUpcomingResponse = {
+  suggestions: OverlapSuggestion[];
 };
 
 export type PublicProfile = {

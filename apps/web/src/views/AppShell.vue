@@ -71,6 +71,7 @@
     <JoinOverlayHost />
     <ReturnDigestHost />
     <TitleFlightHost />
+    <ForYouMotionHost />
   </div>
 </template>
 
@@ -94,6 +95,7 @@ import MarqueeHost from "@/components/MarqueeHost.vue";
 import ReturnDigestHost from "@/components/ReturnDigestHost.vue";
 import SendNimDialog from "@/components/SendNimDialog.vue";
 import TitleFlightHost from "@/components/TitleFlightHost.vue";
+import ForYouMotionHost from "@/components/ForYouMotionHost.vue";
 import NqIcon from "@/components/NqIcon.vue";
 import TourSpotlight from "@/components/TourSpotlight.vue";
 import { TOUR_SPOTLIGHT } from "@/lib/guidedTour";
@@ -101,6 +103,7 @@ import { useMarqueeStore } from "@/stores/marquee";
 import { useReturnDigestStore } from "@/stores/returnDigest";
 import { useTitleFlightStore } from "@/stores/titleFlight";
 import { useGuidedTourStore } from "@/stores/guidedTour";
+import { useForYouMotionStore } from "@/stores/forYouMotion";
 import { USAGE_HEARTBEAT_MS } from "@/lib/studio";
 
 useViewportChromeLock();
@@ -176,6 +179,7 @@ onMounted(() => {
 onUnmounted(() => {
   stopHeartbeat();
   document.removeEventListener("visibilitychange", sendHeartbeat);
+  useForYouMotionStore().reset();
 });
 </script>
 

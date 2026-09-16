@@ -13,8 +13,8 @@ The Nimiq wallet face that stands in for a Handle when a portrait is needed: pro
 _Avoid_: avatar, profile photo, gravatar
 
 **Public Profile**:
-The unauthenticated share page for a Handle: identity, Recommends, Favorites, and Achievement count. Favorites on Public Profile, Me, and other Handles' profiles are Favorite-only; Recommended titles appear under Recommends, not again under Favorites. Achievement count is visible here; Credits are not.
-_Avoid_: Feed, Followee peek, heatmap, Me, User page, Watchlist on Public Profile
+The unauthenticated share page for a Handle: identity, Recommends, Favorites, and Achievement count. Favorites on Public Profile, Me, and other Handles' profiles are Favorite-only; Recommended titles appear under Recommends, not again under Favorites. Achievement count is visible here; Credits are not. Comments are not.
+_Avoid_: Feed, Followee peek, heatmap, Me, User page, Watchlist on Public Profile, Comments
 
 **Title Share**:
 The unauthenticated share page for one Handle plus one Title. It tells the recipient that the Handle wants them to check out that Title. Identicon and Handle open Public Profile; Explore CINIMA is the page CTA.
@@ -81,7 +81,7 @@ A gold-star upgrade on a Favorite, meaning this title stands out among the user�
 _Avoid_: rating, review, super-like (unless used only as UI synonym), highlight, top pick as a separate mark
 
 **Comment**:
-A user’s written take on a Title. Shown on title detail and on Feed. Distinct from Recommend and from Thanks.
+A user’s written take on a Title. Shown on title detail, Feed, Me, and other Handles' profiles. Not on Public Profile. Distinct from Recommend and from Thanks.
 _Avoid_: review, rating, post, tweet
 
 **Title taste counts**:
@@ -129,8 +129,20 @@ The signal that a tap has landed while Cinima is still on the same screen talkin
 _Avoid_: toast, silent dimmed button, Following as a wait label, spinner-only on Continue / Enter / Skip
 
 **Guided tour**:
-An optional walkthrough of Watchlist, Search, community Recommends (always at least one title, a hardcoded fallback when nobody else has Recommended), Watchlist actions, a required Favorite, a required Recommend, taking that title off the profile, For You, and Find people (Creator profile). Offered once after Favorites onboarding clears; skippable anytime (a notice then points back to Me); replayable from Me. Distinct from Favorites onboarding and Handle onboarding. Completing or skipping it is what opens Achievement earning for good, except Joined the crew (replay does not close the gate). Completing awards That's a wrap as the first gated Achievement, then any others already true from the tour.
+An optional walkthrough of Watchlist, Search, community Recommends (always at least one title, a hardcoded fallback when nobody else has Recommended), Watchlist actions, a required Favorite, a required Recommend, taking that title off the profile, For You (one remaining Title, a required Pass, then the next five land, then Continue), and Find people (Creator profile). Offered once after Favorites onboarding clears; skippable anytime (a notice then points back to Me); replayable from Me. Distinct from Favorites onboarding and Handle onboarding. Completing or skipping it is what opens Achievement earning for good, except Joined the crew (replay does not close the gate). Completing awards That's a wrap as the first gated Achievement, then any others already true from the tour.
 _Avoid_: product tour as a separate product term, tutorial modal stack, skippable Favorite or Recommend as the way to finish the walkthrough
+
+**For You**:
+The Discover tab of personalized Title suggestions for a Handle, shown as a For You set. Taste overlap first (shared Recommends outrank shared Favorites), then popular Catalog as a FIFO queue so For You does not empty while eligible titles remain.
+_Avoid_: home feed, Recommends as the same tab, Search, overlap suggestions as the product name
+
+**For You set**:
+The five Title suggestions currently shown on For You. A Pass, Favorite, or Watchlist add removes that Title from the set without backfill; when two or fewer remain, Cinima warms the next five so posters are ready; when the set is empty, it deals that next five. The strip always opens on the center card. A refill lays all five slots out first so that center stays in the middle, then turns each card on as it lands (LTR 4 2 1 3 5: center, left, right, far left, far right).
+_Avoid_: deck window, suggestion window, refresh cycle, caught up empty copy
+
+**Pass**:
+A Handle's 48-hour exclusion of a Title from For You. Not a taste mark; Search, title detail, Watchlist, Favorite, Recommend, and the Recommends tab still include the Title. After 48 hours it is a For You candidate again.
+_Avoid_: ignore, throw, skip, dismiss, Not for me, hide as a public mark
 
 **Feed**:
 The Discover tab of recent Comments from any Handle (not only followees), newest first. Deleted Comments are omitted. Each row is a Comment on a Title; the viewer can send Comment Thanks from here.
@@ -217,7 +229,7 @@ Creator-only Telegram notices of live usage: sign-in, search, title view, Favori
 _Avoid_: webhook log, Slack alert, analytics ping, Studio notification
 
 **Achievement**:
-A named, once-earned credit for a Cinima action that teaches the product or rewards coming back. None are awarded until the Guided tour is completed or skipped, except Joined the crew, which is awarded with the Join grant and does not open that gate. When that gate opens, other actions already taken count. The catalog: Joined the crew (Join grant), Opening night (first Recommend), Full house (all movie and TV Recommend slots filled), Word of mouth (Title Share), What's next (Watchlist Share), Bravo (sent Thanks), Encore (received Thanks), High seas (ten unique title views), Season ticket (second distinct UTC day with Presence), That's a wrap (finished the Guided tour), In the listings (first Search), Save that for later (Watchlist add on a title opened from Search), That's the one (Recommend on a title opened from Search), Plus one (first Follow).
+A named, once-earned credit for a Cinima action that teaches the product or rewards coming back. None are awarded until the Guided tour is completed or skipped, except Joined the crew, which is awarded with the Join grant and does not open that gate. When that gate opens, other actions already taken count. The catalog: Joined the crew (Join grant), Opening night (first Recommend), Full house (all movie and TV Recommend slots filled), Word of mouth (Title Share), What's next (Watchlist Share), Bravo (sent Thanks), Encore (received Thanks), High seas (ten unique title views), Season ticket (second distinct UTC day with Presence), That's a wrap (finished the Guided tour), In the listings (first Search), Save that for later (Watchlist add on a title opened from Search), That's the one (Recommend on a title opened from Search), Plus one (first Follow), On the cutting room floor (fifty unique Passes).
 _Avoid_: badge as a separate product term, XP, streak freeze, daily quest, points economy, learning pathway as a separate product, wishlist
 
 **Achievement count**:

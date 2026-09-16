@@ -1,6 +1,7 @@
 import { MAX_RECOMMENDS } from "./constants.js";
 
 export const HIGH_SEAS_UNIQUE_VIEWS = 10;
+export const CUTTING_ROOM_FLOOR_PASSES = 50;
 
 export const ACHIEVEMENT_KINDS = [
   "joined-the-crew",
@@ -17,6 +18,7 @@ export const ACHIEVEMENT_KINDS = [
   "save-that-for-later",
   "thats-the-one",
   "plus-one",
+  "cutting-room-floor",
 ] as const;
 
 export type AchievementKind = (typeof ACHIEVEMENT_KINDS)[number];
@@ -36,6 +38,7 @@ const TITLES: Record<AchievementKind, string> = {
   "save-that-for-later": "Save that for later",
   "thats-the-one": "That's the one",
   "plus-one": "Plus one",
+  "cutting-room-floor": "On the cutting room floor",
 };
 
 const HOW: Record<AchievementKind, string> = {
@@ -53,6 +56,7 @@ const HOW: Record<AchievementKind, string> = {
   "save-that-for-later": "Added a Search result to your Watchlist",
   "thats-the-one": "Recommended a Search result",
   "plus-one": "Followed a Handle",
+  "cutting-room-floor": "Passed fifty titles",
 };
 
 export function achievementTitle(kind: AchievementKind): string {
@@ -225,4 +229,11 @@ export function shouldAwardPlusOne(input: {
   followCountAfter: number;
 }): boolean {
   return !input.alreadyEarned && input.followCountAfter >= 1;
+}
+
+export function shouldAwardCuttingRoomFloor(input: {
+  alreadyEarned: boolean;
+  uniquePasses: number;
+}): boolean {
+  return !input.alreadyEarned && input.uniquePasses >= CUTTING_ROOM_FLOOR_PASSES;
 }

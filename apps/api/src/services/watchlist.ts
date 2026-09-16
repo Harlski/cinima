@@ -36,6 +36,8 @@ export async function addToWatchlist(wallet: string, titleId: string): Promise<v
     .insert(watchlist)
     .values({ walletAddress: w, titleId, createdAt: new Date() })
     .onConflictDoNothing();
+  const { dropFromForYouSet } = await import("./forYou.js");
+  await dropFromForYouSet(w, titleId);
 }
 
 export async function removeFromWatchlist(

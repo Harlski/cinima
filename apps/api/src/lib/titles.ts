@@ -23,6 +23,10 @@ export function hasOverview(overview: string | null | undefined): boolean {
   return Boolean(overview?.trim());
 }
 
+export function hasPoster(posterPathOrUrl: string | null | undefined): boolean {
+  return Boolean(posterPathOrUrl?.trim());
+}
+
 export function toTitleSummary(row: TitleRow): TitleSummary {
   const mediaType = row.mediaType as "movie" | "tv";
   return {

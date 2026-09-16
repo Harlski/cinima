@@ -1,8 +1,3 @@
-import {
-  centerIndex,
-  initialSuggestionWindow,
-} from "./suggestionDeck";
-
 export type ForYouSelection = {
   windowIds: string[];
   selectedTitleId: string;
@@ -30,14 +25,17 @@ export function loadForYouSelection(): ForYouSelection | null {
   return sessionSelection;
 }
 
+function centerIndex(length: number): number {
+  if (length <= 0) return 0;
+  return Math.floor((length - 1) / 2);
+}
+
 export function restoreForYouWindow<T extends { title: { id: string } }>(
   pool: readonly T[],
-  remembered: ForYouSelection | null,
-  size?: number
+  remembered: ForYouSelection | null
 ): { window: T[]; selectedIndex: number } {
   if (!remembered) {
-    const window = initialSuggestionWindow(pool, size);
-    return { window, selectedIndex: centerIndex(window.length) };
+    return { window: [...pool], selectedIndex: centerIndex(pool.length) };
   }
 
   const byId = new Map(pool.map((entry) => [entry.title.id, entry]));
@@ -47,8 +45,7 @@ export function restoreForYouWindow<T extends { title: { id: string } }>(
   });
 
   if (window.length === 0) {
-    const fallback = initialSuggestionWindow(pool, size);
-    return { window: fallback, selectedIndex: centerIndex(fallback.length) };
+    return { window: [...pool], selectedIndex: centerIndex(pool.length) };
   }
 
   const selectedIndex = window.findIndex(
@@ -59,4 +56,33 @@ export function restoreForYouWindow<T extends { title: { id: string } }>(
     selectedIndex:
       selectedIndex >= 0 ? selectedIndex : centerIndex(window.length),
   };
+}
+
+export const FOR_YOU_REFRESH_QUERY = "forYou";
+export const FOR_YOU_REFRESH_VALUE = "refresh";
+
+/** After Landing Enter / Explore CINIMA, Discover should reload For You. */
+export function discoverLocationAfterLandingEnter(
+  pendingPath: string | null | undefined
+): string | { name: "discover"; query: Record<string, string> } {
+  if (pendingPath) return pendingPath;
+  return {
+    name: "discover",
+    query: { [FOR_YOU_REFRESH_QUERY]: FOR_YOU_REFRESH_VALUE },
+  };
+}
+
+export function isForYouRefreshQuery(query: { forYou?: unknown }): boolean {
+  const value = query.forYou;
+  if (Array.isArray(value)) return value[0] === FOR_YOU_REFRESH_VALUE;
+  return value === FOR_YOU_REFRESH_VALUE;
+}
+
+export function stripForYouRefreshQuery(
+  query: Record<string, unknown>
+): Record<string, unknown> {
+  if (!(FOR_YOU_REFRESH_QUERY in query)) return query;
+  const next = { ...query };
+  delete next[FOR_YOU_REFRESH_QUERY];
+  return next;
 }

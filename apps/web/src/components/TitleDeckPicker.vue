@@ -1,10 +1,11 @@
 <template>
-  <div class="picker" :style="pickerStyle">
-    <div v-if="selected" class="detail">
+  <div class="picker" :class="{ 'picker--passable': allowPass }" :style="pickerStyle">
+    <div v-if="selected" class="detail" :class="{ 'detail--refill-pending': isRefillPending(selectedIndex) }">
       <div class="poster-section" data-flight-origin>
         <button
           type="button"
           class="poster poster-press"
+          :class="{ 'poster--refill-pending': isRefillPending(selectedIndex) }"
           data-flight-poster
           :aria-label="`Open ${selected.title.title}`"
           @click="openSelected"
@@ -104,9 +105,28 @@
     </div>
 
     <div class="dock">
+      <p v-if="allowPass && deckItems.length && !tourPassSpotlight" class="pass-hint">Swipe a card up to Pass</p>
+      <div
+        v-if="tourPassSpotlight"
+        class="pass-swipe-arrow"
+        aria-hidden="true"
+      >
+        <svg
+          class="pass-swipe-arrow-mark"
+          viewBox="0 0 24 24"
+          width="40"
+          height="40"
+        >
+          <path fill="currentColor" d="M12 3.2 22 18.8H2Z" />
+        </svg>
+      </div>
       <div
         ref="stripEl"
         class="strip"
+        :class="{
+          'strip--passable': allowPass,
+          'strip--refilling': refillBlockingPass,
+        }"
         role="listbox"
         :aria-label="stripLabel"
         @scroll.passive="onStripScroll"
@@ -118,14 +138,40 @@
           v-for="(item, index) in deckItems"
           :key="item.title.id"
           class="poster-wrap"
+          :class="{
+            'poster-wrap--passable': allowPass,
+            'poster-wrap--passing': leavingPassIds.includes(item.title.id),
+            'poster-wrap--collapsing': collapsingPassIds.includes(item.title.id),
+            'poster-wrap--refill-pending': isRefillPending(index),
+          }"
           role="option"
           :aria-selected="index === selectedIndex"
+          :data-for-you-slot="allowPass ? index : undefined"
+          :data-tour="tourPassSpotlight ? TOUR_SPOTLIGHT.forYouPassCard : undefined"
+          data-flight-poster
+          @pointerdown="onCardPointerDown(index, $event)"
+          @pointermove="onCardPointerMove($event)"
+          @pointerup="onCardPointerUp($event)"
+          @pointercancel="onCardPointerUp($event)"
         >
+          <TourSpotlight
+            v-if="tourPassSpotlight"
+            :id="TOUR_SPOTLIGHT.forYouPassCard"
+            radius="12px"
+            class="for-you-tour-glow"
+          />
           <button
             type="button"
             class="strip-poster"
-            :class="{ 'is-selected': index === selectedIndex }"
-            :aria-label="item.title.title"
+            :class="{
+              'is-selected': index === selectedIndex,
+              'strip-poster--refill-pending': isRefillPending(index),
+            }"
+            :aria-label="
+              allowPass && !refillBlockingPass
+                ? `${item.title.title}. Swipe up to Pass`
+                : item.title.title
+            "
             @click="onPosterClick(index)"
           >
             <PosterImg
@@ -139,13 +185,14 @@
             }}</span>
           </button>
           <button
-            v-if="index === selectedIndex"
+            v-if="index === selectedIndex && !isRefillPending(index) && !passOnly"
             type="button"
             class="open-btn"
             :aria-label="`Open ${item.title.title}`"
+            @pointerdown.stop
             @click.stop="openSelected"
           >
-            <NqIcon name="arrow-top-right" :size="16" />
+            <NqIcon name="arrow-from-bottom" :size="16" />
           </button>
         </div>
       </div>
@@ -163,14 +210,28 @@ import TourSpotlight from "@/components/TourSpotlight.vue";
 import { TOUR_SPOTLIGHT } from "@/lib/guidedTour";
 import { formatTitleRating, hasTitleRating } from "@/lib/titleRating";
 import {
+  addPassLeavingId,
+  canPassForYouSlot,
+  isPassSwipe,
+  lockPassAxis,
+  passCollapseDeckAction,
+  passDragProgress,
+  passStripSnapBehavior,
+  removePassLeavingId,
+  PASS_COLLAPSE_MS,
+} from "@/lib/forYouPass";
+import { useForYouMotionStore } from "@/stores/forYouMotion";
+import {
   captureDeckSelection,
   deckScrollLeftToCenter,
   loadDeckSelection,
   rememberedSelectionForPreferred,
   resolveDeckScrollIndex,
   saveDeckSelection,
+  selectedIndexAfterDeckChange,
   syncDeckItems,
 } from "@/lib/deckSelection";
+import { titleFlightBoxFromElement } from "@/lib/titleFlight";
 
 export type DeckItem = {
   title: TitleSummary;
@@ -187,6 +248,10 @@ const props = withDefaults(
     dockBottomOffset?: string;
     showSocial?: boolean;
     showRefresh?: boolean;
+    allowPass?: boolean;
+    passOnly?: boolean;
+    tourPassSpotlight?: boolean;
+    alwaysCenter?: boolean;
     actionsPrefix?: string;
     primaryActionLabel?: string;
     primaryActionActive?: boolean;
@@ -201,6 +266,10 @@ const props = withDefaults(
     dockBottomOffset: "0px",
     showSocial: false,
     showRefresh: false,
+    allowPass: false,
+    passOnly: false,
+    tourPassSpotlight: false,
+    alwaysCenter: false,
     primaryActionLabel: "",
     primaryActionActive: false,
     secondaryActionLabel: "",
@@ -216,17 +285,20 @@ const emit = defineEmits<{
   "secondary-action": [titleId: string, origin: MouseEvent];
   refresh: [];
   select: [titleId: string];
+  pass: [titleId: string, origin: PointerEvent];
 }>();
 
 const stripEl = ref<HTMLElement | null>(null);
-const restored = syncDeckItems(
-  props.items,
-  rememberedSelectionForPreferred(
+
+function selectionMemory() {
+  return rememberedSelectionForPreferred(
     props.items,
     props.preferredTitleId,
-    loadDeckSelection(props.selectionKey)
-  )
-);
+    props.alwaysCenter ? null : loadDeckSelection(props.selectionKey)
+  );
+}
+
+const restored = syncDeckItems(props.items, selectionMemory());
 const deckItems = ref<DeckItem[]>(restored.items);
 const selectedIndex = ref(restored.selectedIndex);
 const suppressSelect = ref(false);
@@ -263,6 +335,28 @@ let dragging = false;
 let dragStartX = 0;
 let scrollTimer: ReturnType<typeof setTimeout> | undefined;
 let snapTimer: ReturnType<typeof setTimeout> | undefined;
+const passTracking = ref(false);
+const leavingPassIds = ref<string[]>([]);
+const collapsingPassIds = ref<string[]>([]);
+let passPointerId: number | null = null;
+let passStartX = 0;
+let passStartY = 0;
+let passStartScroll = 0;
+let passAxis: "x" | "y" | null = null;
+let passArmed = false;
+let passFizzleId: number | null = null;
+let passIndex: number | null = null;
+let collapseTimer: ReturnType<typeof setTimeout> | undefined;
+let collapseStartedAt = 0;
+const forYouMotion = useForYouMotionStore();
+const pendingRefillSlots = computed(() => new Set(forYouMotion.pendingRefillSlots));
+const refillBlockingPass = computed(
+  () => props.allowPass && pendingRefillSlots.value.size > 0
+);
+
+function isRefillPending(index: number) {
+  return props.allowPass && pendingRefillSlots.value.has(index);
+}
 
 function mediaLabel(title: TitleSummary) {
   const kind = title.mediaType || title.kind;
@@ -284,24 +378,52 @@ function persistVisibleCard() {
   persistSelection();
 }
 
-function resetFromPool() {
-  const next = syncDeckItems(
-    props.items,
-    rememberedSelectionForPreferred(
-      props.items,
-      props.preferredTitleId,
-      loadDeckSelection(props.selectionKey)
-    )
+function prefersReducedMotion() {
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
   );
+}
+
+function resetFromPool(behavior: ScrollBehavior = "auto") {
+  const previousIds = deckItems.value.map((item) => item.title.id);
+  const previousSelected = selectedIndex.value;
+  const remembered = selectionMemory();
+  const next = syncDeckItems(props.items, remembered);
+  if (props.alwaysCenter && !remembered) {
+    next.selectedIndex = selectedIndexAfterDeckChange(
+      previousIds,
+      next.items.map((item) => item.title.id),
+      previousSelected
+    );
+  }
   deckItems.value = next.items;
   selectedIndex.value = next.selectedIndex;
   persistSelection();
   const titleId = deckItems.value[selectedIndex.value]?.title.id;
   if (titleId) emit("select", titleId);
-  void snapToIndex(selectedIndex.value, "auto");
+  void snapToIndex(selectedIndex.value, behavior);
+}
+
+function finishPassCollapse() {
+  collapsingPassIds.value = [];
+  leavingPassIds.value = [];
+  const strip = stripEl.value;
+  if (strip) strip.style.scrollSnapType = "";
+  resetFromPool(passStripSnapBehavior(prefersReducedMotion()));
+}
+
+function schedulePassCollapseSettle() {
+  if (collapseTimer) clearTimeout(collapseTimer);
+  const elapsed = collapseStartedAt ? Date.now() - collapseStartedAt : 0;
+  const wait = prefersReducedMotion()
+    ? 0
+    : Math.max(0, PASS_COLLAPSE_MS - elapsed);
+  collapseTimer = setTimeout(finishPassCollapse, wait);
 }
 
 function openSelected() {
+  if (props.passOnly || passArmed) return;
   persistVisibleCard();
   const titleId = selected.value?.title.id;
   if (titleId) emit("open", titleId);
@@ -379,7 +501,7 @@ function nearestIndex(): number {
 }
 
 function syncSelectedFromScroll() {
-  if (suppressSelect.value) return;
+  if (suppressSelect.value || collapsingPassIds.value.length) return;
   selectedIndex.value = resolveDeckScrollIndex(
     pinnedIndex.value,
     nearestIndex()
@@ -406,7 +528,8 @@ function onPointerUp(event: PointerEvent) {
 }
 
 function onPosterClick(index: number) {
-  if (dragging) return;
+  if (dragging || passArmed) return;
+  if (!canPassForYouSlot(index, forYouMotion.pendingRefillSlots)) return;
   if (index === selectedIndex.value) return;
   const fromIndex = selectedIndex.value;
   pinnedIndex.value = index;
@@ -417,9 +540,130 @@ function onPosterClick(index: number) {
   void snapToIndex(index, "smooth", fromIndex);
 }
 
+function onCardPointerDown(index: number, event: PointerEvent) {
+  if (!props.allowPass || event.button !== 0) return;
+  if (!canPassForYouSlot(index, forYouMotion.pendingRefillSlots)) return;
+  event.stopPropagation();
+  passTracking.value = true;
+  passArmed = false;
+  passAxis = null;
+  passIndex = index;
+  passPointerId = event.pointerId;
+  passStartX = event.clientX;
+  passStartY = event.clientY;
+  passStartScroll = stripEl.value?.scrollLeft ?? 0;
+  dragging = false;
+  dragStartX = event.clientX;
+}
+
+function startPassToss(index: number, wrap: HTMLElement) {
+  if (passFizzleId != null) return;
+  if (!canPassForYouSlot(index, forYouMotion.pendingRefillSlots)) return;
+  const item = deckItems.value[index];
+  if (!item) return;
+  leavingPassIds.value = addPassLeavingId(leavingPassIds.value, item.title.id);
+  passFizzleId = forYouMotion.beginFizzle({
+    title: item.title,
+    from: titleFlightBoxFromElement(wrap),
+  });
+  if (passFizzleId == null && !collapsingPassIds.value.includes(item.title.id)) {
+    leavingPassIds.value = removePassLeavingId(
+      leavingPassIds.value,
+      item.title.id
+    );
+  }
+}
+
+function onCardPointerMove(event: PointerEvent) {
+  if (!passTracking.value || event.pointerId !== passPointerId) return;
+  const dx = event.clientX - passStartX;
+  const dy = event.clientY - passStartY;
+  if (!passAxis) {
+    passAxis = lockPassAxis(dx, dy);
+    if (!passAxis) return;
+    if (passAxis === "x" && stripEl.value) {
+      stripEl.value.style.scrollSnapType = "none";
+    }
+    if (passAxis === "y" && passIndex != null) {
+      startPassToss(passIndex, event.currentTarget as HTMLElement);
+    }
+    try {
+      (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    } catch {
+      /* no active pointer, e.g. synthetic events */
+    }
+  }
+  if (passAxis === "y") {
+    event.preventDefault();
+    if (passFizzleId != null) {
+      forYouMotion.setFizzleProgress(passFizzleId, passDragProgress(dy));
+    }
+    return;
+  }
+  const strip = stripEl.value;
+  if (strip) strip.scrollLeft = passStartScroll - dx;
+}
+
+function onCardPointerUp(event: PointerEvent) {
+  if (!passTracking.value || event.pointerId !== passPointerId) return;
+  const dx = event.clientX - passStartX;
+  const dy = event.clientY - passStartY;
+  const axis = passAxis;
+  const index = passIndex;
+  const strip = stripEl.value;
+  if (strip) strip.style.scrollSnapType = "";
+  passTracking.value = false;
+  passPointerId = null;
+  passIndex = null;
+  passAxis = null;
+  dragging = Math.abs(dx) > 10;
+  if (dragging) pinnedIndex.value = null;
+  const titleId = index != null ? deckItems.value[index]?.title.id : undefined;
+  if (axis === "y" && titleId && isPassSwipe(dx, dy)) {
+    if (passFizzleId != null) forYouMotion.commitFizzle(passFizzleId);
+    passFizzleId = null;
+    passArmed = true;
+    collapsingPassIds.value = addPassLeavingId(collapsingPassIds.value, titleId);
+    leavingPassIds.value = addPassLeavingId(leavingPassIds.value, titleId);
+    collapseStartedAt = Date.now();
+    const stripNow = stripEl.value;
+    if (stripNow) stripNow.style.scrollSnapType = "none";
+    schedulePassCollapseSettle();
+    emit("pass", titleId, event);
+    window.setTimeout(() => {
+      passArmed = false;
+    }, 400);
+    return;
+  }
+  if (passFizzleId != null) forYouMotion.cancelFizzle(passFizzleId);
+  passFizzleId = null;
+  if (titleId && !collapsingPassIds.value.includes(titleId)) {
+    leavingPassIds.value = removePassLeavingId(leavingPassIds.value, titleId);
+  }
+}
+
 watch(
   () => props.items.map((item) => item.title.id).join("|"),
   () => {
+    const nextIds = props.items.map((item) => item.title.id);
+    const collapsingIds = collapsingPassIds.value.length
+      ? collapsingPassIds.value
+      : leavingPassIds.value;
+    const action = passCollapseDeckAction({
+      collapsingIds,
+      nextIds,
+    });
+    if (action === "collapse-removed") {
+      if (!collapsingPassIds.value.length && collapsingIds.length) {
+        collapsingPassIds.value = [...collapsingIds];
+        collapseStartedAt = Date.now();
+      }
+      schedulePassCollapseSettle();
+      return;
+    }
+    if (collapseTimer) clearTimeout(collapseTimer);
+    collapsingPassIds.value = [];
+    leavingPassIds.value = [];
     resetFromPool();
   }
 );
@@ -461,6 +705,7 @@ onUnmounted(() => {
   window.removeEventListener("resize", onResize);
   if (scrollTimer) clearTimeout(scrollTimer);
   if (snapTimer) clearTimeout(snapTimer);
+  if (collapseTimer) clearTimeout(collapseTimer);
 });
 
 function onResize() {
@@ -475,6 +720,10 @@ function onResize() {
   --picker-dock-bottom-offset: 0px;
 }
 
+.picker--passable {
+  --picker-dock-height: 12.15rem;
+}
+
 .detail {
   display: flex;
   flex-direction: column;
@@ -482,10 +731,22 @@ function onResize() {
   padding: 0.5rem 0 calc(var(--picker-dock-height) + 0.5rem);
 }
 
+.detail--refill-pending {
+  visibility: hidden;
+}
+
 .poster-section {
   display: flex;
   align-items: stretch;
   gap: 1rem;
+}
+
+.poster.poster--refill-pending,
+.strip-poster.strip-poster--refill-pending,
+.strip-poster.is-selected.strip-poster--refill-pending {
+  visibility: hidden;
+  border-color: transparent;
+  pointer-events: none;
 }
 
 .poster {
@@ -673,9 +934,10 @@ function onResize() {
 }
 
 .strip {
+  --picker-strip-gap: 0.55rem;
   display: flex;
   align-items: flex-end;
-  gap: 0.55rem;
+  gap: var(--picker-strip-gap);
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
@@ -685,21 +947,115 @@ function onResize() {
   touch-action: pan-x;
 }
 
+.strip--passable {
+  touch-action: none;
+}
+
 .strip::-webkit-scrollbar {
   display: none;
+}
+
+.pass-hint {
+  margin: 0;
+  padding: 0.2rem 1rem 0;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .poster-wrap {
   position: relative;
   flex: 0 0 var(--picker-poster);
+  width: var(--picker-poster);
+  min-width: var(--picker-poster);
+  overflow: visible;
   scroll-snap-align: center;
+  transition:
+    flex-basis 360ms cubic-bezier(0.22, 0.08, 0.18, 1),
+    width 360ms cubic-bezier(0.22, 0.08, 0.18, 1),
+    min-width 360ms cubic-bezier(0.22, 0.08, 0.18, 1),
+    margin 360ms cubic-bezier(0.22, 0.08, 0.18, 1);
+}
+
+.poster-wrap--passable {
+  touch-action: none;
+}
+
+.for-you-tour-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.pass-swipe-arrow {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 0.2rem;
+  pointer-events: none;
+  color: var(--colors-orange);
+  filter:
+    drop-shadow(1px 0 0 #fff)
+    drop-shadow(-1px 0 0 #fff)
+    drop-shadow(0 1px 0 #fff)
+    drop-shadow(0 -1px 0 #fff)
+    drop-shadow(0 0 6px rgba(255, 255, 255, 0.95));
+  animation: pass-swipe-nudge 1.15s ease-in-out infinite;
+}
+
+@keyframes pass-swipe-nudge {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-0.55rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pass-swipe-arrow {
+    animation: none;
+  }
+}
+
+.strip--refilling .poster-wrap {
+  pointer-events: none;
+}
+
+.poster-wrap--refill-pending {
+  pointer-events: none;
+}
+
+.poster-wrap--passing {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.poster-wrap--collapsing {
+  flex-basis: 0;
+  width: 0;
+  min-width: 0;
+  margin-inline-end: calc(-1 * var(--picker-strip-gap, 0.55rem));
+  overflow: hidden;
+  pointer-events: none;
+  visibility: hidden;
+  scroll-snap-align: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .poster-wrap {
+    transition: none;
+  }
 }
 
 .strip-poster {
   width: var(--picker-poster);
   aspect-ratio: 2 / 3;
+  box-sizing: border-box;
   padding: 0;
-  border: 0;
+  border: 2px solid transparent;
   border-radius: 10px;
   overflow: hidden;
   background: var(--bg-surface);
@@ -710,14 +1066,16 @@ function onResize() {
   transition:
     transform 0.18s ease,
     opacity 0.18s ease,
-    box-shadow 0.18s ease;
+    border-color 0.18s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
 .strip-poster.is-selected {
+  position: relative;
+  z-index: 1;
   transform: scale(1);
   opacity: 1;
-  box-shadow: 0 0 0 2px var(--gold);
+  border-color: var(--gold);
 }
 
 .strip-poster img,
@@ -739,10 +1097,10 @@ function onResize() {
   place-content: center;
   border: 0;
   border-radius: 999px;
-  background: var(--primary);
+  background: var(--gold);
   color: #fff;
   cursor: pointer;
-  box-shadow: 0 4px 12px color-mix(in oklch, var(--primary) 45%, transparent);
+  box-shadow: 0 4px 12px color-mix(in oklch, var(--gold) 45%, transparent);
   -webkit-tap-highlight-color: transparent;
 }
 

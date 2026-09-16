@@ -17,6 +17,7 @@ import {
   startTour,
   stepDiscoverTab,
   stepWantsCreatorFilter,
+  shouldHideForYouPassCoach,
   tourResolutionSyncPath,
   tourStepAt,
   type TourAction,
@@ -35,6 +36,7 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
   const offeredThisSession = ref(false);
   /** Shown after Skip tour / Not now: take the tour anytime from Me. */
   const skipNotice = ref(false);
+  const forYouPassAwaitingRefill = ref(false);
   const { request } = useApi();
 
   const phase = computed(() => runtime.value.phase);
@@ -49,6 +51,17 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
   const filterFindPeopleToCreator = computed(() =>
     stepWantsCreatorFilter(runtime.value)
   );
+  const forYouPassLanded = computed(() => runtime.value.forYouPassLanded);
+  const hideForYouPassCoach = computed(() =>
+    shouldHideForYouPassCoach({
+      stepId: step.value?.id,
+      awaitingRefill: forYouPassAwaitingRefill.value,
+    })
+  );
+
+  function setForYouPassAwaitingRefill(value: boolean) {
+    forYouPassAwaitingRefill.value = value;
+  }
 
   function walletKey(): string | null {
     const auth = useAuthStore();
@@ -162,6 +175,7 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
   }
 
   function skip() {
+    forYouPassAwaitingRefill.value = false;
     runtime.value = skipTour(runtime.value);
     persist("dismissed");
     skipNotice.value = true;
@@ -217,6 +231,9 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
     skipNotice,
     discoverTab,
     filterFindPeopleToCreator,
+    forYouPassAwaitingRefill,
+    forYouPassLanded,
+    hideForYouPassCoach,
     isSpotlight,
     showOffer,
     acceptOffer,
@@ -230,5 +247,6 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
     markCompleted,
     dismissSkipNotice,
     syncTourResolution,
+    setForYouPassAwaitingRefill,
   };
 });

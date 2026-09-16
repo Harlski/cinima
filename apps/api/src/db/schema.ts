@@ -102,6 +102,26 @@ export const watchlist = sqliteTable(
   (t) => [uniqueIndex("watchlist_unique").on(t.walletAddress, t.titleId)]
 );
 
+export const forYouPasses = sqliteTable(
+  "for_you_passes",
+  {
+    walletAddress: text("wallet_address").notNull(),
+    titleId: text("title_id").notNull(),
+    passedAt: integer("passed_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [
+    uniqueIndex("for_you_passes_unique").on(t.walletAddress, t.titleId),
+    index("for_you_passes_wallet").on(t.walletAddress),
+  ]
+);
+
+export const forYouSets = sqliteTable("for_you_sets", {
+  walletAddress: text("wallet_address").primaryKey(),
+  titleIds: text("title_ids").notNull(),
+  holdOutTitleIds: text("hold_out_title_ids").notNull().default("[]"),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+});
+
 export const unlocks = sqliteTable(
   "unlocks",
   {

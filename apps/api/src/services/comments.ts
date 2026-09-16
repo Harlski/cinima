@@ -1,11 +1,13 @@
 import {
   DELETED_COMMENT_LABEL,
+  PROFILE_COMMENTS_PAGE_SIZE,
   USER_SEND_LUNA,
   normalizeCommentInput,
   normalizeWallet,
   userSendMemoOrDefault,
   type CommentDto,
   type CommentFeedItem,
+  type HandleCommentsResponse,
 } from "@cinima/shared";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
@@ -140,6 +142,48 @@ export async function listCommentsForTitle(
   return rows.map((row) =>
     toCommentDto(row, meta.get(row.id) ?? { count: 0, thanked: false, sent: false })
   );
+}
+
+export async function listCommentsForHandle(
+  authorWallet: string,
+  viewer: string,
+  opts?: { limit?: number; offset?: number }
+): Promise<HandleCommentsResponse> {
+  const limit = Math.max(1, opts?.limit ?? PROFILE_COMMENTS_PAGE_SIZE);
+  const offset = Math.max(0, opts?.offset ?? 0);
+  const author = normalizeWallet(authorWallet);
+  const rows = await db
+    .select({
+      id: comments.id,
+      walletAddress: comments.walletAddress,
+      body: comments.body,
+      createdAt: comments.createdAt,
+      updatedAt: comments.updatedAt,
+      deletedAt: comments.deletedAt,
+      handle: users.handle,
+      title: titles,
+    })
+    .from(comments)
+    .innerJoin(titles, eq(comments.titleId, titles.id))
+    .leftJoin(users, eq(comments.walletAddress, users.walletAddress))
+    .where(and(eq(comments.walletAddress, author), isNull(comments.deletedAt)))
+    .orderBy(desc(comments.createdAt))
+    .limit(limit + 1)
+    .offset(offset);
+
+  const hasMore = rows.length > limit;
+  const page = hasMore ? rows.slice(0, limit) : rows;
+  const meta = await thanksMetaFor(
+    page.map((r) => r.id),
+    viewer
+  );
+  return {
+    items: page.map((row) => ({
+      ...toCommentDto(row, meta.get(row.id) ?? { count: 0, thanked: false, sent: false }),
+      title: toTitleSummary(row.title),
+    })),
+    hasMore,
+  };
 }
 
 export async function listCommentFeed(

@@ -9,6 +9,7 @@
       },
     ]"
     aria-label="Cinima"
+    data-for-you-origin
   >
     <span
       v-for="(letter, i) in letters"

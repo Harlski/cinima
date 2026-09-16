@@ -1,7 +1,8 @@
 <template>
   <article class="feed-row">
-    <div class="feed-row-top">
+    <div class="feed-row-top" :class="{ 'is-author-hidden': hideAuthor }">
       <button
+        v-if="!hideAuthor"
         type="button"
         class="feed-row-user"
         @click="$emit('open-user', item.walletAddress)"
@@ -36,6 +37,7 @@ defineProps<{
   item: CommentFeedItem;
   own: boolean;
   thankBusy: boolean;
+  hideAuthor?: boolean;
 }>();
 
 defineEmits<{
@@ -59,6 +61,10 @@ defineEmits<{
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
+}
+
+.feed-row-top.is-author-hidden {
+  justify-content: flex-end;
 }
 
 .feed-row-user {

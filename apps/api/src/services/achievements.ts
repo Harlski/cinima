@@ -12,6 +12,7 @@ import {
   shouldAwardInTheListings,
   shouldAwardOpeningNight,
   shouldAwardPlusOne,
+  shouldAwardCuttingRoomFloor,
   shouldAwardSaveThatForLater,
   shouldAwardSeasonTicket,
   shouldAwardThatsAWrap,
@@ -28,6 +29,7 @@ import {
   comments,
   favorites,
   follows,
+  forYouPasses,
   presenceDays,
   shareLinks,
   thanks,
@@ -376,6 +378,21 @@ async function evaluatePending(wallet: string, atMs: number): Promise<Achievemen
     if (await insertIfNew(wallet, "plus-one", atMs)) earned.push("plus-one");
   }
 
+  const [passRow] = await db
+    .select({ n: count() })
+    .from(forYouPasses)
+    .where(eq(forYouPasses.walletAddress, wallet));
+  if (
+    shouldAwardCuttingRoomFloor({
+      alreadyEarned: have.has("cutting-room-floor"),
+      uniquePasses: Number(passRow?.n || 0),
+    })
+  ) {
+    if (await insertIfNew(wallet, "cutting-room-floor", atMs)) {
+      earned.push("cutting-room-floor");
+    }
+  }
+
   return orderEarnedAchievements(earned);
 }
 
@@ -450,6 +467,13 @@ export async function evaluateAfterWatchlistAdd(
 }
 
 export async function evaluateAfterFollow(
+  wallet: string,
+  atMs = Date.now()
+): Promise<AchievementKind[]> {
+  return evaluateIfEligible(wallet, atMs);
+}
+
+export async function evaluateAfterPass(
   wallet: string,
   atMs = Date.now()
 ): Promise<AchievementKind[]> {

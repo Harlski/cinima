@@ -24,6 +24,7 @@ export const TOUR_SPOTLIGHT = {
   deckFavorite: "deck-favorite",
   findPeople: "find-people",
   findPeopleCreator: "find-people-creator",
+  forYouPassCard: "for-you-pass-card",
   userRecommends: "user-recommends",
   userFavorites: "user-favorites",
   userFollow: "user-follow",
@@ -53,7 +54,8 @@ export type TourAction =
   | "recommend"
   | "share-title"
   | "open-find-people"
-  | "open-creator-profile";
+  | "open-creator-profile"
+  | "pass";
 
 export type DiscoverTourTab = "for-you" | "recommends" | "following";
 
@@ -91,7 +93,7 @@ const BOTTOM_TAB_SPOTLIGHTS: ReadonlySet<TourSpotlightId> = new Set([
 ]);
 
 /** Coach sits above content; top when the glow is on the bottom tab bar. */
-export type TourCoachPlacement = "top" | "bottom";
+export type TourCoachPlacement = "top" | "bottom" | "header";
 
 export function tourCoachPlacement(
   step:
@@ -107,7 +109,7 @@ export function tourCoachPlacement(
     : "bottom";
 }
 
-/** Coach primary button — must stay in sync with GuidedTourHost. */
+/** Step-def Next/Done. Host also shows Continue after a For You Pass lands. */
 export function tourStepShowsPrimaryButton(
   step: Pick<TourStepDef, "advance"> | null | undefined
 ): boolean {
@@ -120,6 +122,39 @@ export function tourStepPrimaryLabel(
 ): string {
   if (!step) return "Next";
   return step.doneLabel || step.primaryLabel || "Next";
+}
+
+/** Next/Continue after a For You Pass lands, plus normal Next steps. */
+export function tourCoachShowsContinue(opts: {
+  step: Pick<TourStepDef, "advance" | "id"> | null | undefined;
+  forYouPassLanded: boolean;
+}): boolean {
+  if (tourStepShowsPrimaryButton(opts.step)) return true;
+  return opts.step?.id === "for-you" && opts.forYouPassLanded;
+}
+
+export function tourCoachShowsActionText(opts: {
+  step: Pick<TourStepDef, "actionText" | "id"> | null | undefined;
+  forYouPassLanded: boolean;
+}): boolean {
+  if (!opts.step?.actionText) return false;
+  if (opts.step.id === "for-you" && opts.forYouPassLanded) return false;
+  return true;
+}
+
+export function tourCoachContinueLabel(opts: {
+  step: Pick<TourStepDef, "primaryLabel" | "doneLabel" | "id"> | null | undefined;
+  forYouPassLanded: boolean;
+}): string {
+  if (opts.step?.id === "for-you" && opts.forYouPassLanded) return "Continue";
+  return tourStepPrimaryLabel(opts.step);
+}
+
+export function tourCoachPrimaryGold(opts: {
+  step: Pick<TourStepDef, "id"> | null | undefined;
+  forYouPassLanded: boolean;
+}): boolean {
+  return opts.step?.id === "for-you" && opts.forYouPassLanded;
 }
 
 export const GUIDED_TOUR_STEPS: readonly TourStepDef[] = [
@@ -197,7 +232,7 @@ export const GUIDED_TOUR_STEPS: readonly TourStepDef[] = [
   {
     id: "recommend-required",
     title: "Recommend it",
-    body: `Favorite means you like it. Recommend is the gold-star you'd tell a friend. You can hold ${MAX_RECOMMENDS} movie Recommends and ${MAX_RECOMMENDS} TV Recommends at a time.`,
+    body: `You can recommend ${MAX_RECOMMENDS} Movies and ${MAX_RECOMMENDS} TV - these are your top picks. You can change at anytime, but make them count!`,
     actionText: "Tap Recommend.",
     spotlights: [TOUR_SPOTLIGHT.titleRecommend],
     routeName: "title",
@@ -218,12 +253,18 @@ export const GUIDED_TOUR_STEPS: readonly TourStepDef[] = [
   {
     id: "for-you",
     title: "For You",
-    body: "Personalized picks based on taste overlap with other Cinima users.",
-    spotlights: [TOUR_SPOTLIGHT.tabDiscover, TOUR_SPOTLIGHT.discoverTabForYou],
+    body: "For You is where you can find suggestions for content liked by other Cinima users",
+    actionText: "Swipe up on the card to Pass",
+    spotlights: [
+      TOUR_SPOTLIGHT.tabDiscover,
+      TOUR_SPOTLIGHT.discoverTabForYou,
+      TOUR_SPOTLIGHT.forYouPassCard,
+    ],
     routeName: "discover",
     discoverTab: "for-you",
-    advance: "next",
-    primaryLabel: "Next",
+    coachPlacement: "header",
+    advance: "action",
+    action: "pass",
   },
   {
     id: "following-find",
@@ -301,6 +342,8 @@ export type TourRuntimeState = {
   tourTitleFavorited: boolean;
   /** True when the tour title is Recommended. */
   tourTitleRecommended: boolean;
+  /** True after the For You teaching Pass has landed a new set. */
+  forYouPassLanded: boolean;
 };
 
 export function initialTourRuntime(): TourRuntimeState {
@@ -310,6 +353,7 @@ export function initialTourRuntime(): TourRuntimeState {
     tourTitleId: null,
     tourTitleFavorited: false,
     tourTitleRecommended: false,
+    forYouPassLanded: false,
   };
 }
 
@@ -346,6 +390,7 @@ export function startTour(state: TourRuntimeState): TourRuntimeState {
     tourTitleId: null,
     tourTitleFavorited: false,
     tourTitleRecommended: false,
+    forYouPassLanded: false,
   };
 }
 
@@ -365,6 +410,7 @@ export function skipTour(state: TourRuntimeState): TourRuntimeState {
     tourTitleId: null,
     tourTitleFavorited: false,
     tourTitleRecommended: false,
+    forYouPassLanded: false,
   };
 }
 
@@ -376,6 +422,7 @@ export function completeTour(state: TourRuntimeState): TourRuntimeState {
     tourTitleId: null,
     tourTitleFavorited: false,
     tourTitleRecommended: false,
+    forYouPassLanded: false,
   };
 }
 
@@ -392,7 +439,11 @@ export function advanceTourNext(state: TourRuntimeState): TourRuntimeState {
   if (state.phase !== "active") return state;
   const next = state.stepIndex + 1;
   if (next >= GUIDED_TOUR_STEPS.length) return completeTour(state);
-  return skipTitleStepsIfNeeded({ ...state, stepIndex: next });
+  return skipTitleStepsIfNeeded({
+    ...state,
+    stepIndex: next,
+    forYouPassLanded: false,
+  });
 }
 
 /** If the user skipped opening a title, jump past Watchlist action steps. */
@@ -404,7 +455,7 @@ export function skipTitleStepsIfNeeded(state: TourRuntimeState): TourRuntimeStat
   if (!state.tourTitleId && TITLE_DEPENDENT_STEP_IDS.has(step.id)) {
     const forYou = GUIDED_TOUR_STEPS.findIndex((s) => s.id === "for-you");
     if (forYou < 0) return state;
-    return { ...state, stepIndex: forYou };
+    return { ...state, stepIndex: forYou, forYouPassLanded: false };
   }
 
   if (step.id === "favorite-required" && state.tourTitleFavorited) {
@@ -426,6 +477,47 @@ export function skipTitleStepsIfNeeded(state: TourRuntimeState): TourRuntimeStat
   }
 
   return state;
+}
+
+/** Hide the For You coach after Pass so the next five can land in the clear. */
+export function shouldHideForYouPassCoach(input: {
+  stepId: string | undefined;
+  awaitingRefill: boolean;
+}): boolean {
+  return input.stepId === "for-you" && input.awaitingRefill;
+}
+
+/**
+ * Discover title taps that leave the page. Action steps stay put unless
+ * opening a title is the step's action.
+ */
+export function tourAllowsTitleNavigation(
+  step:
+    | Pick<TourStepDef, "advance" | "action" | "routeName">
+    | null
+    | undefined
+): boolean {
+  if (!step) return true;
+  if (step.action === "open-title") return true;
+  return !(step.advance === "action" && step.routeName === "discover");
+}
+
+/**
+ * Discover profile taps that leave the page. Find people stays put; only the
+ * Creator profile action (and the taste step) may open that wallet.
+ */
+export function tourAllowsUserNavigation(
+  step:
+    | Pick<TourStepDef, "advance" | "action" | "routeName" | "useCreatorWallet">
+    | null
+    | undefined,
+  wallet: string
+): boolean {
+  if (!step) return true;
+  if (step.action === "open-creator-profile" || step.useCreatorWallet) {
+    return isTourCreatorWallet(wallet);
+  }
+  return !(step.advance === "action" && step.routeName === "discover");
 }
 
 export function reportTourAction(
@@ -451,6 +543,10 @@ export function reportTourAction(
   }
 
   if (step.action !== action) return state;
+
+  if (action === "pass") {
+    return { ...state, forYouPassLanded: true };
+  }
 
   let next = state;
   if (action === "favorite") next = { ...state, tourTitleFavorited: true };

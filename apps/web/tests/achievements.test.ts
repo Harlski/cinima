@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ACHIEVEMENT_KINDS,
+  CUTTING_ROOM_FLOOR_PASSES,
   HIGH_SEAS_UNIQUE_VIEWS,
   achievementHow,
   achievementTitle,
@@ -20,6 +21,7 @@ import {
   shouldAwardSaveThatForLater,
   shouldAwardThatsTheOne,
   shouldAwardPlusOne,
+  shouldAwardCuttingRoomFloor,
   shouldAwardJoinedTheCrew,
   shouldMarqueeJoinedTheCrew,
   isTourGatedAchievement,
@@ -42,6 +44,7 @@ describe("Achievement catalog", () => {
       "save-that-for-later",
       "thats-the-one",
       "plus-one",
+      "cutting-room-floor",
     ]);
     expect(achievementTitle("joined-the-crew")).toBe("Joined the crew");
     expect(achievementHow("joined-the-crew")).toBe("Joined Cinima");
@@ -59,13 +62,15 @@ describe("Achievement catalog", () => {
     expect(achievementHow("thats-the-one")).toBe("Recommended a Search result");
     expect(achievementTitle("plus-one")).toBe("Plus one");
     expect(achievementHow("plus-one")).toBe("Followed a Handle");
+    expect(achievementTitle("cutting-room-floor")).toBe("On the cutting room floor");
+    expect(achievementHow("cutting-room-floor")).toBe("Passed fifty titles");
   });
 
   it("lists locked catalog rows plus earned dates", () => {
     const rows = creditsCatalog([
       { kind: "opening-night", earnedAt: "2026-09-01T00:00:00.000Z" },
     ]);
-    expect(rows).toHaveLength(14);
+    expect(rows).toHaveLength(15);
     expect(rows[0]).toEqual({
       kind: "joined-the-crew",
       title: "Joined the crew",
@@ -218,6 +223,20 @@ describe("Achievement catalog", () => {
     expect(shouldAwardPlusOne({ alreadyEarned: false, followCountAfter: 0 })).toBe(false);
     expect(shouldAwardPlusOne({ alreadyEarned: false, followCountAfter: 1 })).toBe(true);
     expect(shouldAwardPlusOne({ alreadyEarned: true, followCountAfter: 1 })).toBe(false);
+  });
+
+  it("awards On the cutting room floor at fifty unique Passes", () => {
+    expect(CUTTING_ROOM_FLOOR_PASSES).toBe(50);
+    expect(
+      shouldAwardCuttingRoomFloor({ alreadyEarned: false, uniquePasses: 49 })
+    ).toBe(false);
+    expect(
+      shouldAwardCuttingRoomFloor({ alreadyEarned: false, uniquePasses: 50 })
+    ).toBe(true);
+    expect(
+      shouldAwardCuttingRoomFloor({ alreadyEarned: true, uniquePasses: 80 })
+    ).toBe(false);
+    expect(isTourGatedAchievement("cutting-room-floor")).toBe(true);
   });
 
   it("awards Joined the crew once on a Join grant", () => {

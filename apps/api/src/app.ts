@@ -6,6 +6,7 @@ import {
   makeTitleId,
   normalizeWallet,
   openInPayUrl,
+  PROFILE_COMMENTS_PAGE_SIZE,
   type ActivityItem,
   type EpisodeCell,
   type GatePayload,
@@ -16,6 +17,7 @@ import {
   type TitleSuggester,
   type TitleDetail,
   type CommentFeedResponse,
+  type HandleCommentsResponse,
   type FollowingFeedResponse,
   type FollowingPeopleResponse,
   type FindPeopleResponse,
@@ -69,6 +71,7 @@ import {
   createComment,
   deleteComment,
   listCommentFeed,
+  listCommentsForHandle,
   listCommentsForTitle,
   commentActivityBody,
   updateComment,
@@ -100,6 +103,13 @@ import {
   setRecommend,
 } from "./services/favorites.js";
 import {
+  ForYouError,
+  passForYou,
+  peekUpcomingForYou,
+  restoreGuidedTourForYou,
+  stageGuidedTourForYou,
+} from "./services/forYou.js";
+import {
   addToWatchlist,
   isOnWatchlist,
   listWatchlist,
@@ -122,6 +132,7 @@ import {
   achievementCount,
   evaluateAfterFollow,
   evaluateAfterHeartbeat,
+  evaluateAfterPass,
   evaluateAfterRecommend,
   evaluateAfterSearch,
   evaluateAfterSearchOpen,
@@ -577,6 +588,40 @@ app.post("/api/discover/skip-onboarding", requirePay, requireAuth, async (c) => 
   return c.json(await discoverFor(user.walletAddress));
 });
 
+app.get("/api/discover/for-you/upcoming", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  return c.json({ suggestions: await peekUpcomingForYou(user.walletAddress) });
+});
+
+app.post("/api/discover/for-you/tour-stage", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  return c.json({ suggestions: await stageGuidedTourForYou(user.walletAddress) });
+});
+
+app.post("/api/discover/pass", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  let titleId = "";
+  try {
+    const body = await c.req.json<{ titleId?: unknown }>();
+    titleId = typeof body?.titleId === "string" ? body.titleId : "";
+  } catch {
+    titleId = "";
+  }
+  if (!titleId) {
+    return c.json({ error: "invalid_title", message: "titleId is required" }, 400);
+  }
+  try {
+    const result = await passForYou(user.walletAddress, titleId);
+    const earnedAchievements = await evaluateAfterPass(user.walletAddress);
+    return c.json({ ...result, earnedAchievements });
+  } catch (e) {
+    if (e instanceof ForYouError) {
+      return c.json({ error: e.code, message: e.message }, 400);
+    }
+    throw e;
+  }
+});
+
 app.post("/api/favorites/:titleId", requirePay, requireAuth, async (c) => {
   const titleId = decodeURIComponent(c.req.param("titleId"));
   const user = c.get("user");
@@ -973,6 +1018,26 @@ app.post("/api/sends", requirePay, requireAuth, async (c) => {
     queuedCount: result.queued,
     memo: result.memo,
   });
+});
+
+function parseHandleCommentsOffset(offsetRaw: string | undefined) {
+  const offsetNum = Number(offsetRaw);
+  return Number.isFinite(offsetNum) && offsetNum >= 0 ? Math.floor(offsetNum) : 0;
+}
+
+app.get("/api/users/:wallet/comments", requirePay, requireAuth, async (c) => {
+  const walletAddress = normalizeWallet(c.req.param("wallet"));
+  const user = await db.query.users.findFirst({
+    where: eq(schema.users.walletAddress, walletAddress),
+  });
+  if (!user) return c.json({ error: "not_found" }, 404);
+  const offset = parseHandleCommentsOffset(c.req.query("offset"));
+  const body: HandleCommentsResponse = await listCommentsForHandle(
+    walletAddress,
+    c.get("user").walletAddress,
+    { limit: PROFILE_COMMENTS_PAGE_SIZE, offset }
+  );
+  return c.json(body);
 });
 
 app.get("/api/users/:wallet", requirePay, requireAuth, async (c) => {
@@ -1508,6 +1573,7 @@ app.post("/api/usage/heartbeat", requirePay, requireAuth, async (c) => {
 
 app.post("/api/tour/skip", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
+  await restoreGuidedTourForYou(user.walletAddress);
   const earned = await evaluateAfterTourSkip(user.walletAddress);
   const unseen = await takeUnseenAchievements(user.walletAddress, {
     sessionCreatedAt: c.get("sessionCreatedAt"),
@@ -1523,6 +1589,7 @@ app.post("/api/tour/skip", requirePay, requireAuth, async (c) => {
 
 app.post("/api/tour/complete", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
+  await restoreGuidedTourForYou(user.walletAddress);
   const earned = await evaluateAfterTourComplete(user.walletAddress);
   const unseen = await takeUnseenAchievements(user.walletAddress, {
     sessionCreatedAt: c.get("sessionCreatedAt"),

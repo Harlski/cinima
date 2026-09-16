@@ -33,7 +33,14 @@ import {
   withTourCommunityFallback,
   tourStepAt,
   tourStepPrimaryLabel,
+  shouldHideForYouPassCoach,
+  tourCoachContinueLabel,
+  tourCoachShowsActionText,
+  tourCoachShowsContinue,
+  tourCoachPrimaryGold,
   tourStepShowsPrimaryButton,
+  tourAllowsTitleNavigation,
+  tourAllowsUserNavigation,
   type TourAction,
   type TourRuntimeState,
 } from "../src/lib/guidedTour";
@@ -61,7 +68,7 @@ const EXPECTED_WALKTHROUGH: readonly {
   id: string;
   showsPrimary: boolean;
   primaryLabel?: string;
-  coach: "top" | "bottom";
+  coach: "top" | "bottom" | "header";
   spotlights: readonly string[];
   action?: TourAction;
   discoverTab?: string;
@@ -145,10 +152,14 @@ const EXPECTED_WALKTHROUGH: readonly {
   },
   {
     id: "for-you",
-    showsPrimary: true,
-    primaryLabel: "Next",
-    coach: "top",
-    spotlights: [TOUR_SPOTLIGHT.tabDiscover, TOUR_SPOTLIGHT.discoverTabForYou],
+    showsPrimary: false,
+    coach: "header",
+    spotlights: [
+      TOUR_SPOTLIGHT.tabDiscover,
+      TOUR_SPOTLIGHT.discoverTabForYou,
+      TOUR_SPOTLIGHT.forYouPassCard,
+    ],
+    action: "pass",
     routeName: "discover",
     discoverTab: "for-you",
   },
@@ -269,10 +280,16 @@ describe("Guided tour step contracts", () => {
     );
     const recommend = GUIDED_TOUR_STEPS.find((s) => s.id === "recommend-required");
     expect(recommend?.body).toBe(
-      `Favorite means you like it. Recommend is the gold-star you'd tell a friend. You can hold ${MAX_RECOMMENDS} movie Recommends and ${MAX_RECOMMENDS} TV Recommends at a time.`
+      `You can recommend ${MAX_RECOMMENDS} Movies and ${MAX_RECOMMENDS} TV - these are your top picks. You can change at anytime, but make them count!`
     );
     const clear = GUIDED_TOUR_STEPS.find((s) => s.id === "clear-profile");
     expect(clear?.actionText).toBe("Tap Favorited, then confirm.");
+    const forYou = GUIDED_TOUR_STEPS.find((s) => s.id === "for-you");
+    expect(forYou?.action).toBe("pass");
+    expect(forYou?.body).toBe(
+      "For You is where you can find suggestions for content liked by other Cinima users"
+    );
+    expect(forYou?.actionText).toBe("Swipe up on the card to Pass");
     expect(TOUR_SKIP_NOTICE_TITLE).toBe("Tour skipped");
     expect(TOUR_SKIP_NOTICE_BODY).toBe(
       "You can take the tour and complete it anytime from Me."
@@ -340,7 +357,30 @@ describe("Guided tour step machine", () => {
     state = reportTourAction(state, "watchlist-remove");
     expect(tourStepAt(state.stepIndex)?.id).toBe("for-you");
 
-    state = advanceTourNext(state); // following-find
+    state = reportTourAction(state, "pass");
+    expect(tourStepAt(state.stepIndex)?.id).toBe("for-you");
+    expect(state.forYouPassLanded).toBe(true);
+    expect(
+      tourCoachShowsContinue({
+        step: tourStepAt(state.stepIndex),
+        forYouPassLanded: state.forYouPassLanded,
+      })
+    ).toBe(true);
+    expect(
+      tourCoachShowsActionText({
+        step: tourStepAt(state.stepIndex),
+        forYouPassLanded: state.forYouPassLanded,
+      })
+    ).toBe(false);
+    expect(
+      tourCoachContinueLabel({
+        step: tourStepAt(state.stepIndex),
+        forYouPassLanded: state.forYouPassLanded,
+      })
+    ).toBe("Continue");
+    state = advanceTourNext(state);
+    expect(tourStepAt(state.stepIndex)?.id).toBe("following-find");
+    expect(state.forYouPassLanded).toBe(false);
     state = reportTourAction(state, "open-find-people");
     expect(tourStepAt(state.stepIndex)?.id).toBe("creator-profile");
     expect(tourStepAt(state.stepIndex)?.filterFindPeopleToCreator).toBe(true);
@@ -453,6 +493,83 @@ describe("Guided tour step machine", () => {
     expect(state.stepIndex).toBe(before);
   });
 
+  it("hides the For You coach while the next five land", () => {
+    expect(
+      shouldHideForYouPassCoach({ stepId: "for-you", awaitingRefill: true })
+    ).toBe(true);
+    expect(
+      shouldHideForYouPassCoach({ stepId: "for-you", awaitingRefill: false })
+    ).toBe(false);
+    expect(
+      shouldHideForYouPassCoach({ stepId: "following-find", awaitingRefill: true })
+    ).toBe(false);
+  });
+
+  it("holds For You after Pass until Continue", () => {
+    const forYou = GUIDED_TOUR_STEPS.find((s) => s.id === "for-you");
+    expect(
+      tourCoachShowsContinue({ step: forYou, forYouPassLanded: false })
+    ).toBe(false);
+    expect(
+      tourCoachShowsActionText({ step: forYou, forYouPassLanded: false })
+    ).toBe(true);
+    expect(
+      tourCoachShowsContinue({ step: forYou, forYouPassLanded: true })
+    ).toBe(true);
+    expect(
+      tourCoachShowsActionText({ step: forYou, forYouPassLanded: true })
+    ).toBe(false);
+    expect(
+      tourCoachContinueLabel({ step: forYou, forYouPassLanded: true })
+    ).toBe("Continue");
+    expect(
+      tourCoachPrimaryGold({ step: forYou, forYouPassLanded: false })
+    ).toBe(false);
+    expect(
+      tourCoachPrimaryGold({ step: forYou, forYouPassLanded: true })
+    ).toBe(true);
+
+    let state = startTour(initialTourRuntime());
+    const forYouIndex = GUIDED_TOUR_STEPS.findIndex((s) => s.id === "for-you");
+    state = { ...state, stepIndex: forYouIndex };
+    state = reportTourAction(state, "pass");
+    expect(tourStepAt(state.stepIndex)?.id).toBe("for-you");
+    expect(state.forYouPassLanded).toBe(true);
+    state = reportTourAction(state, "open-find-people");
+    expect(tourStepAt(state.stepIndex)?.id).toBe("for-you");
+    state = advanceTourNext(state);
+    expect(tourStepAt(state.stepIndex)?.id).toBe("following-find");
+  });
+
+  it("keeps Find people steps on Discover except the Creator profile action", () => {
+    const find = GUIDED_TOUR_STEPS.find((s) => s.id === "following-find");
+    const creator = GUIDED_TOUR_STEPS.find((s) => s.id === "creator-profile");
+    const taste = GUIDED_TOUR_STEPS.find((s) => s.id === "creator-taste");
+    const openTitle = GUIDED_TOUR_STEPS.find((s) => s.id === "recommends-open");
+    const forYou = GUIDED_TOUR_STEPS.find((s) => s.id === "for-you");
+
+    expect(tourAllowsTitleNavigation(null)).toBe(true);
+    expect(tourAllowsTitleNavigation(openTitle)).toBe(true);
+    expect(tourAllowsTitleNavigation(find)).toBe(false);
+    expect(tourAllowsTitleNavigation(creator)).toBe(false);
+    expect(tourAllowsTitleNavigation(forYou)).toBe(false);
+
+    expect(tourAllowsUserNavigation(null, "NQ99SOMEONE")).toBe(true);
+    expect(tourAllowsUserNavigation(find, TOUR_CREATOR_WALLET)).toBe(false);
+    expect(tourAllowsUserNavigation(find, "NQ99SOMEONE")).toBe(false);
+    expect(tourAllowsUserNavigation(creator, "NQ99SOMEONE")).toBe(false);
+    expect(tourAllowsUserNavigation(creator, TOUR_CREATOR_WALLET)).toBe(true);
+    expect(tourAllowsUserNavigation(taste, TOUR_CREATOR_WALLET)).toBe(true);
+    expect(tourAllowsUserNavigation(taste, "NQ99SOMEONE")).toBe(false);
+
+    const discover = fs.readFileSync(
+      path.join(srcRoot, "views/Discover.vue"),
+      "utf8"
+    );
+    expect(discover).toContain("tourAllowsTitleNavigation(tour.step)");
+    expect(discover).toContain("tourAllowsUserNavigation(tour.step, wallet)");
+  });
+
   it("spotlights only the active step targets", () => {
     const state: TourRuntimeState = {
       phase: "active",
@@ -460,6 +577,7 @@ describe("Guided tour step machine", () => {
       tourTitleId: null,
       tourTitleFavorited: false,
       tourTitleRecommended: false,
+      forYouPassLanded: false,
     };
     expect(isTourSpotlightActive(state, TOUR_SPOTLIGHT.tabWatchlist)).toBe(true);
     expect(isTourSpotlightActive(state, TOUR_SPOTLIGHT.tabSearch)).toBe(false);
@@ -639,6 +757,38 @@ describe("Guided tour spotlight targets in source", () => {
     expect(confirm).toMatch(/z-index:\s*110/);
   });
 
+  it("pins the For You Pass coach to the top of the screen with a standalone orange swipe-up arrow", () => {
+    const forYou = GUIDED_TOUR_STEPS.find((s) => s.id === "for-you");
+    expect(tourCoachPlacement(forYou)).toBe("header");
+    const host = fs.readFileSync(
+      path.join(srcRoot, "components/GuidedTourHost.vue"),
+      "utf8"
+    );
+    expect(host).toMatch(/\.tour-coach--header \{/);
+    expect(host).toMatch(/var\(--vv-offset-top/);
+    const headerCss = host.slice(host.indexOf(".tour-coach--header {"));
+    expect(headerCss).not.toMatch(/--app-brand-row/);
+    const picker = fs.readFileSync(
+      path.join(srcRoot, "components/TitleDeckPicker.vue"),
+      "utf8"
+    );
+    expect(picker).toMatch(/tourPassSpotlight[\s\S]*pass-swipe-arrow/);
+    expect(picker).toContain("pass-swipe-arrow-mark");
+    expect(picker).not.toContain("arrow-to-top");
+    expect(picker).toContain("--colors-orange");
+    expect(picker).not.toContain("GoldGlowShell");
+    expect(picker.indexOf("pass-swipe-arrow")).toBeLessThan(
+      picker.indexOf("ref=\"stripEl\"")
+    );
+    expect(host).toContain("tourCoachShowsContinue");
+    expect(host).toContain("tourCoachShowsActionText");
+    expect(host).toContain("showActionText");
+    expect(host).toContain("tourCoachPrimaryGold");
+    expect(host).toContain("nq-pill-gold");
+    expect(host).toContain("0 0 18px rgba(255, 255, 255, 0.42)");
+    expect(host).not.toContain("0 10px 32px rgba(0, 0, 0, 0.45)");
+  });
+
   it("every TOUR_SPOTLIGHT id appears as data-tour in templates", () => {
     const files = walkVueAndTsFiles(srcRoot);
     const blob = files.map((f) => fs.readFileSync(f, "utf8")).join("\n");
@@ -659,6 +809,7 @@ describe("Guided tour spotlight targets in source", () => {
         "open-creator-profile",
         "open-find-people",
         "open-title",
+        "pass",
         "favorite",
         "recommend",
         "unfavorite",

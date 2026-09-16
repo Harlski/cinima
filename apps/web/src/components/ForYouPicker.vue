@@ -5,26 +5,28 @@
     strip-label="Suggested titles"
     :dock-bottom-offset="dockBottomOffset"
     show-social
-    show-refresh
-    :primary-action-label="watchlistLabel"
+    allow-pass
+    always-center
+    :pass-only="passOnly"
+    :tour-pass-spotlight="tourPassSpotlight"
+    :primary-action-label="passOnly ? '' : watchlistLabel"
     :primary-action-active="watchlisted"
-    :secondary-action-label="favoriteLabel"
+    :secondary-action-label="passOnly ? '' : favoriteLabel"
     :secondary-action-active="favorited"
     @open="$emit('open', $event)"
     @open-overview="$emit('open-overview', $event)"
     @primary-action="(id, origin) => $emit('toggle-watchlist', id, origin)"
     @secondary-action="(id, origin) => $emit('toggle-favorite', id, origin)"
     @select="selectedTitleId = $event"
-    @refresh="refresh"
+    @pass="(id, origin) => $emit('pass', id, origin)"
   />
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, ref } from "vue";
 import type { OverlapSuggestion } from "@cinima/shared";
 import TitleDeckPicker, { type DeckItem } from "@/components/TitleDeckPicker.vue";
-import { loadDeckSelection, saveDeckSelection } from "@/lib/deckSelection";
-import { centerIndex, initialSuggestionWindow, nextSuggestionWindow } from "@/lib/suggestionDeck";
+import { deckCenterIndex } from "@/lib/deckSelection";
 import { watchlistButtonLabel } from "@/lib/titleActionLabels";
 
 const props = defineProps<{
@@ -32,6 +34,8 @@ const props = defineProps<{
   isFavorite: (titleId: string) => boolean;
   isOnWatchlist: (titleId: string) => boolean;
   dockBottomOffset?: string;
+  passOnly?: boolean;
+  tourPassSpotlight?: boolean;
 }>();
 
 defineEmits<{
@@ -39,53 +43,22 @@ defineEmits<{
   "open-overview": [titleId: string];
   "toggle-favorite": [titleId: string, origin: MouseEvent];
   "toggle-watchlist": [titleId: string, origin: MouseEvent];
+  pass: [titleId: string, origin: PointerEvent];
 }>();
 
-function toDeckItems(suggestions: OverlapSuggestion[]): DeckItem[] {
-  return suggestions.map((s) => ({
-    title: s.title,
-    sampleWallets: s.sampleWallets,
-    recommendCount: s.recommendCount,
-    favoriteCount: s.favoriteCount,
-  }));
-}
-
-function toWindowSuggestions(pool: OverlapSuggestion[], window: DeckItem[]): OverlapSuggestion[] {
-  return window.map((item) => {
-    const source = pool.find((s) => s.title.id === item.title.id)!;
-    return { ...source, title: item.title };
-  });
-}
-
-function buildWindow(pool: OverlapSuggestion[]): { items: DeckItem[]; selectedIndex: number } {
-  const deckPool = toDeckItems(pool);
-  const remembered = loadDeckSelection("for-you");
-  const window = initialSuggestionWindow(deckPool);
-  let selectedIndex = centerIndex(window.length);
-  if (remembered) {
-    const idx = window.findIndex((item) => item.title.id === remembered.selectedTitleId);
-    if (idx >= 0) selectedIndex = idx;
-  }
-  return { items: window, selectedIndex };
-}
-
-const initial = buildWindow(props.suggestions);
-const windowSuggestions = ref<OverlapSuggestion[]>(
-  toWindowSuggestions(props.suggestions, initial.items)
-);
-const selectedTitleId = ref<string>(
-  windowSuggestions.value[initial.selectedIndex]?.title.id ??
-    windowSuggestions.value[centerIndex(windowSuggestions.value.length)]?.title.id ??
-    ""
-);
-
 const deckItems = computed((): DeckItem[] =>
-  windowSuggestions.value.map((s) => ({
-    title: s.title,
-    sampleWallets: s.sampleWallets,
-    recommendCount: s.recommendCount,
-    favoriteCount: s.favoriteCount,
-  }))
+  props.suggestions
+    .filter((s) => Boolean(s.title.posterUrl?.trim()))
+    .map((s) => ({
+      title: s.title,
+      sampleWallets: s.sampleWallets,
+      recommendCount: s.recommendCount,
+      favoriteCount: s.favoriteCount,
+    }))
+);
+
+const selectedTitleId = ref<string>(
+  deckItems.value[deckCenterIndex(deckItems.value.length)]?.title.id ?? ""
 );
 
 const favorited = computed(() =>
@@ -98,34 +71,4 @@ const favoriteLabel = computed(() =>
   favorited.value ? "Favorited" : "Add to Favorites"
 );
 const watchlistLabel = computed(() => watchlistButtonLabel(watchlisted.value));
-
-function resetFromPool() {
-  const next = buildWindow(props.suggestions);
-  windowSuggestions.value = toWindowSuggestions(props.suggestions, next.items);
-  selectedTitleId.value =
-    windowSuggestions.value[next.selectedIndex]?.title.id ??
-    windowSuggestions.value[centerIndex(windowSuggestions.value.length)]?.title.id ??
-    "";
-}
-
-function refresh() {
-  const currentIds = windowSuggestions.value.map((item) => item.title.id);
-  const next = nextSuggestionWindow(props.suggestions, currentIds);
-  const selectedIndex = centerIndex(next.length);
-  const selectedId = next[selectedIndex]?.title.id ?? "";
-  // Persist before props update so TitleDeckPicker sync keeps this window, not the prior one.
-  saveDeckSelection("for-you", {
-    itemIds: next.map((item) => item.title.id),
-    selectedTitleId: selectedId,
-  });
-  windowSuggestions.value = next;
-  selectedTitleId.value = selectedId;
-}
-
-watch(
-  () => props.suggestions.map((item) => item.title.id).join("|"),
-  () => {
-    resetFromPool();
-  }
-);
 </script>

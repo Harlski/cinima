@@ -13,17 +13,23 @@ const PEER = "NQ05ACHIEVEMENTPEERWALLET0000000001";
 const FINISHER = "NQ05ACHIEVEMENTFINISHERWALLET00001";
 const LEARNER = "NQ05ACHIEVEMENTLEARNERWALLET000001";
 const WITHHOLDER = "NQ05ACHIEVEMENTWITHHOLDWALLET0001";
+const CUTTER = "NQ05ACHIEVEMENTCUTTERWALLET000001";
+const SHORT = "NQ05ACHIEVEMENTSHORTWALLET0000001";
 const TOKEN = "test-session-token-achievements";
 const PEER_TOKEN = "peer-token";
 const FINISHER_TOKEN = "finisher-token";
 const LEARNER_TOKEN = "learner-token";
 const WITHHOLDER_TOKEN = "withholder-token";
+const CUTTER_TOKEN = "cutter-token";
+const SHORT_TOKEN = "short-token";
 const TITLE_ID = "movie:550";
 const SEARCH_TITLE_ID = "tmdb:movie:551";
 const PRIOR_TITLE_ID = "tmdb:movie:552";
 
 describe("Achievement HTTP API", () => {
   let app: { fetch: (request: Request) => Response | Promise<Response> };
+  let schema: typeof import("../src/db/schema.js");
+  let db: Awaited<typeof import("../src/db/index.js")>["db"];
 
   const headers = {
     Authorization: `Bearer ${TOKEN}`,
@@ -55,10 +61,22 @@ describe("Achievement HTTP API", () => {
     "X-Cinima-Demo": "1",
   };
 
+  const cutterHeaders = {
+    Authorization: `Bearer ${CUTTER_TOKEN}`,
+    "Content-Type": "application/json",
+    "X-Cinima-Demo": "1",
+  };
+
+  const shortHeaders = {
+    Authorization: `Bearer ${SHORT_TOKEN}`,
+    "Content-Type": "application/json",
+    "X-Cinima-Demo": "1",
+  };
+
   beforeAll(async () => {
     await (await import("../src/db/migrate.js")).migrate();
-    const { db } = await import("../src/db/index.js");
-    const schema = await import("../src/db/schema.js");
+    ({ db } = await import("../src/db/index.js"));
+    schema = await import("../src/db/schema.js");
     const now = new Date();
     await db.insert(schema.users).values([
       { walletAddress: WALLET, handle: "star", lifetimeUnlockedAt: null, createdAt: now },
@@ -66,6 +84,8 @@ describe("Achievement HTTP API", () => {
       { walletAddress: FINISHER, handle: "wrap", lifetimeUnlockedAt: null, createdAt: now },
       { walletAddress: LEARNER, handle: "learner", lifetimeUnlockedAt: null, createdAt: now },
       { walletAddress: WITHHOLDER, handle: "held", lifetimeUnlockedAt: null, createdAt: now },
+      { walletAddress: CUTTER, handle: "cutter", lifetimeUnlockedAt: null, createdAt: now },
+      { walletAddress: SHORT, handle: "short", lifetimeUnlockedAt: null, createdAt: now },
     ]);
     await db.insert(schema.sessions).values([
       {
@@ -95,6 +115,18 @@ describe("Achievement HTTP API", () => {
       {
         token: WITHHOLDER_TOKEN,
         walletAddress: WITHHOLDER,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        createdAt: now,
+      },
+      {
+        token: CUTTER_TOKEN,
+        walletAddress: CUTTER,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        createdAt: now,
+      },
+      {
+        token: SHORT_TOKEN,
+        walletAddress: SHORT,
         expiresAt: new Date(Date.now() + 60 * 60 * 1000),
         createdAt: now,
       },
@@ -371,5 +403,47 @@ describe("Achievement HTTP API", () => {
     expect(follow.status).toBe(200);
     const followBody = (await follow.json()) as { earnedAchievements: string[] };
     expect(followBody.earnedAchievements).toEqual(["plus-one"]);
+  });
+
+  it("does not award On the cutting room floor before fifty unique Passes", async () => {
+    const now = new Date();
+    await db.insert(schema.forYouPasses).values(
+      Array.from({ length: 49 }, (_, i) => ({
+        walletAddress: SHORT,
+        titleId: `movie:short${i + 1}`,
+        passedAt: now,
+      }))
+    );
+    const skip = await app.fetch(
+      new Request("http://test/api/tour/skip", {
+        method: "POST",
+        headers: shortHeaders,
+      })
+    );
+    expect(skip.status).toBe(200);
+    expect(
+      ((await skip.json()) as { earnedAchievements: string[] }).earnedAchievements
+    ).not.toContain("cutting-room-floor");
+  });
+
+  it("awards On the cutting room floor when fifty unique Passes already exist", async () => {
+    const now = new Date();
+    await db.insert(schema.forYouPasses).values(
+      Array.from({ length: 50 }, (_, i) => ({
+        walletAddress: CUTTER,
+        titleId: `movie:cut${i + 1}`,
+        passedAt: now,
+      }))
+    );
+    const skip = await app.fetch(
+      new Request("http://test/api/tour/skip", {
+        method: "POST",
+        headers: cutterHeaders,
+      })
+    );
+    expect(skip.status).toBe(200);
+    expect(
+      ((await skip.json()) as { earnedAchievements: string[] }).earnedAchievements
+    ).toContain("cutting-room-floor");
   });
 });

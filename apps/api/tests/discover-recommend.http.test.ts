@@ -57,7 +57,7 @@ describe("Discover Recommend-weighted overlap", () => {
         tmdbId,
         title,
         year: 2020,
-        posterPath: null,
+        posterPath: id === BARE ? null : `/${id}.jpg`,
         overview,
         imdbId: null,
         rating: "7.0",

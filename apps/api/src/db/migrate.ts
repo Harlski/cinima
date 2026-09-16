@@ -337,6 +337,30 @@ export async function migrate() {
       updated_at INTEGER NOT NULL
     )`
   );
+  await client.execute(`CREATE TABLE IF NOT EXISTS for_you_passes (
+    wallet_address TEXT NOT NULL,
+    title_id TEXT NOT NULL,
+    passed_at INTEGER NOT NULL
+  )`);
+  await client.execute(
+    `CREATE UNIQUE INDEX IF NOT EXISTS for_you_passes_unique ON for_you_passes(wallet_address, title_id)`
+  );
+  await client.execute(
+    `CREATE INDEX IF NOT EXISTS for_you_passes_wallet ON for_you_passes(wallet_address)`
+  );
+  await client.execute(`CREATE TABLE IF NOT EXISTS for_you_sets (
+    wallet_address TEXT PRIMARY KEY,
+    title_ids TEXT NOT NULL,
+    hold_out_title_ids TEXT NOT NULL DEFAULT '[]',
+    updated_at INTEGER NOT NULL
+  )`);
+  try {
+    await client.execute(
+      `ALTER TABLE for_you_sets ADD COLUMN hold_out_title_ids TEXT NOT NULL DEFAULT '[]'`
+    );
+  } catch {
+    /* column already exists */
+  }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

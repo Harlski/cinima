@@ -93,7 +93,7 @@
     </div>
 
     <div
-      v-else-if="tour.active && step"
+      v-else-if="tour.active && step && !tour.hideForYouPassCoach"
       class="tour-coach"
       :class="`tour-coach--${coachPlacement}`"
       role="status"
@@ -110,11 +110,12 @@
         </div>
         <h3>{{ step.title }}</h3>
         <p>{{ step.body }}</p>
-        <p v-if="step.actionText" class="tour-coach-action">{{ step.actionText }}</p>
+        <p v-if="showActionText" class="tour-coach-action">{{ step.actionText }}</p>
         <button
           v-if="showPrimary"
           type="button"
-          class="nq-pill-blue nq-pill-stretch"
+          class="nq-pill-stretch"
+          :class="primaryGold ? 'nq-pill-gold' : 'nq-pill-blue'"
           @click="onPrimary"
         >
           {{ primaryLabel }}
@@ -136,9 +137,11 @@ import {
   TOUR_CREATOR_WALLET,
   TOUR_SKIP_NOTICE_BODY,
   TOUR_SKIP_NOTICE_TITLE,
+  tourCoachContinueLabel,
   tourCoachPlacement,
-  tourStepPrimaryLabel,
-  tourStepShowsPrimaryButton,
+  tourCoachPrimaryGold,
+  tourCoachShowsActionText,
+  tourCoachShowsContinue,
 } from "@/lib/guidedTour";
 
 const tour = useGuidedTourStore();
@@ -152,9 +155,33 @@ const skipNoticeBody = TOUR_SKIP_NOTICE_BODY;
 
 const coachPlacement = computed(() => tourCoachPlacement(step.value));
 
-const showPrimary = computed(() => tourStepShowsPrimaryButton(step.value));
+const showPrimary = computed(() =>
+  tourCoachShowsContinue({
+    step: step.value,
+    forYouPassLanded: tour.forYouPassLanded,
+  })
+);
 
-const primaryLabel = computed(() => tourStepPrimaryLabel(step.value));
+const showActionText = computed(() =>
+  tourCoachShowsActionText({
+    step: step.value,
+    forYouPassLanded: tour.forYouPassLanded,
+  })
+);
+
+const primaryLabel = computed(() =>
+  tourCoachContinueLabel({
+    step: step.value,
+    forYouPassLanded: tour.forYouPassLanded,
+  })
+);
+
+const primaryGold = computed(() =>
+  tourCoachPrimaryGold({
+    step: step.value,
+    forYouPassLanded: tour.forYouPassLanded,
+  })
+);
 
 function normalizeRouteWallet(wallet: string) {
   return wallet.replace(/\s+/g, "").toUpperCase();
@@ -308,6 +335,12 @@ watch(
   align-items: center;
 }
 
+/* For You Pass: pin the coach to the top of the visible screen. */
+.tour-coach--header {
+  top: calc(var(--vv-offset-top, 0px) + 0.45rem);
+  align-items: flex-start;
+}
+
 .tour-coach-card {
   position: relative;
   overflow: hidden;
@@ -318,21 +351,10 @@ watch(
   gap: 0.45rem;
   padding: 0.9rem 1rem 1rem;
   background: var(--bg-surface, var(--colors-neutral-50));
-  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.45);
-}
-
-.tour-coach-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  border-radius: inherit;
-  background-image: url("../assets/hex-pattern.svg");
-  background-repeat: repeat;
-  background-size: 5.25rem 4.5rem;
-  background-position: 0 0;
-  opacity: 0.07;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.2),
+    0 0 18px rgba(255, 255, 255, 0.42),
+    0 0 44px rgba(255, 255, 255, 0.2);
 }
 
 .tour-coach-card > * {

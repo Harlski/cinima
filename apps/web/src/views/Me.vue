@@ -80,6 +80,8 @@
         @select="(title) => goToTitle(title.id)"
       />
 
+      <ProfileComments v-if="user?.walletAddress" :wallet-address="user.walletAddress" />
+
       <section v-if="receivedItems.length" class="received">
         <h2>{{ receivedHeading }}</h2>
         <ul class="received-list">
@@ -215,6 +217,7 @@ import LoadingWait from "@/components/LoadingWait.vue";
 import ActivityHeatmap from "@/components/ActivityHeatmap.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";
 import ProfileTaste from "@/components/ProfileTaste.vue";
+import ProfileComments from "@/components/ProfileComments.vue";
 import UserCard from "@/components/UserCard.vue";
 import ShareLinkSheet from "@/components/ShareLinkSheet.vue";
 import { useMarqueeStore } from "@/stores/marquee";

@@ -58,6 +58,8 @@
         :recommends="profile.recommends || []"
         @select="(title) => goToTitle(title.id)"
       />
+
+      <ProfileComments :wallet-address="profile.walletAddress" />
     </div>
   </div>
 </template>
@@ -71,6 +73,7 @@ import ActivityHeatmap from "@/components/ActivityHeatmap.vue";
 import LoadingWait from "@/components/LoadingWait.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
 import ProfileTaste from "@/components/ProfileTaste.vue";
+import ProfileComments from "@/components/ProfileComments.vue";
 import TourSpotlight from "@/components/TourSpotlight.vue";
 import UserCard from "@/components/UserCard.vue";
 import { TOUR_SPOTLIGHT } from "@/lib/guidedTour";

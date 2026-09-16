@@ -1,21 +1,18 @@
 import {
-  DISCOVER_FAVORITE_WEIGHT,
-  DISCOVER_RECOMMEND_WEIGHT,
   MAX_RECOMMENDS,
   MIN_FAVORITES_FOR_DISCOVER,
   normalizeWallet,
   type CommunityRecommendsResponse,
   type DiscoverResponse,
   type MediaType,
-  type OverlapSuggestion,
   type TitleSummary,
 } from "@cinima/shared";
-import { and, count, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { favorites, titles, users, watchlist } from "../db/schema.js";
-import { hasOverview, toTitleSummary } from "../lib/titles.js";
+import { toTitleSummary } from "../lib/titles.js";
 import { ensureTitleFresh } from "./catalog.js";
-import { countTitleTastePeersForTitles } from "./social.js";
+import { dropFromForYouSet, presentForYou } from "./forYou.js";
 
 export class SocialTasteError extends Error {
   constructor(
@@ -78,6 +75,7 @@ export async function addFavorite(wallet: string, titleId: string) {
   } catch {
     /* keep the Favorite even if catalog hydrate fails */
   }
+  await dropFromForYouSet(w, titleId);
 }
 
 export async function removeFavorite(wallet: string, titleId: string) {
@@ -179,51 +177,6 @@ export async function clearRecommend(wallet: string, titleId: string) {
     .where(and(eq(favorites.walletAddress, w), eq(favorites.titleId, titleId)));
 }
 
-function shuffleSuggestions<T>(items: T[], random: () => number = Math.random): T[] {
-  const copy = [...items];
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    const a = copy[i]!;
-    const b = copy[j]!;
-    copy[i] = b;
-    copy[j] = a;
-  }
-  return copy;
-}
-
-async function withTasteCounts(
-  suggestions: Omit<OverlapSuggestion, "recommendCount" | "favoriteCount">[],
-  wallet: string
-): Promise<OverlapSuggestion[]> {
-  const counts = await countTitleTastePeersForTitles(
-    suggestions.map((s) => s.title.id),
-    wallet
-  );
-  return suggestions.map((s) => {
-    const c = counts.get(s.title.id) ?? { recommendCount: 0, favoriteCount: 0 };
-    return { ...s, recommendCount: c.recommendCount, favoriteCount: c.favoriteCount };
-  });
-}
-
-async function popularSuggestions(
-  excludeIds: Set<string>,
-  wallet: string
-): Promise<OverlapSuggestion[]> {
-  const popular = await db
-    .select()
-    .from(titles)
-    .where(sql`TRIM(COALESCE(${titles.overview}, '')) != ''`)
-    .orderBy(sql`CAST(COALESCE(rating, '0') AS REAL) DESC`)
-    .limit(48);
-  const base = shuffleSuggestions(
-    popular
-      .map(toTitleSummary)
-      .filter((t) => !excludeIds.has(t.id))
-      .map((title) => ({ title, sharedCount: 0, sampleWallets: [] }))
-  ).slice(0, 20);
-  return withTasteCounts(base, wallet);
-}
-
 /** Cached titles with posters — top by TMDB popularity (popular catalog stand-in). */
 const ONBOARDING_CANDIDATE_LIMIT = 100;
 
@@ -313,8 +266,7 @@ export async function discoverFor(
 ): Promise<DiscoverResponse> {
   const w = normalizeWallet(wallet);
   const favs = await db.select().from(favorites).where(eq(favorites.walletAddress, w));
-  const myTitleIds = favs.map((f) => f.titleId);
-  const myIds = new Set(myTitleIds);
+  const myIds = new Set(favs.map((f) => f.titleId));
 
   /** Demo / local: force Favorites onboarding UI regardless of skip or Favorite count. */
   if (opts?.forceOnboarding) {
@@ -328,100 +280,20 @@ export async function discoverFor(
 
   if (favs.length < MIN_FAVORITES_FOR_DISCOVER) {
     const [user] = await db.select().from(users).where(eq(users.walletAddress, w)).limit(1);
-    if (user?.onboardingSkippedAt) {
+    if (!user?.onboardingSkippedAt) {
       return {
-        mode: "overlap",
+        mode: "onboarding",
         favoriteCount: favs.length,
         minFavorites: MIN_FAVORITES_FOR_DISCOVER,
-        suggestions: await popularSuggestions(myIds, w),
+        onboardingCandidates: await onboardingCandidates(myIds),
       };
     }
-
-    return {
-      mode: "onboarding",
-      favoriteCount: favs.length,
-      minFavorites: MIN_FAVORITES_FOR_DISCOVER,
-      onboardingCandidates: await onboardingCandidates(myIds),
-    };
-  }
-
-  const peerFavs = await db
-    .select()
-    .from(favorites)
-    .where(and(inArray(favorites.titleId, myTitleIds), sql`${favorites.walletAddress} != ${w}`));
-
-  const peerScores = new Map<string, number>();
-  for (const p of peerFavs) {
-    const weight = p.recommendedAt != null ? DISCOVER_RECOMMEND_WEIGHT : DISCOVER_FAVORITE_WEIGHT;
-    peerScores.set(p.walletAddress, (peerScores.get(p.walletAddress) || 0) + weight);
-  }
-  const topPeers = [...peerScores.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 12)
-    .map(([addr]) => addr);
-
-  let suggestions: OverlapSuggestion[] = [];
-  if (topPeers.length) {
-    const their = await db
-      .select()
-      .from(favorites)
-      .innerJoin(titles, eq(favorites.titleId, titles.id))
-      .where(
-        and(
-          inArray(favorites.walletAddress, topPeers),
-          sql`${favorites.titleId} NOT IN (${sql.join(
-            myTitleIds.map((id) => sql`${id}`),
-            sql`, `
-          )})`
-        )
-      );
-
-    const map = new Map<
-      string,
-      { title: TitleSummary; wallets: Set<string>; score: number; sharedCount: number }
-    >();
-    for (const row of their) {
-      const weight =
-        row.favorites.recommendedAt != null ? DISCOVER_RECOMMEND_WEIGHT : DISCOVER_FAVORITE_WEIGHT;
-      const cur = map.get(row.titles.id);
-      if (cur) {
-        cur.wallets.add(row.favorites.walletAddress);
-        cur.score += weight;
-        cur.sharedCount += 1;
-      } else {
-        map.set(row.titles.id, {
-          title: toTitleSummary(row.titles),
-          wallets: new Set([row.favorites.walletAddress]),
-          score: weight,
-          sharedCount: 1,
-        });
-      }
-    }
-    suggestions = await withTasteCounts(
-      shuffleSuggestions(
-        [...map.values()]
-          .sort((a, b) => b.score - a.score || b.sharedCount - a.sharedCount)
-          .filter((s) => hasOverview(s.title.overview))
-          .slice(0, 40)
-      )
-        .slice(0, 24)
-        .map((s) => ({
-          title: s.title,
-          sharedCount: s.sharedCount,
-          sampleWallets: [...s.wallets].slice(0, 3),
-        })),
-      w
-    );
-  }
-
-  if (!suggestions.length) {
-    suggestions = await popularSuggestions(myIds, w);
   }
 
   return {
     mode: "overlap",
     favoriteCount: favs.length,
     minFavorites: MIN_FAVORITES_FOR_DISCOVER,
-    suggestions,
+    suggestions: await presentForYou(w),
   };
 }

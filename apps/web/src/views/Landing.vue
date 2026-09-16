@@ -82,6 +82,8 @@ import {
   welcomeMessage,
 } from "@/lib/welcome";
 import { acceptedWaitLabel } from "@/lib/acceptedWait";
+import { discoverLocationAfterLandingEnter } from "@/lib/forYouRestore";
+import { forYouDebugLog } from "@/lib/forYouDebug";
 import { takePostAuthPath } from "@/lib/postAuthPath";
 import { useAuthStore } from "@/stores/auth";
 import { useGuidedTourStore } from "@/stores/guidedTour";
@@ -147,11 +149,11 @@ const enterCinima = async () => {
     if (cancelled || gen !== enterGeneration) return;
 
     const pendingPath = takePostAuthPath();
-    if (pendingPath) {
-      await router.replace(pendingPath);
-    } else {
-      await router.replace({ name: "discover" });
-    }
+    const dest = discoverLocationAfterLandingEnter(pendingPath);
+    forYouDebugLog(
+      `enterCinima dest=${typeof dest === "string" ? dest : `${String(dest.name)}?${new URLSearchParams(dest.query).toString()}`} pending=${pendingPath || "-"}`
+    );
+    await router.replace(dest);
   } finally {
     if (!cancelled && gen === enterGeneration) entering.value = false;
   }

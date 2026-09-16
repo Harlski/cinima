@@ -10,6 +10,11 @@
       'discover--recommends':
         !loading && mode === 'overlap' && !showHandleStep && activeTab === 'recommends',
     }"
+    :data-fy-mode="mode"
+    :data-fy-tab="activeTab"
+    :data-fy-n="suggestions.length"
+    :data-fy-loading="loading ? '1' : '0'"
+    :data-fy-handle="showHandleStep ? '1' : '0'"
   >
     <HandleOnboarding
       v-if="showHandleStep"
@@ -48,21 +53,23 @@
         @find-people="openFindPeople"
       />
 
-      <section v-if="activeTab === 'for-you'" class="suggestions-section">
-        <div v-if="suggestions.length === 0" class="feed-empty">
-          No overlap suggestions yet — favorite a few more titles.
-        </div>
-
+      <section
+        v-if="activeTab === 'for-you'"
+        class="suggestions-section"
+        :class="{ 'suggestions-section--refilling': forYouRefilling }"
+      >
         <ForYouPicker
-          v-else
           :suggestions="suggestions"
           :is-favorite="favoritesStore.isFavorite"
           :is-on-watchlist="watchlistStore.isOnWatchlist"
+          :pass-only="tourForYouPassStep"
+          :tour-pass-spotlight="tourForYouPassGlow"
           dock-bottom-offset="var(--discover-feed-tabs-height, 2.85rem)"
           @toggle-favorite="toggleFavorite"
           @toggle-watchlist="toggleWatchlist"
           @open="goToTitle"
           @open-overview="goToTitleOverview"
+          @pass="onPass"
         />
       </section>
 
@@ -191,7 +198,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, nextTick, onActivated, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
 import {
@@ -212,12 +219,17 @@ import type {
   DiscoverResponse,
   FollowingPeopleResponse,
   FollowingPerson,
+  ForYouPassResponse,
+  ForYouUpcomingResponse,
   OverlapSuggestion,
   FindPeopleEntry,
   FindPeopleResponse,
   PublicProfile,
   TitleSummary,
 } from "@cinima/shared";
+import { shouldPrefetchForYou } from "@cinima/shared";
+import { FOR_YOU_SLOT_ATTR, PASS_COLLAPSE_MS } from "@/lib/forYouPass";
+import { forYouDebugLog } from "@/lib/forYouDebug";
 import FavoritesOnboarding from "@/components/FavoritesOnboarding.vue";
 import HandleOnboarding from "@/components/HandleOnboarding.vue";
 import {
@@ -237,6 +249,8 @@ import {
   TOUR_SPOTLIGHT,
   communityRecommendsForTour,
   isTourCreatorWallet,
+  tourAllowsTitleNavigation,
+  tourAllowsUserNavigation,
 } from "@/lib/guidedTour";
 import { useGuidedTourStore } from "@/stores/guidedTour";
 import FollowingStrip from "@/components/FollowingStrip.vue";
@@ -251,6 +265,11 @@ import { useCommunityRecommends } from "@/composables/useCommunityRecommends";
 import { useTitleActionConfirm } from "@/composables/useTitleActionConfirm";
 import { useMarqueeStore } from "@/stores/marquee";
 import { useTitleFlightStore } from "@/stores/titleFlight";
+import {
+  FOR_YOU_REFRESH_QUERY,
+  isForYouRefreshQuery,
+} from "@/lib/forYouRestore";
+import { useForYouMotionStore } from "@/stores/forYouMotion";
 import { useUserSendStore } from "@/stores/userSend";
 
 defineOptions({ name: "Discover" });
@@ -262,7 +281,17 @@ const authStore = useAuthStore();
 const favoritesStore = useFavoritesStore();
 const watchlistStore = useWatchlistStore();
 const titleFlight = useTitleFlightStore();
+const forYouMotion = useForYouMotionStore();
+const forYouRefilling = computed(() => forYouMotion.refills.length > 0);
+const passBusy = ref(false);
 const tour = useGuidedTourStore();
+const tourForYouPassStep = computed(() => tour.active && tour.step?.id === "for-you");
+const tourForYouPassGlow = computed(
+  () =>
+    tourForYouPassStep.value &&
+    suggestions.value.length === 1 &&
+    !tour.forYouPassAwaitingRefill
+);
 const tourFeedTabGlow = computed(
   () =>
     tour.isSpotlight(TOUR_SPOTLIGHT.discoverTabForYou) ||
@@ -308,6 +337,7 @@ const showHandleStep = ref(false);
 const handleBusy = ref(false);
 const handleSaveError = ref<string | null>(null);
 const suggestions = ref<OverlapSuggestion[]>([]);
+let warmedUpcomingKey = "";
 const commentFeed = ref<CommentFeedItem[]>([]);
 const followingPeople = ref<FollowingPerson[]>([]);
 const peekWallet = ref<string | null>(null);
@@ -414,15 +444,28 @@ const applyDiscoverResponse = async (data: DiscoverResponse) => {
     if (activeTab.value === "following") {
       await ensureFollowingTabData();
     }
+    void warmUpcomingForYou();
   }
   discoverApplied.value = true;
+  forYouDebugLog(
+    `discover mode=${data.mode} n=${data.suggestions?.length ?? 0} posters=${
+      data.suggestions?.filter((s) => Boolean(s.title.posterUrl?.trim())).length ?? 0
+    } pending=${forYouMotion.pendingRefillSlots.join(",") || "-"}`
+  );
 };
 
 const fetchDiscover = async () => {
   const forcePick = canForceFavoritesPick() && isForceOnboardingArmed();
   const discoverPath = forcePick ? "/discover?forceOnboarding=1" : "/discover";
-  const data = await request<DiscoverResponse>(discoverPath);
-  await applyDiscoverResponse(data);
+  try {
+    const data = await request<DiscoverResponse>(discoverPath);
+    await applyDiscoverResponse(data);
+  } catch (err) {
+    forYouDebugLog(
+      `discover fail ${err instanceof Error ? err.message : String(err)}`
+    );
+    throw err;
+  }
 };
 
 const warmDiscoverInBackground = () => {
@@ -451,9 +494,16 @@ const loadDiscover = async () => {
   const queryForce =
     canForceFavoritesPick() &&
     String(route.query[FORCE_FAVORITES_PICK_QUERY] ?? "") === "1";
+  const queryRefresh = isForYouRefreshQuery(route.query);
   if (queryForce) {
     armForceOnboardingFlow();
   }
+  forYouDebugLog(
+    `loadDiscover refresh=${queryRefresh ? "1" : "0"} pending=${
+      forYouMotion.pendingRefillSlots.join(",") || "-"
+    }`
+  );
+  forYouMotion.reset();
 
   syncHandleStep();
 
@@ -465,9 +515,17 @@ const loadDiscover = async () => {
     await awaitDiscoverReady();
   }
 
-  if (queryForce && route.query[FORCE_FAVORITES_PICK_QUERY]) {
-    const q = { ...route.query };
+  const q = { ...route.query };
+  let stripQuery = false;
+  if (queryForce && q[FORCE_FAVORITES_PICK_QUERY]) {
     delete q[FORCE_FAVORITES_PICK_QUERY];
+    stripQuery = true;
+  }
+  if (queryRefresh) {
+    delete q[FOR_YOU_REFRESH_QUERY];
+    stripQuery = true;
+  }
+  if (stripQuery) {
     await router.replace({ name: "discover", query: q });
   }
 };
@@ -672,6 +730,24 @@ watch(
 );
 
 watch(
+  () => tour.step?.id,
+  async (id) => {
+    if (id !== "for-you") return;
+    await stageTourForYou();
+  },
+  { immediate: true }
+);
+
+watch(
+  () => tour.active,
+  (active, wasActive) => {
+    if (wasActive && !active && mode.value === "overlap") {
+      void fetchDiscover();
+    }
+  }
+);
+
+watch(
   () =>
     [
       tour.active,
@@ -700,7 +776,138 @@ watch(
 );
 
 
+async function warmUpcomingForYou(upcoming?: OverlapSuggestion[]) {
+  if (!shouldPrefetchForYou(suggestions.value.length)) return;
+  const rows =
+    upcoming ??
+    (await request<ForYouUpcomingResponse>("/discover/for-you/upcoming")).suggestions;
+  const key = rows.map((row) => row.title.id).join("|");
+  if (!key || key === warmedUpcomingKey) return;
+  warmedUpcomingKey = key;
+  await preloadImages(
+    rows.map((row) => row.title.posterUrl),
+    { timeoutMs: 8_000 }
+  );
+}
+
+async function playForYouRefill(next: OverlapSuggestion[]) {
+  const titles = next.map((item) => item.title);
+  const deadline = Date.now() + PASS_COLLAPSE_MS + 80;
+  while (
+    document.querySelectorAll(`[${FOR_YOU_SLOT_ATTR}]`).length < titles.length &&
+    Date.now() < deadline
+  ) {
+    await nextTick();
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  }
+  if (document.querySelectorAll(`[${FOR_YOU_SLOT_ATTR}]`).length < titles.length) {
+    forYouMotion.beginRefill(0);
+    return;
+  }
+  forYouMotion.playRefill(titles);
+  forYouDebugLog(
+    `refill n=${titles.length} slots=${
+      document.querySelectorAll(`[${FOR_YOU_SLOT_ATTR}]`).length
+    } pending=${forYouMotion.pendingRefillSlots.join(",") || "-"}`
+  );
+}
+
+async function waitUntilForYouRefillIdle() {
+  if (
+    forYouMotion.pendingRefillSlots.length === 0 &&
+    forYouMotion.refills.length === 0
+  ) {
+    return;
+  }
+  await new Promise<void>((resolve) => {
+    const stop = watch(
+      () =>
+        forYouMotion.pendingRefillSlots.length + forYouMotion.refills.length,
+      (n) => {
+        if (n === 0) {
+          stop();
+          resolve();
+        }
+      }
+    );
+    window.setTimeout(() => {
+      stop();
+      resolve();
+    }, 4000);
+  });
+}
+
+async function stageTourForYou() {
+  if (!tourForYouPassStep.value) return;
+  try {
+    const data = await request<{ suggestions: OverlapSuggestion[] }>(
+      "/discover/for-you/tour-stage",
+      { method: "POST" }
+    );
+    if (data.suggestions) suggestions.value = data.suggestions;
+  } catch {
+    // Staging is best-effort; the live set still teaches Pass.
+  }
+}
+
+const onPass = async (titleId: string) => {
+  if (passBusy.value) return;
+  const suggestion = suggestions.value.find((s) => s.title.id === titleId);
+  if (!suggestion) return;
+  const touring = tourForYouPassStep.value;
+  passBusy.value = true;
+  if (touring) tour.setForYouPassAwaitingRefill(true);
+  try {
+    const data = await request<ForYouPassResponse>("/discover/pass", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ titleId }),
+    });
+    if (data.refilled && data.suggestions.length) {
+      forYouMotion.beginRefill(data.suggestions.length);
+    }
+    suggestions.value = data.suggestions;
+    forYouDebugLog(
+      `pass ${titleId} n=${data.suggestions.length} refilled=${data.refilled ? "1" : "0"}`
+    );
+    if (data.refilled && data.suggestions.length) {
+      warmedUpcomingKey = "";
+      await playForYouRefill(data.suggestions);
+    } else {
+      void warmUpcomingForYou(data.upcoming);
+    }
+    if (data.earnedAchievements?.length) {
+      useMarqueeStore().enqueue(data.earnedAchievements);
+    }
+    if (touring) {
+      await waitUntilForYouRefillIdle();
+      tour.reportAction("pass");
+    }
+  } finally {
+    if (touring) tour.setForYouPassAwaitingRefill(false);
+    passBusy.value = false;
+  }
+};
+
+async function dropFromLocalSet(titleId: string) {
+  const remaining = suggestions.value.filter((s) => s.title.id !== titleId);
+  const shouldRefill = remaining.length === 0 && suggestions.value.length > 0;
+  suggestions.value = remaining;
+  if (shouldRefill) {
+    const data = await request<DiscoverResponse>("/discover");
+    warmedUpcomingKey = "";
+    if (data.suggestions?.length) {
+      forYouMotion.beginRefill(data.suggestions.length);
+    }
+    await applyDiscoverResponse(data);
+    if (data.suggestions?.length) await playForYouRefill(data.suggestions);
+    return;
+  }
+  void warmUpcomingForYou();
+}
+
 const toggleFavorite = async (titleId: string, origin?: MouseEvent) => {
+  if (tourForYouPassStep.value) return;
   const suggestion = suggestions.value.find((s) => s.title.id === titleId);
   await requestToggleFavorite(titleId, {
     title: suggestion?.title,
@@ -714,6 +921,7 @@ const toggleFavorite = async (titleId: string, origin?: MouseEvent) => {
           origin: origin ?? null,
         });
       }
+      void dropFromLocalSet(titleId);
     },
   });
 };
@@ -722,6 +930,7 @@ const toggleWatchlist = async (
   titleOrId: string | TitleSummary,
   origin?: MouseEvent
 ) => {
+  if (tourForYouPassStep.value) return;
   const title =
     typeof titleOrId === "string"
       ? suggestions.value.find((s) => s.title.id === titleOrId)?.title
@@ -738,6 +947,7 @@ const toggleWatchlist = async (
           origin: origin ?? null,
         });
       }
+      void dropFromLocalSet(titleId);
     },
   });
 };
@@ -751,6 +961,7 @@ const onConfirmAction = async () => {
 };
 
 const goToTitle = (titleId: string, expandOverview = false) => {
+  if (!tourAllowsTitleNavigation(tour.step)) return;
   tour.reportAction("open-title", { titleId });
   router.push({
     name: "title",
@@ -768,6 +979,7 @@ const goToTitleSummary = (title: TitleSummary) => {
 };
 
 const goToUser = (wallet: string) => {
+  if (!tourAllowsUserNavigation(tour.step, wallet)) return;
   router.push({ name: "user", params: { wallet } });
 };
 
@@ -822,8 +1034,21 @@ const onHandleContinue = async (handle: string) => {
   }
 };
 
+let skipNextActivateLoad = false;
+
 onMounted(() => {
+  skipNextActivateLoad = true;
   void loadDiscover();
+});
+
+onActivated(() => {
+  if (skipNextActivateLoad) {
+    skipNextActivateLoad = false;
+    return;
+  }
+  if (isForYouRefreshQuery(route.query)) {
+    void loadDiscover();
+  }
 });
 </script>
 

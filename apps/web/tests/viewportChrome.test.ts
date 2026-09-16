@@ -47,3 +47,19 @@ describe("viewport bottom inset", () => {
     });
   });
 });
+
+describe("bogus visual viewport (Android / Pay WebView)", () => {
+  it("does not collapse chrome when the visual viewport reports 0 height", () => {
+    expect(viewportChromeCssVars({ offsetTop: 0, height: 0 }, 800)).toEqual({
+      "--vv-offset-top": "0px",
+      "--vv-height": "800px",
+      "--vv-bottom-inset": "0px",
+    });
+  });
+
+  it("does not pad For You under the fold when offsetTop equals the layout height", () => {
+    const vars = viewportChromeCssVars({ offsetTop: 800, height: 0 }, 800);
+    expect(Number.parseFloat(vars["--vv-offset-top"])).toBe(0);
+    expect(Number.parseFloat(vars["--vv-height"])).toBe(800);
+  });
+});

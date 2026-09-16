@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  deckCenterIndex,
   deckScrollLeftToCenter,
   rememberedSelectionForPreferred,
   resolveDeckScrollIndex,
   restoreDeckWindow,
+  selectedIndexAfterDeckChange,
   syncDeckItems,
   type DeckSelection,
 } from "../src/lib/deckSelection";
@@ -60,6 +62,15 @@ describe("restoreDeckWindow", () => {
 });
 
 describe("syncDeckItems", () => {
+  it("starts on the center card when there is no remembered selection", () => {
+    expect(deckCenterIndex(5)).toBe(2);
+    expect(deckCenterIndex(4)).toBe(1);
+    expect(deckCenterIndex(1)).toBe(0);
+    const synced = syncDeckItems(titles("a", "b", "c", "d", "e"), null);
+    expect(synced.selectedIndex).toBe(2);
+    expect(synced.items[synced.selectedIndex]?.title.id).toBe("c");
+  });
+
   it("keeps parent order after a refresh reshuffles the same titles", () => {
     const remembered: DeckSelection = {
       itemIds: ["a", "b", "c", "d", "e", "f", "g"],
@@ -88,6 +99,35 @@ describe("syncDeckItems", () => {
     const synced = syncDeckItems(titles("h", "i", "j"), remembered);
     expect(synced.items.map((item) => item.title.id)).toEqual(["h", "i", "j"]);
     expect(synced.selectedIndex).toBe(1);
+  });
+});
+
+describe("selectedIndexAfterDeckChange", () => {
+  it("moves to the adjacent card after a Pass, not the new center", () => {
+    const five = ["1", "2", "3", "4", "5"];
+    expect(selectedIndexAfterDeckChange(five, ["2", "3", "4", "5"], 0)).toBe(0);
+    expect(["2", "3", "4", "5"][0]).toBe("2");
+    expect(selectedIndexAfterDeckChange(five, ["1", "3", "4", "5"], 1)).toBe(1);
+    expect(["1", "3", "4", "5"][1]).toBe("3");
+  });
+
+  it("keeps the current card when a neighbor is Passed", () => {
+    expect(
+      selectedIndexAfterDeckChange(["1", "2", "3", "4", "5"], ["2", "3", "4", "5"], 2)
+    ).toBe(1);
+  });
+
+  it("stays on the new last card after Passing the far right", () => {
+    expect(
+      selectedIndexAfterDeckChange(["1", "2", "3", "4", "5"], ["1", "2", "3", "4"], 4)
+    ).toBe(3);
+  });
+
+  it("centers a newly dealt For You set", () => {
+    expect(
+      selectedIndexAfterDeckChange(["5"], ["a", "b", "c", "d", "e"], 0)
+    ).toBe(2);
+    expect(selectedIndexAfterDeckChange([], ["a", "b", "c", "d", "e"], 0)).toBe(2);
   });
 });
 

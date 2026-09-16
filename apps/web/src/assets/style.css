@@ -333,7 +333,8 @@ a.nq-pill-orange:hover {
 .digest-modal,
 .join-overlay-modal,
 .tour-offer,
-.tour-done {
+.tour-done,
+.tour-coach {
   background: transparent;
 }
 
@@ -350,7 +351,8 @@ a.nq-pill-orange:hover {
 .digest-modal > .digest-panel,
 .join-overlay-modal > .join-overlay-panel,
 .tour-offer > .tour-offer-card,
-.tour-done > .tour-done-card {
+.tour-done > .tour-done-card,
+.tour-coach > .tour-coach-card {
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.2),
     0 0 18px rgba(255, 255, 255, 0.42),
@@ -370,7 +372,8 @@ a.nq-pill-orange:hover {
 .digest-modal > .digest-panel::before,
 .join-overlay-modal > .join-overlay-panel::before,
 .tour-offer > .tour-offer-card::before,
-.tour-done > .tour-done-card::before {
+.tour-done > .tour-done-card::before,
+.tour-coach > .tour-coach-card::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -413,7 +416,8 @@ a.nq-pill-orange:hover {
 .digest-modal > .digest-panel > *,
 .join-overlay-modal > .join-overlay-panel > *,
 .tour-offer > .tour-offer-card > *,
-.tour-done > .tour-done-card > * {
+.tour-done > .tour-done-card > *,
+.tour-coach > .tour-coach-card > * {
   position: relative;
   z-index: 1;
 }

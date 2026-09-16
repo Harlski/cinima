@@ -8,6 +8,10 @@
         :is="linkToLanding ? 'RouterLink' : 'div'"
         class="brand-home"
         v-bind="linkToLanding ? { to: '/', 'aria-label': 'Cinima Landing' } : {}"
+        @pointerdown="onBrandPointerDown"
+        @pointerup="onBrandPointerUp"
+        @pointercancel="onBrandPointerUp"
+        @click.capture="onBrandClick"
       >
         <span class="brand-mark" aria-hidden="true">
           <NqIcon name="logos-nimiq-hexagon-outline-mono" :size="20" class="brand-mark-icon" />
@@ -31,6 +35,7 @@ import { RouterLink } from "vue-router";
 import BrandWordmark from "@/components/BrandWordmark.vue";
 import NqIcon from "@/components/NqIcon.vue";
 import { cueLabEntryVisible } from "@/lib/cueLab";
+import { toggleForYouDebug } from "@/lib/forYouDebug";
 
 const props = withDefaults(
   defineProps<{
@@ -48,6 +53,46 @@ const props = withDefaults(
 );
 
 const showCueLab = computed(() => cueLabEntryVisible({ inAppShell: props.cueLab }));
+
+const LONG_PRESS_MS = 650;
+let pressTimer: ReturnType<typeof setTimeout> | undefined;
+let longPress = false;
+let taps = 0;
+let tapReset: ReturnType<typeof setTimeout> | undefined;
+
+function onBrandPointerDown() {
+  longPress = false;
+  pressTimer = window.setTimeout(() => {
+    longPress = true;
+    toggleForYouDebug();
+  }, LONG_PRESS_MS);
+}
+
+function onBrandPointerUp() {
+  if (pressTimer) window.clearTimeout(pressTimer);
+  pressTimer = undefined;
+}
+
+function onBrandClick(event: MouseEvent) {
+  if (longPress) {
+    event.preventDefault();
+    event.stopPropagation();
+    longPress = false;
+    taps = 0;
+    return;
+  }
+  taps += 1;
+  if (tapReset) window.clearTimeout(tapReset);
+  tapReset = window.setTimeout(() => {
+    taps = 0;
+  }, 2000);
+  if (taps >= 5) {
+    event.preventDefault();
+    event.stopPropagation();
+    taps = 0;
+    toggleForYouDebug();
+  }
+}
 </script>
 
 <style scoped>
@@ -61,12 +106,15 @@ const showCueLab = computed(() => cueLabEntryVisible({ inAppShell: props.cueLab 
   gap: 0.45rem;
   color: inherit;
   text-decoration: none;
+  pointer-events: auto;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 a.brand-home {
   pointer-events: auto;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .cue-lab-entry {

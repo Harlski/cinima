@@ -10,6 +10,9 @@ export const LIFETIME_UNLOCK_LUNA = LIFETIME_UNLOCK_NIM * LUNA_PER_NIM;
 export const COMMENT_NIM = 0.1;
 export const COMMENT_LUNA = Math.round(COMMENT_NIM * LUNA_PER_NIM);
 
+/** Newest live Comments shown per page on Me and other Handles */
+export const PROFILE_COMMENTS_PAGE_SIZE = 5;
+
 export const AMOUNTS = {
   UNLOCK: UNLOCK_LUNA,
   COMMENT: COMMENT_LUNA,
@@ -24,6 +27,15 @@ export const MAX_RECOMMENDS = 6;
 /** Discover scoring: a shared Recommend outranks a plain shared Favorite */
 export const DISCOVER_FAVORITE_WEIGHT = 1;
 export const DISCOVER_RECOMMEND_WEIGHT = 3;
+
+/** Titles shown at once on For You */
+export const FOR_YOU_SET_SIZE = 5;
+
+/** Warm the next For You set once this many titles remain */
+export const FOR_YOU_PREFETCH_AT = 2;
+
+/** A Pass hides a Title from For You for this long */
+export const FOR_YOU_PASS_MS = 48 * 60 * 60 * 1000;
 
 /** Re-fetch cached catalog rows after this many days */
 export const CATALOG_TTL_DAYS = 10;

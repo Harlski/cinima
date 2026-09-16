@@ -5,6 +5,7 @@ import { useAuthStore } from "./stores/auth";
 import { useTouchScrollGuard } from "./composables/useTouchScrollGuard";
 import { isLandingFrontDoor } from "./lib/landingGate";
 import { stashPostAuthPath } from "./lib/postAuthPath";
+import ForYouDebugHud from "./components/ForYouDebugHud.vue";
 import LoadingWait from "./components/LoadingWait.vue";
 
 useTouchScrollGuard();
@@ -57,6 +58,7 @@ onMounted(async () => {
     <LoadingWait label="Starting Cinima" />
   </div>
   <RouterView v-else />
+  <ForYouDebugHud />
 </template>
 
 <style scoped>

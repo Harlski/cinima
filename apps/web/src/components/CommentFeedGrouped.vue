@@ -32,6 +32,7 @@
         :item="item"
         :own="item.walletAddress === ownWallet"
         :thank-busy="thankBusyId === item.id"
+        :hide-author="hideAuthor"
         @open-user="$emit('open-user', $event)"
         @thank="$emit('thank', item)"
         @send="$emit('send', item)"
@@ -51,6 +52,7 @@ const props = defineProps<{
   items: CommentFeedItem[];
   ownWallet: string | null;
   thankBusyId: number | null;
+  hideAuthor?: boolean;
 }>();
 
 defineEmits<{

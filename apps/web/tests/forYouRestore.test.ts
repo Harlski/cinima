@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   captureForYouSelection,
+  discoverLocationAfterLandingEnter,
+  isForYouRefreshQuery,
+  stripForYouRefreshQuery,
   loadForYouSelection,
   restoreForYouWindow,
   saveForYouSelection,
@@ -28,11 +31,10 @@ const pool = [
 ];
 
 describe("restoreForYouWindow", () => {
-  it("opens a shuffled window and centers when nothing is remembered", () => {
+  it("shows the full set and centers when nothing is remembered", () => {
     const restored = restoreForYouWindow(pool, null);
-    expect(restored.window).toHaveLength(7);
-    expect(new Set(ids(restored.window)).size).toBe(7);
-    expect(restored.window[restored.selectedIndex]).toBeDefined();
+    expect(ids(restored.window)).toEqual(ids(pool));
+    expect(restored.window[restored.selectedIndex]?.title.id).toBe("e");
   });
 
   it("lands on the remembered title in its remembered window", () => {
@@ -56,13 +58,13 @@ describe("restoreForYouWindow", () => {
     expect(restored.window[restored.selectedIndex]?.title.id).toBe("h");
   });
 
-  it("falls back to a shuffled window when none of the remembered titles remain", () => {
+  it("falls back to the full set when none of the remembered titles remain", () => {
     const restored = restoreForYouWindow(pool, {
       windowIds: ["x", "y"],
       selectedTitleId: "x",
     });
-    expect(restored.window).toHaveLength(7);
-    expect(restored.window[restored.selectedIndex]).toBeDefined();
+    expect(ids(restored.window)).toEqual(ids(pool));
+    expect(restored.window[restored.selectedIndex]?.title.id).toBe("e");
   });
 
   it("centers the remaining window when the remembered title left the pool", () => {
@@ -100,5 +102,28 @@ describe("For You selection memory", () => {
     const restored = restoreForYouWindow(pool, loadForYouSelection());
     expect(restored.window[restored.selectedIndex]?.title.id).toBe("h");
     expect(ids(restored.window)).toEqual(["c", "h", "i"]);
+  });
+});
+
+describe("Landing Enter For You refresh", () => {
+  it("sends Discover a For You refresh after Explore CINIMA when there is no deep link", () => {
+    expect(discoverLocationAfterLandingEnter(null)).toEqual({
+      name: "discover",
+      query: { forYou: "refresh" },
+    });
+    expect(isForYouRefreshQuery({ forYou: "refresh" })).toBe(true);
+  });
+
+  it("keeps a stashed post-auth path instead of Discover", () => {
+    expect(discoverLocationAfterLandingEnter("/title/movie:1")).toBe(
+      "/title/movie:1"
+    );
+    expect(isForYouRefreshQuery({})).toBe(false);
+  });
+
+  it("drops the For You refresh flag after Discover consumes it", () => {
+    expect(stripForYouRefreshQuery({ forYou: "refresh", pick: "1" })).toEqual({
+      pick: "1",
+    });
   });
 });
