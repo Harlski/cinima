@@ -2,8 +2,7 @@ export const INQUIRIES_EMAIL = "cinima.app@gmail.com";
 
 export const CINIMA_X_URL = "https://x.com/cinima_app";
 
-/** Set when the Cinima Telegram channel is ready. */
-export const CINIMA_TELEGRAM_URL: string | null = null;
+export const CINIMA_TELEGRAM_URL = "https://t.me/cinima_app";
 
 /** Official Nimiq Pay marketing / store landing. */
 export const GET_NIMIQ_PAY_URL = "https://nimpay.app/";

@@ -76,9 +76,9 @@ describe("Send memos", () => {
     );
   });
 
-  it("says Thanks already landed and the NIM goes to them, not Cinima", () => {
+  it("says custom-message NIM goes to them, not Cinima", () => {
     expect(USER_SEND_SUB).toBe(
-      "You already thanked them. This NIM goes to them, not Cinima."
+      "Custom messages cost NIM. This NIM goes directly to them, not Cinima."
     );
   });
 

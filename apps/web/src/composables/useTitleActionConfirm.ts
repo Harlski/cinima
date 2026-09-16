@@ -1,10 +1,20 @@
 import { computed, ref } from "vue";
-import type { TitleSummary, WatchlistLeaveReason } from "@cinima/shared";
+import {
+  shouldOfferThankAllCue,
+  unthankedFavoriterCount,
+  type AchievementKind,
+  type TitleSummary,
+  type TitleSuggester,
+  type WatchlistLeaveReason,
+} from "@cinima/shared";
+import { useApi } from "@/composables/useApi";
 import {
   removeFromFavoritesMessage,
   removeFromWatchlistMessage,
 } from "@/lib/titleActionLabels";
 import { useFavoritesStore } from "@/stores/favorites";
+import { useGuidedTourStore } from "@/stores/guidedTour";
+import { useMarqueeStore } from "@/stores/marquee";
 import { useWatchlistStore } from "@/stores/watchlist";
 
 export type TitleActionConfirmKind = "unfavorite" | "watchlist";
@@ -35,6 +45,12 @@ type ConfirmHandlers = {
   onRemoveFromWatchlist?: () => void | Promise<void>;
 };
 
+export type ThankAllCue = {
+  titleId: string;
+  titleName: string;
+  title?: TitleSummary;
+};
+
 function titleName(title?: TitleRef | null): string {
   return title?.title?.trim() || "this title";
 }
@@ -42,8 +58,13 @@ function titleName(title?: TitleRef | null): string {
 export function useTitleActionConfirm() {
   const favoritesStore = useFavoritesStore();
   const watchlistStore = useWatchlistStore();
+  const tour = useGuidedTourStore();
+  const { request } = useApi();
   const pendingConfirm = ref<PendingTitleAction | null>(null);
   const leaveReason = ref<WatchlistLeaveReason | null>(null);
+  const thankAllCue = ref<ThankAllCue | null>(null);
+  const thankAllBusy = ref(false);
+  const lastThankAllTitleId = ref<string | null>(null);
 
   const confirmMessage = computed(() => {
     if (!pendingConfirm.value) return "";
@@ -55,6 +76,51 @@ export function useTitleActionConfirm() {
   function cancelConfirm() {
     pendingConfirm.value = null;
     leaveReason.value = null;
+  }
+
+  function cancelThankAll() {
+    if (thankAllBusy.value) return;
+    thankAllCue.value = null;
+  }
+
+  async function offerThankAllCue(titleId: string, title?: TitleSummary) {
+    if (tour.active || tour.offering) return;
+    try {
+      const data = await request<{ suggesters: TitleSuggester[] }>(
+        `/titles/${encodeURIComponent(titleId)}/suggesters`
+      );
+      const unthankedCount = unthankedFavoriterCount(data.suggesters);
+      if (!shouldOfferThankAllCue({ unthankedCount, tourActive: false })) return;
+      thankAllCue.value = {
+        titleId,
+        titleName: titleName(title),
+        title,
+      };
+    } catch {
+      /* leave already happened; skip the cue */
+    }
+  }
+
+  async function confirmThankAll() {
+    const cue = thankAllCue.value;
+    if (!cue || thankAllBusy.value) return;
+    thankAllBusy.value = true;
+    try {
+      const data = await request<{
+        thanked: number;
+        earnedAchievements?: AchievementKind[];
+      }>("/thanks/all", {
+        method: "POST",
+        body: JSON.stringify({ titleId: cue.titleId }),
+      });
+      if (data.earnedAchievements?.length) {
+        useMarqueeStore().enqueue(data.earnedAchievements);
+      }
+      lastThankAllTitleId.value = cue.titleId;
+      thankAllCue.value = null;
+    } finally {
+      thankAllBusy.value = false;
+    }
   }
 
   async function requestToggleFavorite(titleId: string, opts: FavoriteToggleOpts) {
@@ -100,17 +166,25 @@ export function useTitleActionConfirm() {
     }
 
     const reason = leaveReason.value;
+    const titleId = action.titleId;
+    const title = action.title;
     pendingConfirm.value = null;
     leaveReason.value = null;
-    await watchlistStore.toggle(action.titleId, action.title, reason);
+    await watchlistStore.toggle(titleId, title, reason);
     await handlers?.onRemoveFromWatchlist?.();
+    await offerThankAllCue(titleId, title);
   }
 
   return {
     pendingConfirm,
     confirmMessage,
     leaveReason,
+    thankAllCue,
+    thankAllBusy,
+    lastThankAllTitleId,
     cancelConfirm,
+    cancelThankAll,
+    confirmThankAll,
     confirmPending,
     requestToggleFavorite,
     requestToggleWatchlist,

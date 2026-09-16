@@ -21,9 +21,10 @@ describe("Landing contact", () => {
       { name: "X", icon: "logos-twitter-mono", href: "https://x.com/cinima_app" },
       { name: "Email", icon: "envelope", href: "mailto:cinima.app@gmail.com" },
     ]);
+    expect(CINIMA_TELEGRAM_URL).toBe("https://t.me/cinima_app");
     expect(payGateSocial).toEqual([
       { name: "X", icon: "logos-twitter-mono", href: "https://x.com/cinima_app" },
-      { name: "Telegram", icon: "logos-telegram-mono", href: CINIMA_TELEGRAM_URL },
+      { name: "Telegram", icon: "logos-telegram-mono", href: "https://t.me/cinima_app" },
     ]);
   });
 });

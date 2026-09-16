@@ -7,6 +7,7 @@ import {
   formatWallet,
   userSendMemoForNote,
   userSendNoteLuna,
+  type AchievementKind,
   type UserSendNoteId,
 } from "@cinima/shared";
 import {
@@ -17,6 +18,7 @@ import {
 } from "@/lib/nimiqPay";
 import { useApi } from "@/composables/useApi";
 import { useAuthStore } from "@/stores/auth";
+import { useMarqueeStore } from "@/stores/marquee";
 
 export type PendingUserSend =
   | {
@@ -35,6 +37,7 @@ export type PendingUserSend =
 export const useUserSendStore = defineStore("userSend", () => {
   const pending = ref<PendingUserSend | null>(null);
   const lastAttached = ref<PendingUserSend | null>(null);
+  const lastThanked = ref<PendingUserSend | null>(null);
   const receiptHash = ref<string | null>(null);
   const busy = ref(false);
   const error = ref<string | null>(null);
@@ -88,10 +91,28 @@ export const useUserSendStore = defineStore("userSend", () => {
     });
   }
 
+  async function landThanks(current: PendingUserSend): Promise<AchievementKind[] | undefined> {
+    if (current.kind === "title") {
+      const data = await request<{ earnedAchievements?: AchievementKind[] }>("/thanks", {
+        method: "POST",
+        body: JSON.stringify({
+          toWallet: current.toWallet,
+          titleId: current.titleId,
+        }),
+      });
+      return data.earnedAchievements;
+    }
+    const data = await request<{ earnedAchievements?: AchievementKind[] }>(
+      `/comments/${current.commentId}/thanks`,
+      { method: "POST" }
+    );
+    return data.earnedAchievements;
+  }
+
   async function confirm(): Promise<boolean> {
     const current = pending.value;
     if (!current || busy.value) return false;
-    if (previewing.value || userSendNoteLuna(noteId.value) <= 0) {
+    if (previewing.value) {
       pending.value = null;
       previewing.value = false;
       error.value = null;
@@ -100,6 +121,16 @@ export const useUserSendStore = defineStore("userSend", () => {
     busy.value = true;
     error.value = null;
     try {
+      const earnedAchievements = await landThanks(current);
+      if (earnedAchievements?.length) {
+        useMarqueeStore().enqueue(earnedAchievements);
+      }
+      lastThanked.value = current;
+      if (userSendNoteLuna(noteId.value) <= 0) {
+        pending.value = null;
+        previewing.value = false;
+        return true;
+      }
       const txHash = await payTo(current.toWallet);
       if (current.kind === "title") {
         await request("/thanks/send", {
@@ -130,6 +161,7 @@ export const useUserSendStore = defineStore("userSend", () => {
   return {
     pending,
     lastAttached,
+    lastThanked,
     receiptHash,
     busy,
     error,

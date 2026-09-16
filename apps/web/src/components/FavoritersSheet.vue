@@ -42,7 +42,7 @@
           {{ visiblePeople.length === 1 ? "Handle" : "Handles" }}
         </p>
 
-        <ul v-if="visiblePeople.length" class="people-list">
+        <ul v-if="visiblePeople.length" class="people-list" data-scroll-y>
           <li v-for="person in visiblePeople" :key="person.walletAddress" class="person-row">
             <button
               type="button"

@@ -116,7 +116,10 @@ export function shouldBlockRubberBandScroll(
   chain: ScrollMetrics[],
   contentDeltaY: number
 ): boolean {
-  if (contentDeltaY === 0) return false;
+  const inTrap = chain.some((metrics) => metrics.isScrollTrap);
+  // iOS / Pay start native pan on the first unprevented touchmove. A 0-delta
+  // sample on overlay chrome must still claim the gesture.
+  if (contentDeltaY === 0) return inTrap;
   const effective = chainInsideScrollTrap(chain);
   // A carousel (Watchlist strip, Discover rows) needs native pan so a flick can
   // glide. preventDefault on the first slightly-vertical sample kills that.
@@ -143,12 +146,21 @@ export function scrollMetricsFromElement(el: Element): ScrollMetrics {
   };
 }
 
+export function startingElementFromTarget(
+  target: EventTarget | null
+): Element | null {
+  if (!target || typeof target !== "object") return null;
+  const node = target as Node;
+  if (node.nodeType === 1) return node as Element;
+  return node.parentElement ?? null;
+}
+
 /** Ancestor chain from the touch target up to (but not including) documentElement. */
 export function scrollMetricsChainFromTarget(
   target: EventTarget | null
 ): ScrollMetrics[] {
   const chain: ScrollMetrics[] = [];
-  let el: Element | null = target instanceof Element ? target : null;
+  let el: Element | null = startingElementFromTarget(target);
   while (el && el !== document.documentElement) {
     chain.push(scrollMetricsFromElement(el));
     el = el.parentElement;

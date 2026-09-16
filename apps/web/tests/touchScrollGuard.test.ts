@@ -155,6 +155,12 @@ describe("shouldBlockRubberBandScroll overlay trap", () => {
       )
     ).toBe(true);
   });
+
+  it("claims the first zero-delta sample on overlay chrome so native pan cannot start", () => {
+    expect(
+      shouldBlockRubberBandScroll([overlayChrome, pageScroller], 0)
+    ).toBe(true);
+  });
 });
 
 const heatmapBox: ScrollMetrics = {

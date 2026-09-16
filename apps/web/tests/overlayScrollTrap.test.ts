@@ -9,6 +9,7 @@ const webRoot = path.resolve(__dirname, "..");
 const overlayTrapSources = [
   "src/components/ConfirmDialog.vue",
   "src/components/WatchlistLeaveDialog.vue",
+  "src/components/ThankAllCueDialog.vue",
   "src/components/SendNimDialog.vue",
   "src/components/FolloweePeekSheet.vue",
   "src/components/FavoritersSheet.vue",
@@ -36,6 +37,13 @@ describe("overlay scroll trap", () => {
       const src = readFileSync(path.join(webRoot, rel), "utf8");
       expect(src, rel).toContain(SCROLL_TRAP_ATTR);
     }
+  });
+
+  it("disables native pan on overlay chrome so the page cannot rubber-band", () => {
+    const css = readFileSync(path.join(webRoot, "src/assets/style.css"), "utf8");
+    expect(css).toMatch(
+      /\[data-scroll-trap\],\s*\[data-scroll-trap\] \* \{\s*touch-action:\s*none;/
+    );
   });
 
   it("traps Guided tour offer, done, and coach card separately", () => {

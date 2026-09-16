@@ -99,6 +99,13 @@
       @confirm="leaveOpen = false"
     />
 
+    <ThankAllCueDialog
+      v-if="thankAllOpen"
+      :title="sampleTitle"
+      @cancel="thankAllOpen = false"
+      @confirm="thankAllOpen = false"
+    />
+
     <PayOnlyGateModal
       v-if="payGateOpen"
       :already-installed-url="payUrl"
@@ -135,6 +142,7 @@ import {
 } from "@cinima/shared";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import WatchlistLeaveDialog from "@/components/WatchlistLeaveDialog.vue";
+import ThankAllCueDialog from "@/components/ThankAllCueDialog.vue";
 import PayOnlyGateModal from "@/components/PayOnlyGateModal.vue";
 import PayTitleModal from "@/components/PayTitleModal.vue";
 import RecommendCue from "@/components/RecommendCue.vue";
@@ -214,6 +222,7 @@ const welcomeOpen = ref(false);
 const welcomeReturning = ref(false);
 const confirmOpen = ref(false);
 const leaveOpen = ref(false);
+const thankAllOpen = ref(false);
 const leaveReason = ref<WatchlistLeaveReason | null>(null);
 const payGateOpen = ref(false);
 const payTitleOpen = ref(false);
@@ -243,6 +252,7 @@ function closeLocalOverlays() {
   welcomeOpen.value = false;
   confirmOpen.value = false;
   leaveOpen.value = false;
+  thankAllOpen.value = false;
   leaveReason.value = null;
   payGateOpen.value = false;
   payTitleOpen.value = false;
@@ -361,6 +371,10 @@ function previewOverlay(id: CueLabOverlayId) {
   if (id === "watchlist-leave") {
     leaveReason.value = null;
     leaveOpen.value = true;
+    return;
+  }
+  if (id === "watchlist-leave-thank-all") {
+    thankAllOpen.value = true;
     return;
   }
   if (id === "pay-only-gate") {

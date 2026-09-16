@@ -4,7 +4,7 @@
     <CommentFeedGrouped
       :items="items"
       :own-wallet="ownWallet"
-      :thank-busy-id="thankBusyId"
+      :thank-busy-id="null"
       hide-author
       @open-title="goToTitle"
       @thank="thankComment"
@@ -27,7 +27,6 @@
 import { ref, computed, watch } from "vue";
 import { useRouter } from "vue-router";
 import {
-  type AchievementKind,
   type CommentFeedItem,
   type HandleCommentsResponse,
 } from "@cinima/shared";
@@ -36,7 +35,6 @@ import { useApi } from "@/composables/useApi";
 import { handleCommentsPath } from "@/lib/handleComments";
 import { acceptedWaitLabel } from "@/lib/acceptedWait";
 import { useAuthStore } from "@/stores/auth";
-import { useMarqueeStore } from "@/stores/marquee";
 import { useUserSendStore } from "@/stores/userSend";
 
 const props = defineProps<{
@@ -50,7 +48,6 @@ const authStore = useAuthStore();
 const items = ref<CommentFeedItem[]>([]);
 const hasMore = ref(false);
 const loadingMore = ref(false);
-const thankBusyId = ref<number | null>(null);
 
 const ownWallet = computed(() => authStore.user?.walletAddress ?? null);
 
@@ -89,36 +86,14 @@ const goToTitle = (titleId: string) => {
   router.push({ name: "title", params: { id: titleId } });
 };
 
-const thankComment = async (item: CommentFeedItem) => {
-  if (thankBusyId.value || item.thanked) return;
-  thankBusyId.value = item.id;
-  try {
-    const data = await request<{
-      comment: CommentFeedItem;
-      earnedAchievements?: AchievementKind[];
-    }>(`/comments/${item.id}/thanks`, { method: "POST" });
-    items.value = items.value.map((row) =>
-      row.id === item.id
-        ? {
-            ...row,
-            thanksCount: data.comment.thanksCount,
-            thanked: data.comment.thanked,
-            sent: data.comment.sent,
-          }
-        : row
-    );
-    if (data.earnedAchievements?.length) {
-      useMarqueeStore().enqueue(data.earnedAchievements);
-    }
-    useUserSendStore().offer({
-      kind: "comment",
-      toWallet: item.walletAddress,
-      handle: item.handle,
-      commentId: item.id,
-    });
-  } finally {
-    thankBusyId.value = null;
-  }
+const thankComment = (item: CommentFeedItem) => {
+  if (item.thanked) return;
+  useUserSendStore().offer({
+    kind: "comment",
+    toWallet: item.walletAddress,
+    handle: item.handle,
+    commentId: item.id,
+  });
 };
 
 const offerCommentSend = (item: CommentFeedItem) => {
@@ -137,6 +112,22 @@ watch(
     if (wallet) void reload();
   },
   { immediate: true }
+);
+
+watch(
+  () => useUserSendStore().lastThanked,
+  (thanked) => {
+    if (!thanked || thanked.kind !== "comment") return;
+    items.value = items.value.map((row) =>
+      row.id === thanked.commentId
+        ? {
+            ...row,
+            thanked: true,
+            thanksCount: row.thanked ? row.thanksCount : row.thanksCount + 1,
+          }
+        : row
+    );
+  }
 );
 
 watch(

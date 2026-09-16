@@ -2,6 +2,7 @@
   <div class="gate-modal" data-scroll-trap role="presentation" @click.self="$emit('close')">
     <div
       class="gate-dialog nq-card"
+      data-scroll-y
       role="dialog"
       aria-modal="true"
       :aria-labelledby="titleId"

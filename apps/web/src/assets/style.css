@@ -97,6 +97,19 @@ body {
   font-family: var(--font);
 }
 
+/* Overlay chrome: native pan on children would rubber-band .app-content. */
+[data-scroll-trap],
+[data-scroll-trap] * {
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+[data-scroll-trap] textarea,
+[data-scroll-trap] input,
+[data-scroll-trap] [data-scroll-y] {
+  touch-action: pan-y;
+}
+
 .app-column {
   width: 100%;
   max-width: var(--column-max);

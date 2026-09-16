@@ -82,6 +82,7 @@
               v-if="noteOpen"
               :id="noteListId"
               class="send-nim-note-list"
+              data-scroll-y
               role="listbox"
               :aria-labelledby="noteLabelId"
             >

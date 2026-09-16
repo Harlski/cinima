@@ -22,6 +22,18 @@ describe("viewportChromeCssVars", () => {
       "--vv-bottom-inset": "0px",
     });
   });
+
+  it("does not deform page chrome while overlay trap is open", () => {
+    expect(
+      viewportChromeCssVars({ offsetTop: 52, height: 748 }, 800, {
+        freeze: true,
+      })
+    ).toEqual({
+      "--vv-offset-top": "0px",
+      "--vv-height": "800px",
+      "--vv-bottom-inset": "0px",
+    });
+  });
 });
 
 describe("bottomTabsTopPx", () => {

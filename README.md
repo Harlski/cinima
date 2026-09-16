@@ -108,4 +108,5 @@ See `.env.example` and `apps/web/.env.example`.
 ## Contact
 
 - X: [cinima_app](https://x.com/cinima_app)
+- Telegram: [cinima_app](https://t.me/cinima_app)
 - Email: [cinima.app@gmail.com](mailto:cinima.app@gmail.com)

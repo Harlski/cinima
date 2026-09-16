@@ -22,7 +22,7 @@
         <div v-else-if="people.length === 0" class="state muted">
           No more Handles to follow right now.
         </div>
-        <ul v-else class="people-list">
+        <ul v-else class="people-list" data-scroll-y>
           <li
             v-for="person in people"
             :key="person.walletAddress"

@@ -134,7 +134,7 @@
           aria-label="Close episode"
           @click="selected = null"
         />
-        <div class="episode-dialog" ref="dialogEl" tabindex="-1">
+        <div class="episode-dialog" data-scroll-y ref="dialogEl" tabindex="-1">
           <div class="detail-top">
             <div>
               <p class="detail-code">S{{ selected.season }} · E{{ selected.episode }}</p>

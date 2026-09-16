@@ -3,6 +3,7 @@
     <div class="peek-modal" data-scroll-trap role="presentation" @click.self="$emit('close')">
       <div
         class="peek-dialog nq-card"
+        data-scroll-y
         role="dialog"
         aria-modal="true"
         aria-labelledby="followee-peek-title"

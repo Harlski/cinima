@@ -65,6 +65,7 @@ describe("Cue lab", () => {
       "send-nim",
       "send-nim-sent",
       "watchlist-leave",
+      "watchlist-leave-thank-all",
       "pay-only-gate",
       "pay-title",
       "share-sheet",

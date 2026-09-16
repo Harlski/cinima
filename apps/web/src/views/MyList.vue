@@ -93,9 +93,13 @@
       :pending="pendingConfirm"
       :message="confirmMessage"
       :reason="leaveReason"
+      :thank-all="thankAllCue"
+      :thank-all-busy="thankAllBusy"
       @update:reason="leaveReason = $event"
       @cancel="cancelConfirm"
       @confirm="onConfirmAction"
+      @cancel-thank-all="cancelThankAll"
+      @confirm-thank-all="confirmThankAll"
     />
 
     <button
@@ -149,7 +153,11 @@ const {
   pendingConfirm,
   confirmMessage,
   leaveReason,
+  thankAllCue,
+  thankAllBusy,
   cancelConfirm,
+  cancelThankAll,
+  confirmThankAll,
   confirmPending,
   requestToggleFavorite,
   requestToggleWatchlist,

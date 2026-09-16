@@ -7,6 +7,7 @@ const webRoot = path.resolve(__dirname, "..");
 const overlaySources = [
   "src/components/ConfirmDialog.vue",
   "src/components/WatchlistLeaveDialog.vue",
+  "src/components/ThankAllCueDialog.vue",
   "src/components/SendNimDialog.vue",
   "src/components/FolloweePeekSheet.vue",
   "src/components/FavoritersSheet.vue",

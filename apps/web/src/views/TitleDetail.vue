@@ -233,7 +233,6 @@
                   :thanked="comment.thanked"
                   :sent="comment.sent"
                   :count="comment.thanksCount"
-                  :busy="thankBusyId === comment.id"
                   @thank="thankComment(comment)"
                   @send="offerCommentSend(comment)"
                 />
@@ -294,7 +293,6 @@
       :initial-tab="tastePeopleTab"
       :recommend-count="title.recommendCount"
       :favorite-count="title.favoriteCount"
-      :busy-wallet="thankBusyWallet"
       @close="favoritersOpen = false"
       @open-profile="onOpenFavoriterProfile"
       @thank="thankPerson"
@@ -305,9 +303,13 @@
       :pending="pendingConfirm"
       :message="confirmMessage"
       :reason="leaveReason"
+      :thank-all="thankAllCue"
+      :thank-all-busy="thankAllBusy"
       @update:reason="leaveReason = $event"
       @cancel="cancelConfirm"
       @confirm="onConfirmAction"
+      @cancel-thank-all="cancelThankAll"
+      @confirm-thank-all="confirmThankAll"
     />
 
     <ConfirmDialog
@@ -369,7 +371,12 @@ const {
   pendingConfirm,
   confirmMessage,
   leaveReason,
+  thankAllCue,
+  thankAllBusy,
+  lastThankAllTitleId,
   cancelConfirm,
+  cancelThankAll,
+  confirmThankAll,
   confirmPending,
   requestToggleFavorite,
   requestToggleWatchlist,
@@ -398,8 +405,6 @@ const editingCommentId = ref<number | null>(null);
 const editText = ref("");
 const savingEdit = ref(false);
 const commentPendingDelete = ref<number | null>(null);
-const thankBusyId = ref<number | null>(null);
-const thankBusyWallet = ref<string | null>(null);
 const suggesters = ref<TitleSuggester[]>([]);
 const thankingAll = ref(false);
 const favoritersOpen = ref(false);
@@ -596,30 +601,13 @@ const isOwnComment = (comment: CommentDto) =>
   comment.walletAddress === meWallet.value;
 
 const thankComment = async (comment: CommentDto) => {
-  if (thankBusyId.value || comment.thanked || isOwnComment(comment)) return;
-  thankBusyId.value = comment.id;
-  try {
-    const data = await request<{
-      comment: CommentDto;
-      earnedAchievements?: AchievementKind[];
-    }>(`/comments/${comment.id}/thanks`, { method: "POST" });
-    comments.value = comments.value.map((c) =>
-      c.id === comment.id ? { ...c, ...data.comment } : c
-    );
-    if (data.earnedAchievements?.length) {
-      useMarqueeStore().enqueue(data.earnedAchievements);
-    }
-    useUserSendStore().offer({
-      kind: "comment",
-      toWallet: comment.walletAddress,
-      handle: comment.handle,
-      commentId: comment.id,
-    });
-  } catch (err) {
-    console.error("Comment Thanks failed:", err);
-  } finally {
-    thankBusyId.value = null;
-  }
+  if (comment.thanked || isOwnComment(comment)) return;
+  useUserSendStore().offer({
+    kind: "comment",
+    toWallet: comment.walletAddress,
+    handle: comment.handle,
+    commentId: comment.id,
+  });
 };
 
 const offerCommentSend = (comment: CommentDto) => {
@@ -716,34 +704,14 @@ const onOpenFavoriterProfile = (wallet: string) => {
   goToUser(wallet);
 };
 
-const thankPerson = async (person: TitleSuggester) => {
-  if (!title.value || person.thanked || thankBusyWallet.value) return;
-  thankBusyWallet.value = person.walletAddress;
-  try {
-    const data = await request<{ created: boolean; earnedAchievements?: AchievementKind[] }>(
-      "/thanks",
-      {
-        method: "POST",
-        body: JSON.stringify({ toWallet: person.walletAddress, titleId: title.value.id }),
-      }
-    );
-    suggesters.value = suggesters.value.map((s) =>
-      s.walletAddress === person.walletAddress ? { ...s, thanked: true } : s
-    );
-    if (data.earnedAchievements?.length) {
-      useMarqueeStore().enqueue(data.earnedAchievements);
-    }
-    useUserSendStore().offer({
-      kind: "title",
-      toWallet: person.walletAddress,
-      handle: person.handle,
-      titleId: title.value.id,
-    });
-  } catch (err) {
-    console.error("Thanks failed:", err);
-  } finally {
-    thankBusyWallet.value = null;
-  }
+const thankPerson = (person: TitleSuggester) => {
+  if (!title.value || person.thanked) return;
+  useUserSendStore().offer({
+    kind: "title",
+    toWallet: person.walletAddress,
+    handle: person.handle,
+    titleId: title.value.id,
+  });
 };
 
 const offerTitleSend = (person: TitleSuggester) => {
@@ -755,6 +723,36 @@ const offerTitleSend = (person: TitleSuggester) => {
     titleId: title.value.id,
   });
 };
+
+watch(
+  () => useUserSendStore().lastThanked,
+  (thanked) => {
+    if (!thanked) return;
+    if (thanked.kind === "title") {
+      suggesters.value = suggesters.value.map((s) =>
+        s.walletAddress === thanked.toWallet ? { ...s, thanked: true } : s
+      );
+      return;
+    }
+    comments.value = comments.value.map((c) =>
+      c.id === thanked.commentId
+        ? {
+            ...c,
+            thanked: true,
+            thanksCount: c.thanked ? c.thanksCount : c.thanksCount + 1,
+          }
+        : c
+    );
+  }
+);
+
+watch(
+  lastThankAllTitleId,
+  (id) => {
+    if (!id || id !== title.value?.id) return;
+    suggesters.value = suggesters.value.map((s) => ({ ...s, thanked: true }));
+  }
+);
 
 watch(
   () => useUserSendStore().lastAttached,

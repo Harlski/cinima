@@ -43,6 +43,7 @@ export const CUE_LAB_OVERLAYS = [
   { id: "send-nim", label: "Send Custom Message", group: "Modals" },
   { id: "send-nim-sent", label: "Send sent", group: "Modals" },
   { id: "watchlist-leave", label: "Watchlist leave", group: "Modals" },
+  { id: "watchlist-leave-thank-all", label: "Watchlist leave Thank all", group: "Modals" },
   { id: "pay-only-gate", label: "Pay-only gate", group: "Modals" },
   { id: "pay-title", label: "Title gate", group: "Modals" },
   { id: "share-sheet", label: "Share sheet", group: "Modals" },

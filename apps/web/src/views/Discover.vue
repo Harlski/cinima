@@ -104,7 +104,7 @@
         <CommentFeedGrouped
           :items="commentFeed"
           :own-wallet="authStore.user?.walletAddress ?? null"
-          :thank-busy-id="thankBusyId"
+          :thank-busy-id="null"
           @open-user="goToUser"
           @open-title="goToTitle"
           @thank="thankComment"
@@ -190,9 +190,13 @@
       :pending="pendingConfirm"
       :message="confirmMessage"
       :reason="leaveReason"
+      :thank-all="thankAllCue"
+      :thank-all-busy="thankAllBusy"
       @update:reason="leaveReason = $event"
       @cancel="cancelConfirm"
       @confirm="onConfirmAction"
+      @cancel-thank-all="cancelThankAll"
+      @confirm-thank-all="confirmThankAll"
     />
   </div>
 </template>
@@ -307,7 +311,11 @@ const {
   pendingConfirm,
   confirmMessage,
   leaveReason,
+  thankAllCue,
+  thankAllBusy,
   cancelConfirm,
+  cancelThankAll,
+  confirmThankAll,
   confirmPending,
   requestToggleFavorite,
   requestToggleWatchlist,
@@ -351,7 +359,6 @@ const followingPeople = ref<FollowingPerson[]>([]);
 const peekWallet = ref<string | null>(null);
 const peekProfile = ref<PublicProfile | null>(null);
 const peekLoading = ref(false);
-const thankBusyId = ref<number | null>(null);
 const findPeopleOpen = ref(false);
 const findPeople = ref<FindPeopleEntry[]>([]);
 const peopleLoading = ref(false);
@@ -361,6 +368,22 @@ const followingStripReady = ref(false);
 const discoverApplied = ref(false);
 /** Creator row injected when Find people is filtered for the guided tour. */
 const tourCreatorEntry = ref<FindPeopleEntry | null>(null);
+
+watch(
+  () => useUserSendStore().lastThanked,
+  (thanked) => {
+    if (!thanked || thanked.kind !== "comment") return;
+    commentFeed.value = commentFeed.value.map((row) =>
+      row.id === thanked.commentId
+        ? {
+            ...row,
+            thanked: true,
+            thanksCount: row.thanked ? row.thanksCount : row.thanksCount + 1,
+          }
+        : row
+    );
+  }
+);
 
 watch(
   () => useUserSendStore().lastAttached,
@@ -594,36 +617,14 @@ const onPeekOpenTitle = (title: TitleSummary) => {
   goToTitle(title.id);
 };
 
-const thankComment = async (item: CommentFeedItem) => {
-  if (thankBusyId.value || item.thanked) return;
-  thankBusyId.value = item.id;
-  try {
-    const data = await request<{
-      comment: CommentFeedItem;
-      earnedAchievements?: AchievementKind[];
-    }>(`/comments/${item.id}/thanks`, { method: "POST" });
-    commentFeed.value = commentFeed.value.map((row) =>
-      row.id === item.id
-        ? {
-            ...row,
-            thanksCount: data.comment.thanksCount,
-            thanked: data.comment.thanked,
-            sent: data.comment.sent,
-          }
-        : row
-    );
-    if (data.earnedAchievements?.length) {
-      useMarqueeStore().enqueue(data.earnedAchievements);
-    }
-    useUserSendStore().offer({
-      kind: "comment",
-      toWallet: item.walletAddress,
-      handle: item.handle,
-      commentId: item.id,
-    });
-  } finally {
-    thankBusyId.value = null;
-  }
+const thankComment = (item: CommentFeedItem) => {
+  if (item.thanked) return;
+  useUserSendStore().offer({
+    kind: "comment",
+    toWallet: item.walletAddress,
+    handle: item.handle,
+    commentId: item.id,
+  });
 };
 
 const offerCommentSend = (item: CommentFeedItem) => {

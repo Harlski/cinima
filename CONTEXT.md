@@ -68,6 +68,10 @@ _Avoid_: rating, review, required dropdown
 After a Watchlist leave, if the Title is not a Favorite, a second confirm asks whether to Favorite it.
 _Avoid_: auto-favorite on leave, combining Favorite into the leave confirm
 
+**Watchlist leave Thank all cue**:
+After a Watchlist leave, if remaining peers Favorited the Title and are unthanked, a confirm offers Thank all. Any Watchlist leave reason; skipped during the Guided tour. Distinct from Send Custom Message; Thank all does not open Pay sheets.
+_Avoid_: User Send blast, required thanks on leave, combining Thank all into the leave confirm
+
 **Watchlist Share**:
 The unauthenticated share page for one Handle plus their current Watchlist. It asks the recipient to help pick what to watch next. Identicon and Handle open Public Profile; Explore CINIMA is the page CTA. Live with the Watchlist, not a frozen snapshot.
 _Avoid_: Public Profile, Title Share, My List as a public URL, Watchlist as automatically public
@@ -109,16 +113,16 @@ Required TMDB credit: logo plus the non-endorsement notice that the application 
 _Avoid_: powered by IMDb, sourced from OMDb
 
 **Thanks**:
-A user’s directed signal that another user’s Favorite of a title was useful. Binary per thanker, thankee, and title. Distinct from Comment Thanks. May attach a Reward and at most one User Send.
+A user’s directed signal that another user’s Favorite of a title was useful. Binary per thanker, thankee, and title. Distinct from Comment Thanks. May attach a Reward and at most one User Send. One-to-one Thanks opens Send Custom Message first; the mark lands when they confirm a note. Not now sends no Thanks.
 _Avoid_: tip, like, kudos, shout-out, Comment Thanks as the same mark
 
 **Comment Thanks**:
-A user’s directed signal that another user’s Comment was useful. Binary per thanker and Comment. Distinct from Thanks. Counts toward Bravo, Encore, Thanks received, and Presence heatmap.
+A user’s directed signal that another user’s Comment was useful. Binary per thanker and Comment. Distinct from Thanks. Counts toward Bravo, Encore, Thanks received, and Presence heatmap. Opens Send Custom Message first; the mark lands when they confirm a note. Not now sends no Comment Thanks.
 _Avoid_: like, kudos, title Thanks as the same mark, unlike
 
 **Thank all**:
-One action that sends Thanks to every remaining peer who Favorited a title (including those who Recommended it). On title detail it appears when peers remain unthanked. The Handle list opens from Title taste counts. Individual per-peer Thanks are offered in that list, not as a second Favorited count on the page.
-_Avoid_: mass tip, blast, thank everyone as a separate mark
+One action that sends Thanks to every remaining peer who Favorited a title (including those who Recommended it). On title detail it appears when peers remain unthanked. After a Watchlist leave, the Watchlist leave Thank all cue offers the same action. The Handle list opens from Title taste counts. Individual per-peer Thanks are offered in that list, not as a second Favorited count on the page. Thank all does not open Send Custom Message.
+_Avoid_: mass tip, blast, thank everyone as a separate mark, User Send on Thank all
 
 **Favorites onboarding**:
 The Discover gate for accounts under the Favorite minimum. Shows three scrolling poster rows drawn from the local Catalog cache: recognizable recent movies and TV (with posters), ranked by peer Favorite overlap then popularity. Selection is local until Continue commits Favorites; Skip remembers the choice on the account and enters For You with popular cached suggestions. Continue and Skip leave the picker for an Accepted wait while Discover loads. No title detail or search on this screen.
@@ -173,7 +177,7 @@ An outgoing NIM transfer from the Sender wallet to a Handle's wallet, with a mem
 _Avoid_: notification, tip, payout, treasury transfer, like, User Send
 
 **User Send**:
-A 1 NIM transfer the thanker approves in Nimiq Pay to the thankee, with an optional custom memo picked from a fixed list. Pay may broadcast from a hop wallet rather than the signed-in address. UI: Send Custom Message. Optional extra on one-to-one Thanks or Comment Thanks; at most one successful User Send per Thanks. Cancel or fail leaves Thanks in place. Never paid to Cinima.
+A 1 NIM transfer the thanker approves in Nimiq Pay to the thankee, with an optional custom memo picked from a fixed list. Pay may broadcast from a hop wallet rather than the signed-in address. UI: Send Custom Message. Paid note on one-to-one Thanks or Comment Thanks; the Free Thanks note lands the mark with no NIM. Custom-message NIM goes to them, not Cinima. At most one successful User Send per Thanks. Cancel or fail after the mark has landed leaves Thanks in place.
 _Avoid_: tip, gift, Reward, Send, profile gift, payment to Cinima, free-text memo
 
 **Received list**:
@@ -261,5 +265,5 @@ Time a signed-in Handle spent with Cinima in the foreground, counted in Studio. 
 _Avoid_: session duration, screen time, DAU as a product term
 
 **Landing**:
-The public root page (`/` and `/gate`) that explains what Cinima is. Shows a scrolling strip of title-card posters loaded from the TMDB image CDN (curated `poster_path` list; not vendored in the repo), with TMDB attribution on the page. Outside Nimiq Pay the CTA is Explore (same Enter styling; opens a centered pay-only gate modal with Already Installed? (open) in a gold glow via HTTPS Pay intent (`https://nimpay.app/miniapps/open/…`), Get Nimiq Pay, and Inquiries; on a desktop, clicking Already Installed? shows a Full access only on mobile tooltip, then moves the gold glow to Get Nimiq Pay with a Learn about Nimiq Pay tooltip); inside Pay the CTA is Enter, which connects the wallet while staying on Landing, shows a Welcome / Welcome Back identicon overlay, then enters Discover (Favorites onboarding or For You). Landing never auto-boots auth. Contact is X (https://x.com/cinima_app) and Email (cinima.app@gmail.com). Public Profile shows a floating Explore CINIMA button (no bar chrome; `2.75rem + safe-area-inset-bottom` lift). Title Share and Watchlist Share show Explore CINIMA in the page content; Identicon and Handle still open Public Profile. A Short Share that opens a Title Share uses that Title Share layout. Outside Pay, title taps open a gate modal that matches Title Share layout (poster, year / media / rating, overview) plus Already Installed / Get Nimiq Pay, X + Telegram, and View on IMDb.
+The public root page (`/` and `/gate`) that explains what Cinima is. Shows a scrolling strip of title-card posters loaded from the TMDB image CDN (curated `poster_path` list; not vendored in the repo), with TMDB attribution on the page. Outside Nimiq Pay the CTA is Explore (same Enter styling; opens a centered pay-only gate modal with Already Installed? (open) in a gold glow via HTTPS Pay intent (`https://nimpay.app/miniapps/open/…`), Get Nimiq Pay, and Inquiries; on a desktop, clicking Already Installed? shows a Full access only on mobile tooltip, then moves the gold glow to Get Nimiq Pay with a Learn about Nimiq Pay tooltip); inside Pay the CTA is Enter, which connects the wallet while staying on Landing, shows a Welcome / Welcome Back identicon overlay, then enters Discover (Favorites onboarding or For You). Landing never auto-boots auth. Contact is X (https://x.com/cinima_app) and Email (cinima.app@gmail.com). Pay-only gates and the Guided tour done card also offer Telegram (https://t.me/cinima_app). Public Profile shows a floating Explore CINIMA button (no bar chrome; `2.75rem + safe-area-inset-bottom` lift). Title Share and Watchlist Share show Explore CINIMA in the page content; Identicon and Handle still open Public Profile. A Short Share that opens a Title Share uses that Title Share layout. Outside Pay, title taps open a gate modal that matches Title Share layout (poster, year / media / rating, overview) plus Already Installed / Get Nimiq Pay, X + Telegram (https://t.me/cinima_app), and View on IMDb.
 _Avoid_: marketing site, splash, home feed, auto sign-in on open, navigating into the app before wallet connect, vendoring studio posters in git

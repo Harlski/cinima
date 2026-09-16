@@ -34,13 +34,15 @@ export function visualViewportBottomInsetPx(
 /** CSS custom properties that pin fixed chrome to the visual viewport. */
 export function viewportChromeCssVars(
   viewport: VisualViewportSnapshot | null,
-  layoutHeight: number
+  layoutHeight: number,
+  opts?: { freeze?: boolean }
 ): Record<"--vv-offset-top" | "--vv-height" | "--vv-bottom-inset", string> {
-  const { offsetTop, height } = saneVisualViewport(viewport, layoutHeight);
+  const source = opts?.freeze ? null : viewport;
+  const { offsetTop, height } = saneVisualViewport(source, layoutHeight);
   return {
     "--vv-offset-top": `${offsetTop}px`,
     "--vv-height": `${height}px`,
-    "--vv-bottom-inset": `${visualViewportBottomInsetPx(viewport, layoutHeight)}px`,
+    "--vv-bottom-inset": `${visualViewportBottomInsetPx(source, layoutHeight)}px`,
   };
 }
 

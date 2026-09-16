@@ -14,6 +14,24 @@ export const WATCHLIST_LEAVE_REASON_LABELS: Record<WatchlistLeaveReason, string>
 
 export const WATCHLIST_LEAVE_REASON_PLACEHOLDER = "Optional";
 
+/** After a Watchlist leave, offer Thank all when unthanked Favoriters remain. */
+export const THANK_ALL_CUE_MESSAGE = "Thank everyone who Favorited this?";
+export const THANK_ALL_CUE_CONFIRM = "Thank all";
+export const THANK_ALL_CUE_CANCEL = "Not now";
+
+export function unthankedFavoriterCount(
+  people: { thanked: boolean }[] | null | undefined
+): number {
+  return (people ?? []).filter((person) => !person.thanked).length;
+}
+
+export function shouldOfferThankAllCue(opts: {
+  unthankedCount: number;
+  tourActive: boolean;
+}): boolean {
+  return opts.unthankedCount > 0 && !opts.tourActive;
+}
+
 export function isWatchlistLeaveReason(value: string): value is WatchlistLeaveReason {
   return (WATCHLIST_LEAVE_REASONS as readonly string[]).includes(value);
 }
