@@ -1,7 +1,13 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { useApi } from "@/composables/useApi";
-import type { AchievementKind, TitleSummary, WatchlistLeaveReason } from "@cinima/shared";
+import type {
+  AchievementKind,
+  MediaType,
+  TitleSummary,
+  WatchlistFlingResponse,
+  WatchlistLeaveReason,
+} from "@cinima/shared";
 import { useMarqueeStore } from "@/stores/marquee";
 
 export const useWatchlistStore = defineStore("watchlist", () => {
@@ -15,6 +21,23 @@ export const useWatchlistStore = defineStore("watchlist", () => {
 
   const upsertTitle = (title: TitleSummary) => {
     titles.value = [title, ...titles.value.filter((t) => t.id !== title.id)];
+  };
+
+  const applyOrder = (next: TitleSummary[]) => {
+    titles.value = next;
+    ids.value = new Set(next.map((t) => t.id));
+  };
+
+  const persistFling = async (mediaType: MediaType, titleIds: string[]): Promise<void> => {
+    const data = await request<WatchlistFlingResponse>("/watchlist/fling", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mediaType, titleIds }),
+    });
+    if (data.items?.length) applyOrder(data.items);
+    if (data.earnedAchievements?.length) {
+      useMarqueeStore().enqueue(data.earnedAchievements);
+    }
   };
 
   const toggle = async (
@@ -94,6 +117,8 @@ export const useWatchlistStore = defineStore("watchlist", () => {
     loading,
     count,
     isOnWatchlist,
+    applyOrder,
+    persistFling,
     toggle,
     load,
     refresh,

@@ -56,6 +56,14 @@ _Avoid_: un-recommended favorite, leftover favorite
 A user’s save-for-later queue of titles they intend to watch. Distinct from Favorite (taste signal) and Recommend (gold-star upgrade). Shown on the Watchlist tab as a browsable deck. Not listed on Public Profile; sharing it is a Watchlist Share.
 _Avoid_: watchlist as UI label (use “My List”), save, bookmark, Watchlist as a taste mark
 
+**Watchlist order**:
+The sequence of titles in a Watchlist. Starts newest-add first. A Watchlist fling shuffles only the visible media type in place; the other type keeps its slots. A new add of that media type goes first. A Watchlist leave keeps the remaining sequence.
+_Avoid_: recency as the only order, mixing Movies into the TV deck
+
+**Watchlist fling**:
+A downward drag on the selected Watchlist title that mixes up the visible deck and persists Watchlist order. Needs at least two titles of that media type. Distinct from Pass.
+_Avoid_: Pass, refresh, drag-to-reorder as a list editor
+
 **Watchlist leave**:
 A recorded exit from Watchlist. An optional Watchlist leave reason is stored so a watched history can exist later; Cinima does not show that history yet.
 _Avoid_: watched tab, history as a current product surface, required reason
@@ -233,7 +241,7 @@ Creator-only Telegram notices of live usage: sign-in, search, title view, Favori
 _Avoid_: webhook log, Slack alert, analytics ping, Studio notification
 
 **Achievement**:
-A named, once-earned credit for a Cinima action that teaches the product or rewards coming back. None are awarded until the Guided tour is completed or skipped, except Joined the crew, which is awarded with the Join grant and does not open that gate. When that gate opens, other actions already taken count. The catalog: Joined the crew (Join grant), Opening night (first Recommend), Full house (all movie and TV Recommend slots filled), Word of mouth (Title Share), What's next (Watchlist Share), Bravo (sent Thanks), Encore (received Thanks), High seas (ten unique title views), Season ticket (second distinct UTC day with Presence), That's a wrap (finished the Guided tour), In the listings (first Search), Save that for later (Watchlist add on a title opened from Search), That's the one (Recommend on a title opened from Search), Plus one (first Follow), On the cutting room floor (fifty unique Passes).
+A named, once-earned credit for a Cinima action that teaches the product or rewards coming back. None are awarded until the Guided tour is completed or skipped, except Joined the crew, which is awarded with the Join grant and does not open that gate. When that gate opens, other actions already taken count. The catalog: Joined the crew (Join grant), Opening night (first Recommend), Full house (all movie and TV Recommend slots filled), Word of mouth (Title Share), What's next (Watchlist Share), Bravo (sent Thanks), Encore (received Thanks), High seas (ten unique title views), Season ticket (second distinct UTC day with Presence), That's a wrap (finished the Guided tour), In the listings (first Search), Save that for later (Watchlist add on a title opened from Search), That's the one (Recommend on a title opened from Search), Plus one (first Follow), On the cutting room floor (fifty unique Passes), Jump cut (ten Watchlist flings).
 _Avoid_: badge as a separate product term, XP, streak freeze, daily quest, points economy, learning pathway as a separate product, wishlist
 
 **Achievement count**:

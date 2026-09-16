@@ -70,7 +70,8 @@ const statements = [
   `CREATE TABLE IF NOT EXISTS watchlist (
     wallet_address TEXT NOT NULL,
     title_id TEXT NOT NULL,
-    created_at INTEGER NOT NULL
+    created_at INTEGER NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS watchlist_unique ON watchlist(wallet_address, title_id)`,
   `CREATE TABLE IF NOT EXISTS unlocks (
@@ -369,6 +370,14 @@ export async function migrate() {
   } catch {
     /* column already exists */
   }
+  try {
+    await client.execute(`ALTER TABLE watchlist ADD COLUMN sort_order INTEGER`);
+  } catch {
+    /* column already exists */
+  }
+  await client.execute(
+    `UPDATE watchlist SET sort_order = -created_at WHERE sort_order IS NULL`
+  );
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

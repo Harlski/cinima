@@ -98,6 +98,7 @@ export const watchlist = sqliteTable(
     walletAddress: text("wallet_address").notNull(),
     titleId: text("title_id").notNull(),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    sortOrder: integer("sort_order").notNull(),
   },
   (t) => [uniqueIndex("watchlist_unique").on(t.walletAddress, t.titleId)]
 );

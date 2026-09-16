@@ -21,6 +21,7 @@ import {
   type FollowingFeedResponse,
   type FollowingPeopleResponse,
   type FindPeopleResponse,
+  type WatchlistFlingResponse,
   type WatchlistResponse,
   type ShareLinkCreated,
   type CreatorPingRequest,
@@ -111,9 +112,11 @@ import {
 } from "./services/forYou.js";
 import {
   addToWatchlist,
+  flingWatchlist,
   isOnWatchlist,
   listWatchlist,
   parseLeaveReasonOrThrow,
+  parseWatchlistFlingOrThrow,
   removeFromWatchlist,
   WatchlistError,
 } from "./services/watchlist.js";
@@ -142,6 +145,7 @@ import {
   evaluateAfterTourComplete,
   evaluateAfterTourSkip,
   evaluateAfterWatchlistAdd,
+  evaluateAfterWatchlistFling,
   evaluateAfterWatchlistShare,
   evaluateAfterView,
   listCredits,
@@ -692,6 +696,29 @@ app.get("/api/watchlist", requirePay, requireAuth, async (c) => {
   const items = await listWatchlist(user.walletAddress);
   const response: WatchlistResponse = { items };
   return c.json(response);
+});
+
+app.post("/api/watchlist/fling", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    body = null;
+  }
+  try {
+    const { mediaType, titleIds } = parseWatchlistFlingOrThrow(body);
+    const items = await flingWatchlist(user.walletAddress, mediaType, titleIds);
+    if (user.handle) refreshWatchlistShareOgImage(user.handle);
+    const earnedAchievements = await evaluateAfterWatchlistFling(user.walletAddress);
+    const response: WatchlistFlingResponse = { items, earnedAchievements };
+    return c.json(response);
+  } catch (e) {
+    if (e instanceof WatchlistError) {
+      return c.json({ error: e.code, message: e.message }, 400);
+    }
+    throw e;
+  }
 });
 
 app.post("/api/watchlist/:titleId", requirePay, requireAuth, async (c) => {

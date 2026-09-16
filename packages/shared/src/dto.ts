@@ -1,6 +1,6 @@
 import type { MediaType, TitleId } from "./ids.js";
 import type { AchievementKind } from "./achievements.js";
-import type { ReceivedThanksKind } from "./sends.js";
+import type { DigestThanker, ReceivedThanksKind } from "./sends.js";
 
 export type GatePayload = {
   gate: true;
@@ -284,6 +284,11 @@ export type WatchlistResponse = {
   items: TitleSummary[];
 };
 
+export type WatchlistFlingResponse = {
+  items: TitleSummary[];
+  earnedAchievements?: AchievementKind[];
+};
+
 /** Community gold-star Recommends for empty Watchlist inspiration. */
 export type CommunityRecommendsResponse = {
   movies: TitleSummary[];
@@ -338,7 +343,7 @@ export type ReceivedThanksResponse = {
 export type ReturnDigest = {
   thanksCount: number;
   nimReceived: number;
-  thankers: { walletAddress: string; handle: string | null }[];
+  thankers: DigestThanker[];
 };
 
 export type HeartbeatResponse = {

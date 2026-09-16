@@ -149,6 +149,7 @@ describe("Community Recommends HTTP API", () => {
       walletAddress: WALLET,
       titleId: "movie:550",
       createdAt: new Date(),
+      sortOrder: 0,
     });
 
     const res = await app.fetch(

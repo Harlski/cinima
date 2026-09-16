@@ -3,6 +3,7 @@ import {
   ACHIEVEMENT_KINDS,
   CUTTING_ROOM_FLOOR_PASSES,
   HIGH_SEAS_UNIQUE_VIEWS,
+  JUMP_CUT_FLINGS,
   achievementHow,
   achievementTitle,
   achievementsEligible,
@@ -23,6 +24,7 @@ import {
   shouldAwardPlusOne,
   shouldAwardCuttingRoomFloor,
   shouldAwardJoinedTheCrew,
+  shouldAwardJumpCut,
   shouldMarqueeJoinedTheCrew,
   isTourGatedAchievement,
 } from "@cinima/shared";
@@ -45,6 +47,7 @@ describe("Achievement catalog", () => {
       "thats-the-one",
       "plus-one",
       "cutting-room-floor",
+      "jump-cut",
     ]);
     expect(achievementTitle("joined-the-crew")).toBe("Joined the crew");
     expect(achievementHow("joined-the-crew")).toBe("Joined Cinima");
@@ -64,13 +67,15 @@ describe("Achievement catalog", () => {
     expect(achievementHow("plus-one")).toBe("Followed a Handle");
     expect(achievementTitle("cutting-room-floor")).toBe("On the cutting room floor");
     expect(achievementHow("cutting-room-floor")).toBe("Passed fifty titles");
+    expect(achievementTitle("jump-cut")).toBe("Jump cut");
+    expect(achievementHow("jump-cut")).toBe("Shuffled your Watchlist ten times");
   });
 
   it("lists locked catalog rows plus earned dates", () => {
     const rows = creditsCatalog([
       { kind: "opening-night", earnedAt: "2026-09-01T00:00:00.000Z" },
     ]);
-    expect(rows).toHaveLength(15);
+    expect(rows).toHaveLength(16);
     expect(rows[0]).toEqual({
       kind: "joined-the-crew",
       title: "Joined the crew",
@@ -237,6 +242,14 @@ describe("Achievement catalog", () => {
       shouldAwardCuttingRoomFloor({ alreadyEarned: true, uniquePasses: 80 })
     ).toBe(false);
     expect(isTourGatedAchievement("cutting-room-floor")).toBe(true);
+  });
+
+  it("awards Jump cut at ten Watchlist flings", () => {
+    expect(JUMP_CUT_FLINGS).toBe(10);
+    expect(shouldAwardJumpCut({ alreadyEarned: false, flingCount: 9 })).toBe(false);
+    expect(shouldAwardJumpCut({ alreadyEarned: false, flingCount: 10 })).toBe(true);
+    expect(shouldAwardJumpCut({ alreadyEarned: true, flingCount: 12 })).toBe(false);
+    expect(isTourGatedAchievement("jump-cut")).toBe(true);
   });
 
   it("awards Joined the crew once on a Join grant", () => {

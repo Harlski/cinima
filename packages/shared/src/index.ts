@@ -12,4 +12,5 @@ export * from "./titleShare.js";
 export * from "./shareOgImage.js";
 export * from "./shareVisit.js";
 export * from "./watchlistLeave.js";
+export * from "./watchlistFling.js";
 export * from "./sends.js";

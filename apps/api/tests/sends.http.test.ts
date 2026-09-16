@@ -256,6 +256,7 @@ describe("Sends", () => {
       walletAddress: LAPSED,
       titleId: TITLE_A,
       createdAt: new Date(now - 20 * 86400000),
+      sortOrder: 0,
     });
     const queued = await planSystemPings(new Date(now));
     expect(queued).toBe(1);
@@ -286,6 +287,7 @@ describe("Sends", () => {
       walletAddress: quietWallet,
       titleId: TITLE_A,
       createdAt: new Date(now - 20 * 86400000),
+      sortOrder: 0,
     });
     await db.insert(schema.sends).values(
       [1, 2, 3].map((n) => ({

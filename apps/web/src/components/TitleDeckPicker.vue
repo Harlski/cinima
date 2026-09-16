@@ -5,9 +5,16 @@
         <button
           type="button"
           class="poster poster-press"
-          :class="{ 'poster--refill-pending': isRefillPending(selectedIndex) }"
+          :class="{
+            'poster--refill-pending': isRefillPending(selectedIndex),
+            'poster--flingable': allowFling,
+          }"
           data-flight-poster
           :aria-label="`Open ${selected.title.title}`"
+          @pointerdown="onHeroPointerDown"
+          @pointermove="onHeroPointerMove"
+          @pointerup="onHeroPointerUp"
+          @pointercancel="onHeroPointerUp"
           @click="openSelected"
         >
           <PosterImg
@@ -126,6 +133,8 @@
         :class="{
           'strip--passable': allowPass,
           'strip--refilling': refillBlockingPass,
+          'strip--mixing': mixing,
+          'strip--flingable': allowFling,
         }"
         role="listbox"
         :aria-label="stripLabel"
@@ -149,10 +158,10 @@
           :data-for-you-slot="allowPass ? index : undefined"
           :data-tour="tourPassSpotlight ? TOUR_SPOTLIGHT.forYouPassCard : undefined"
           data-flight-poster
-          @pointerdown="onCardPointerDown(index, $event)"
-          @pointermove="onCardPointerMove($event)"
-          @pointerup="onCardPointerUp($event)"
-          @pointercancel="onCardPointerUp($event)"
+          @pointerdown="onWrapPointerDown(index, $event)"
+          @pointermove="onWrapPointerMove($event)"
+          @pointerup="onWrapPointerUp($event)"
+          @pointercancel="onWrapPointerUp($event)"
         >
           <TourSpotlight
             v-if="tourPassSpotlight"
@@ -234,6 +243,12 @@ import {
   syncDeckItems,
 } from "@/lib/deckSelection";
 import { titleFlightBoxFromElement } from "@/lib/titleFlight";
+import {
+  isWatchlistFling,
+  isWatchlistFlingReorder,
+  watchlistFlingToss,
+  WATCHLIST_FLING_SETTLE_MS,
+} from "@/lib/watchlistFling";
 
 export type DeckItem = {
   title: TitleSummary;
@@ -251,6 +266,7 @@ const props = withDefaults(
     showSocial?: boolean;
     showRefresh?: boolean;
     allowPass?: boolean;
+    allowFling?: boolean;
     passOnly?: boolean;
     tourPassSpotlight?: boolean;
     alwaysCenter?: boolean;
@@ -269,6 +285,7 @@ const props = withDefaults(
     showSocial: false,
     showRefresh: false,
     allowPass: false,
+    allowFling: false,
     passOnly: false,
     tourPassSpotlight: false,
     alwaysCenter: false,
@@ -288,6 +305,7 @@ const emit = defineEmits<{
   refresh: [];
   select: [titleId: string];
   pass: [titleId: string, origin: PointerEvent];
+  fling: [titleId: string];
 }>();
 
 const stripEl = ref<HTMLElement | null>(null);
@@ -350,6 +368,14 @@ let passFizzleId: number | null = null;
 let passIndex: number | null = null;
 let collapseTimer: ReturnType<typeof setTimeout> | undefined;
 let collapseStartedAt = 0;
+let flingPointerId: number | null = null;
+let flingStartX = 0;
+let flingStartY = 0;
+let flingStartScroll = 0;
+let flingAxis: "x" | "y" | null = null;
+let flingArmed = false;
+let flingIndex: number | null = null;
+const mixing = ref(false);
 const forYouMotion = useForYouMotionStore();
 const pendingRefillSlots = computed(() => new Set(forYouMotion.pendingRefillSlots));
 const refillBlockingPass = computed(
@@ -446,8 +472,13 @@ function schedulePassCollapseSettle() {
   collapseTimer = setTimeout(finishPassCollapse, wait);
 }
 
+function canFlingDeck() {
+  return props.allowFling && deckItems.value.length >= 2 && !mixing.value;
+}
+
 function openSelected() {
-  if (props.passOnly || passArmed) return;
+  if (props.passOnly || passArmed || flingArmed) return;
+  if (props.allowFling && dragging) return;
   persistVisibleCard();
   const titleId = selected.value?.title.id;
   if (titleId) emit("open", titleId);
@@ -562,6 +593,198 @@ function onPosterClick(index: number) {
   const titleId = deckItems.value[index]?.title.id;
   if (titleId) emit("select", titleId);
   void snapToIndex(index, "smooth", fromIndex);
+}
+
+function onWrapPointerDown(index: number, event: PointerEvent) {
+  if (props.allowPass) {
+    onCardPointerDown(index, event);
+    return;
+  }
+  onFlingCardPointerDown(index, event);
+}
+
+function onWrapPointerMove(event: PointerEvent) {
+  if (props.allowPass) {
+    onCardPointerMove(event);
+    return;
+  }
+  onFlingCardPointerMove(event);
+}
+
+function onWrapPointerUp(event: PointerEvent) {
+  if (props.allowPass) {
+    onCardPointerUp(event);
+    return;
+  }
+  onFlingCardPointerUp(event);
+}
+
+function onHeroPointerDown(event: PointerEvent) {
+  if (!canFlingDeck() || event.button !== 0) return;
+  flingPointerId = event.pointerId;
+  flingStartX = event.clientX;
+  flingStartY = event.clientY;
+  flingAxis = null;
+  flingIndex = selectedIndex.value;
+  dragging = false;
+  dragStartX = event.clientX;
+}
+
+function onHeroPointerMove(event: PointerEvent) {
+  if (flingPointerId !== event.pointerId || flingIndex == null) return;
+  const dy = event.clientY - flingStartY;
+  const dx = event.clientX - flingStartX;
+  if (!flingAxis) {
+    flingAxis = lockPassAxis(dx, dy);
+    if (flingAxis === "y") {
+      try {
+        (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+      } catch {
+        /* no active pointer */
+      }
+    }
+  }
+  if (flingAxis === "y") {
+    event.preventDefault();
+    const poster = event.currentTarget as HTMLElement;
+    poster.style.transform = `translateY(${Math.max(0, Math.min(dy, 72))}px)`;
+  }
+}
+
+function onHeroPointerUp(event: PointerEvent) {
+  if (flingPointerId !== event.pointerId) return;
+  const dx = event.clientX - flingStartX;
+  const dy = event.clientY - flingStartY;
+  const axis = flingAxis;
+  const poster = event.currentTarget as HTMLElement;
+  poster.style.transform = "";
+  flingPointerId = null;
+  flingAxis = null;
+  flingIndex = null;
+  dragging = Math.abs(dx) > 10 || Math.abs(dy) > 10;
+  if (axis === "y" && isWatchlistFling(dx, dy)) {
+    commitFling();
+  }
+}
+
+function onFlingCardPointerDown(index: number, event: PointerEvent) {
+  if (!canFlingDeck() || event.button !== 0) return;
+  if (index !== selectedIndex.value) return;
+  event.stopPropagation();
+  flingPointerId = event.pointerId;
+  flingStartX = event.clientX;
+  flingStartY = event.clientY;
+  flingStartScroll = stripEl.value?.scrollLeft ?? 0;
+  flingAxis = null;
+  flingIndex = index;
+  dragging = false;
+  dragStartX = event.clientX;
+}
+
+function onFlingCardPointerMove(event: PointerEvent) {
+  if (flingPointerId !== event.pointerId || flingIndex == null) return;
+  const dx = event.clientX - flingStartX;
+  const dy = event.clientY - flingStartY;
+  if (!flingAxis) {
+    flingAxis = lockPassAxis(dx, dy);
+    if (!flingAxis) return;
+    if (flingAxis === "x" && stripEl.value) {
+      stripEl.value.style.scrollSnapType = "none";
+    }
+    try {
+      (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    } catch {
+      /* no active pointer */
+    }
+  }
+  if (flingAxis === "y") {
+    event.preventDefault();
+    const wrap = event.currentTarget as HTMLElement;
+    wrap.style.transform = `translateY(${Math.max(0, Math.min(dy, 72))}px)`;
+    return;
+  }
+  const strip = stripEl.value;
+  if (strip) strip.scrollLeft = flingStartScroll - dx;
+}
+
+function onFlingCardPointerUp(event: PointerEvent) {
+  if (flingPointerId !== event.pointerId) return;
+  const dx = event.clientX - flingStartX;
+  const dy = event.clientY - flingStartY;
+  const axis = flingAxis;
+  const wrap = event.currentTarget as HTMLElement;
+  wrap.style.transform = "";
+  const strip = stripEl.value;
+  if (strip) strip.style.scrollSnapType = "";
+  flingPointerId = null;
+  flingIndex = null;
+  flingAxis = null;
+  dragging = Math.abs(dx) > 10;
+  if (dragging) pinnedIndex.value = null;
+  if (axis === "y" && isWatchlistFling(dx, dy)) {
+    commitFling();
+  }
+}
+
+function commitFling() {
+  const titleId = selected.value?.title.id;
+  if (!titleId || !canFlingDeck()) return;
+  flingArmed = true;
+  emit("fling", titleId);
+  window.setTimeout(() => {
+    flingArmed = false;
+  }, 400);
+}
+
+async function mixDeckTo(pool: DeckItem[]) {
+  const strip = stripEl.value;
+  const previous = deckItems.value;
+  const first = new Map<string, DOMRect>();
+  if (strip) {
+    [...strip.children].forEach((child, index) => {
+      const id = previous[index]?.title.id;
+      if (id) first.set(id, (child as HTMLElement).getBoundingClientRect());
+    });
+  }
+  const remembered = captureDeckSelection(previous, selectedIndex.value);
+  const next = syncDeckItems(pool, remembered);
+  mixing.value = true;
+  deckItems.value = next.items;
+  selectedIndex.value = next.selectedIndex;
+  persistSelection();
+  const titleId = deckItems.value[selectedIndex.value]?.title.id;
+  if (titleId) emit("select", titleId);
+  await nextTick();
+  const reduce = prefersReducedMotion();
+  if (strip && !reduce && first.size) {
+    const nodes = [...strip.children] as HTMLElement[];
+    nodes.forEach((node, index) => {
+      const id = next.items[index]?.title.id;
+      const from = id ? first.get(id) : undefined;
+      const toss = watchlistFlingToss(index);
+      node.style.transition = "none";
+      node.style.zIndex = "2";
+      if (!from) {
+        node.style.transform = `translate(${toss.x}px, ${toss.y}px) rotate(${toss.rotate}deg)`;
+        return;
+      }
+      const to = node.getBoundingClientRect();
+      node.style.transform = `translate(${from.left - to.left + toss.x}px, ${from.top - to.top + toss.y}px) rotate(${toss.rotate}deg)`;
+    });
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    nodes.forEach((node) => {
+      node.style.transition = `transform ${WATCHLIST_FLING_SETTLE_MS}ms cubic-bezier(0.22, 0.08, 0.18, 1)`;
+      node.style.transform = "";
+    });
+    await new Promise((resolve) => setTimeout(resolve, WATCHLIST_FLING_SETTLE_MS));
+    nodes.forEach((node) => {
+      node.style.transition = "";
+      node.style.transform = "";
+      node.style.zIndex = "";
+    });
+  }
+  mixing.value = false;
+  void snapToIndex(selectedIndex.value, reduce ? "auto" : "smooth");
 }
 
 function onCardPointerDown(index: number, event: PointerEvent) {
@@ -688,6 +911,11 @@ watch(
     if (collapseTimer) clearTimeout(collapseTimer);
     collapsingPassIds.value = [];
     leavingPassIds.value = [];
+    const previousIds = deckItems.value.map((item) => item.title.id);
+    if (props.allowFling && isWatchlistFlingReorder(previousIds, nextIds)) {
+      void mixDeckTo(props.items);
+      return;
+    }
     resetFromPool();
   }
 );
@@ -786,6 +1014,10 @@ function onResize() {
   cursor: pointer;
   color: inherit;
   -webkit-tap-highlight-color: transparent;
+}
+
+.poster--flingable {
+  touch-action: none;
 }
 
 .poster :deep(.poster-img),
@@ -971,8 +1203,13 @@ function onResize() {
   touch-action: pan-x;
 }
 
-.strip--passable {
+.strip--passable,
+.strip--flingable {
   touch-action: none;
+}
+
+.strip--mixing {
+  overflow-y: visible;
 }
 
 .strip::-webkit-scrollbar {

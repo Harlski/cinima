@@ -49,6 +49,7 @@
         :selection-key="`my-list-${activeTab}`"
         :preferred-title-id="tourPreferredTitleId"
         strip-label="Watchlist"
+        :allow-fling="!tour.active"
         dock-bottom-offset="var(--my-list-tabs-height, 2.85rem)"
         :primary-action-label="watchlistLabel"
         :primary-action-active="watchlisted"
@@ -59,6 +60,7 @@
         @primary-action="toggleWatchlist"
         @secondary-action="toggleFavorite"
         @select="selectedTitleId = $event"
+        @fling="onFling"
       />
     </template>
 
@@ -125,7 +127,7 @@
 import { computed, onActivated, onMounted, ref, watch } from "vue";
 import { RouterLink, useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
-import type { MediaType, TitleSummary } from "@cinima/shared";
+import { shuffleVisibleWatchlistIds, type MediaType, type TitleSummary } from "@cinima/shared";
 import { useFavoritesStore } from "@/stores/favorites";
 import { useWatchlistStore } from "@/stores/watchlist";
 import { useCommunityRecommends } from "@/composables/useCommunityRecommends";
@@ -204,8 +206,8 @@ const watchlisted = computed(() =>
 const favoriteLabel = computed(() => (favorited.value ? "Favorited" : "Add to Favorites"));
 const watchlistLabel = computed(() => watchlistButtonLabel(watchlisted.value));
 
-function mediaKind(title: { mediaType?: MediaType; kind?: MediaType }) {
-  return title.mediaType || title.kind;
+function mediaKind(title: { mediaType?: MediaType; kind?: MediaType }): MediaType {
+  return title.mediaType || title.kind || "movie";
 }
 
 function syncSelection() {
@@ -321,6 +323,35 @@ const goToTitleOverview = (titleId: string) => {
 const goToTitleSummary = (title: TitleSummary) => {
   goToTitle(title.id);
 };
+
+async function onFling() {
+  const mediaById: Record<string, MediaType> = {};
+  for (const title of titles.value) {
+    mediaById[title.id] = mediaKind(title);
+  }
+  const result = shuffleVisibleWatchlistIds(
+    titles.value.map((title) => title.id),
+    mediaById,
+    activeTab.value
+  );
+  if (!result.ok) return;
+  const byId = new Map<string, TitleSummary>(
+    titles.value.map((title) => [title.id, title])
+  );
+  const next = result.orderedIds.flatMap((id) => {
+    const title = byId.get(id);
+    return title ? [title] : [];
+  });
+  const visibleIds = next
+    .filter((title) => mediaKind(title) === activeTab.value)
+    .map((title) => title.id);
+  watchlistStore.applyOrder(next);
+  try {
+    await watchlistStore.persistFling(activeTab.value, visibleIds);
+  } catch {
+    await watchlistStore.refresh();
+  }
+}
 
 const goClaimHandle = () => {
   shareOpen.value = false;

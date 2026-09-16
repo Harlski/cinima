@@ -19,8 +19,10 @@ import {
   shouldAwardThatsTheOne,
   shouldAwardWhatsNext,
   shouldAwardWordOfMouth,
+  shouldAwardJumpCut,
   type AchievementKind,
   type GuidedTourResolution,
+  normalizeWallet,
 } from "@cinima/shared";
 import { db } from "../db/index.js";
 import {
@@ -393,6 +395,24 @@ async function evaluatePending(wallet: string, atMs: number): Promise<Achievemen
     }
   }
 
+  const [flingRow] = await db
+    .select({ n: count() })
+    .from(usageEvents)
+    .where(
+      and(
+        eq(usageEvents.walletAddress, normalizeWallet(wallet)),
+        eq(usageEvents.kind, "watchlist-fling")
+      )
+    );
+  if (
+    shouldAwardJumpCut({
+      alreadyEarned: have.has("jump-cut"),
+      flingCount: Number(flingRow?.n || 0),
+    })
+  ) {
+    if (await insertIfNew(wallet, "jump-cut", atMs)) earned.push("jump-cut");
+  }
+
   return orderEarnedAchievements(earned);
 }
 
@@ -474,6 +494,13 @@ export async function evaluateAfterFollow(
 }
 
 export async function evaluateAfterPass(
+  wallet: string,
+  atMs = Date.now()
+): Promise<AchievementKind[]> {
+  return evaluateIfEligible(wallet, atMs);
+}
+
+export async function evaluateAfterWatchlistFling(
   wallet: string,
   atMs = Date.now()
 ): Promise<AchievementKind[]> {
