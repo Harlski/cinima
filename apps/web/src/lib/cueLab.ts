@@ -3,6 +3,7 @@ import {
   DIGEST_THANKER_CAP,
   makeTitleId,
   type AchievementKind,
+  type DigestThanker,
   type ReturnDigest,
 } from "@cinima/shared";
 import {
@@ -105,15 +106,54 @@ export const CUE_LAB_SEND_TX_HASH =
 
 /** Local Cue lab fixture: eight Identicons, ninth Thanker only counted. */
 export function cueLabReturnDigest(): ReturnDigest {
-  const thankers = [
-    { walletAddress: "NQ05DEMOCINIMACYCLETWOWALLET0000001", handle: "demouser" },
-    { walletAddress: "NQ01PEERAAAAOVERLAPDEMOWALLET00001", handle: "cinephile" },
-    { walletAddress: "NQ02PEERBBBBTOASTEOVERLAPWALLET02", handle: "nightowl" },
-    { walletAddress: "NQ05DEMONIMCHARTSCYCLETWOWALLET0001", handle: "demoalice" },
-    { walletAddress: "NQ63XN7E020HH0RNRD6G7QT1Y7AMH1P5H84B", handle: "fudger" },
-    { walletAddress: "NQ05THANKSTESTWALLETPEERAA000001", handle: "ada" },
-    { walletAddress: "NQ05THANKSTESTWALLETPEERBB000001", handle: "nic" },
-    { walletAddress: "NQ05THANKSTESTWALLETME00000000001", handle: "meuser" },
+  const dune = makeTitleId("movie", 438631);
+  const bear = makeTitleId("tv", 136315);
+  const fightClub = makeTitleId("movie", 550);
+  const heat = makeTitleId("movie", 949);
+  const thankers: DigestThanker[] = [
+    {
+      walletAddress: "NQ05DEMOCINIMACYCLETWOWALLET0000001",
+      handle: "demouser",
+      titles: [
+        { titleId: dune, titleName: "Dune", nim: 2 },
+        { titleId: bear, titleName: "The Bear", nim: 1 },
+      ],
+    },
+    {
+      walletAddress: "NQ01PEERAAAAOVERLAPDEMOWALLET00001",
+      handle: "cinephile",
+      titles: [{ titleId: fightClub, titleName: "Fight Club", nim: 1 }],
+    },
+    {
+      walletAddress: "NQ02PEERBBBBTOASTEOVERLAPWALLET02",
+      handle: "nightowl",
+      titles: [{ titleId: heat, titleName: "Heat", nim: 0 }],
+    },
+    {
+      walletAddress: "NQ05DEMONIMCHARTSCYCLETWOWALLET0001",
+      handle: "demoalice",
+      titles: [{ titleId: dune, titleName: "Dune", nim: 1 }],
+    },
+    {
+      walletAddress: "NQ63XN7E020HH0RNRD6G7QT1Y7AMH1P5H84B",
+      handle: "fudger",
+      titles: [{ titleId: bear, titleName: "The Bear", nim: 1 }],
+    },
+    {
+      walletAddress: "NQ05THANKSTESTWALLETPEERAA000001",
+      handle: "ada",
+      titles: [{ titleId: fightClub, titleName: "Fight Club", nim: 0 }],
+    },
+    {
+      walletAddress: "NQ05THANKSTESTWALLETPEERBB000001",
+      handle: "nic",
+      titles: [{ titleId: heat, titleName: "Heat", nim: 1 }],
+    },
+    {
+      walletAddress: "NQ05THANKSTESTWALLETME00000000001",
+      handle: "meuser",
+      titles: [{ titleId: dune, titleName: "Dune", nim: 2 }],
+    },
   ];
   return {
     thanksCount: thankers.length + 1,

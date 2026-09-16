@@ -221,11 +221,24 @@ describe("Thanks HTTP API", () => {
     );
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      digest: { thanksCount: number; nimReceived: number; thankers: { walletAddress: string }[] } | null;
+      digest: {
+        thanksCount: number;
+        nimReceived: number;
+        thankers: {
+          walletAddress: string;
+          handle: string | null;
+          titles: { titleId: string; titleName: string; nim: number }[];
+        }[];
+      } | null;
     };
     expect(body.digest).toBeTruthy();
     expect(body.digest?.thanksCount).toBe(1);
     expect(body.digest?.nimReceived).toBeGreaterThanOrEqual(1);
-    expect(body.digest?.thankers[0]?.walletAddress).toBe(ME);
+    expect(body.digest?.thankers[0]).toMatchObject({
+      walletAddress: ME,
+      handle: "meuser",
+      titles: [{ titleId: TITLE_ID, titleName: "Fight Club" }],
+    });
+    expect(body.digest?.thankers[0]?.titles[0]?.nim).toBeGreaterThanOrEqual(1);
   });
 });

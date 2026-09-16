@@ -11,22 +11,55 @@
       role="dialog"
       aria-modal="true"
       aria-labelledby="digest-title"
+      @click.self="closePeek"
     >
-      <div class="digest-panel nq-card">
+      <div class="digest-panel nq-card" @click="closePeek">
         <p id="digest-title" class="digest-kicker">Since you were away</p>
         <div ref="facesRoot" class="digest-faces" :style="{ '--n': digest.thankers.length }">
           <div
             v-for="(person, i) in digest.thankers"
             :key="person.walletAddress"
             class="digest-face"
+            :class="{ 'digest-face--peek': isPeekOpen(person.walletAddress) }"
             :style="{ '--i': i }"
           >
-            <Identicon :address="person.walletAddress" :size="56" alt="" plain />
+            <button
+              type="button"
+              class="digest-face-btn"
+              :aria-label="peekFor(person).handle"
+              :aria-expanded="isPeekOpen(person.walletAddress)"
+              :aria-describedby="
+                isPeekOpen(person.walletAddress) ? peekDomId(person.walletAddress) : undefined
+              "
+              :disabled="departing"
+              @click.stop="onPeek(person.walletAddress)"
+            >
+              <Identicon :address="person.walletAddress" :size="56" alt="" plain />
+            </button>
             <span
-              v-if="cheerAt(i)"
+              v-if="cheerAt(i) && !isPeekOpen(person.walletAddress)"
               class="digest-cheer"
               aria-hidden="true"
             >{{ cheerAt(i) }}</span>
+            <div
+              v-if="isPeekOpen(person.walletAddress)"
+              :id="peekDomId(person.walletAddress)"
+              ref="peekEl"
+              class="digest-peek"
+              role="tooltip"
+              :style="{ '--peek-shift': `${peekShift}px` }"
+              @click.stop
+            >
+              <p class="digest-peek-handle">{{ peekFor(person).handle }}</p>
+              <p
+                v-for="(row, ri) in peekFor(person).rows"
+                :key="person.titles[ri]?.titleId ?? ri"
+                class="digest-peek-row"
+              >
+                <span class="digest-peek-title">{{ row.titleName }}</span>
+                <span v-if="row.nimLabel" class="digest-peek-nim">{{ row.nimLabel }}</span>
+              </p>
+            </div>
           </div>
         </div>
         <p v-if="nimLine" class="digest-nim">{{ nimLine }}</p>
@@ -48,10 +81,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onUnmounted, ref } from "vue";
+import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
-import { digestNimReceivedLabel } from "@cinima/shared";
+import {
+  digestNimReceivedLabel,
+  digestThankerPeek,
+  nextDigestPeek,
+  type DigestThanker,
+} from "@cinima/shared";
 import Identicon from "@/components/Identicon.vue";
 import { digestContinueGoesToDiscover } from "@/lib/cueLab";
 import {
@@ -60,6 +98,7 @@ import {
   DIGEST_ME_HINT_AT_MS,
   digestFaceFly,
   digestFlySettleMs,
+  digestPeekShift,
 } from "@/lib/returnDigestFly";
 import { useReturnDigestStore } from "@/stores/returnDigest";
 
@@ -68,6 +107,9 @@ const store = useReturnDigestStore();
 const { digest } = storeToRefs(store);
 const facesRoot = ref<HTMLElement | null>(null);
 const departing = ref(false);
+const peekWallet = ref<string | null>(null);
+const peekShift = ref(0);
+const peekEl = ref<HTMLElement | null>(null);
 let settleTimer: ReturnType<typeof setTimeout> | null = null;
 let hintTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -92,6 +134,50 @@ function cheerAt(index: number): string | null {
   if (!picks.includes(index)) return null;
   return index === picks[0] ? "👏" : "🎉";
 }
+
+function peekFor(person: DigestThanker) {
+  return digestThankerPeek(person);
+}
+
+function isPeekOpen(walletAddress: string) {
+  return !departing.value && peekWallet.value === walletAddress;
+}
+
+function peekDomId(walletAddress: string) {
+  return `digest-peek-${walletAddress}`;
+}
+
+function closePeek() {
+  peekWallet.value = null;
+  peekShift.value = 0;
+}
+
+function onPeek(walletAddress: string) {
+  if (departing.value) return;
+  peekWallet.value = nextDigestPeek(peekWallet.value, walletAddress);
+  peekShift.value = 0;
+}
+
+async function layoutPeek() {
+  if (!peekWallet.value || departing.value) {
+    peekShift.value = 0;
+    return;
+  }
+  peekShift.value = 0;
+  await nextTick();
+  const el = peekEl.value;
+  if (!el) return;
+  peekShift.value = digestPeekShift(el.getBoundingClientRect(), window.innerWidth);
+}
+
+watch(digest, () => {
+  peekWallet.value = null;
+  peekShift.value = 0;
+});
+
+watch(peekWallet, () => {
+  void layoutPeek();
+});
 
 function meTabBox(): DOMRect | null {
   const tab = document.querySelector("[data-digest-target=me]");
@@ -147,6 +233,7 @@ function flyFacesToMe(): boolean {
 
 function onContinue() {
   if (departing.value) return;
+  peekWallet.value = null;
   if (reduceMotion.value || !flyFacesToMe()) {
     finish();
     return;
@@ -210,6 +297,24 @@ onUnmounted(clearTimers);
   animation-delay: calc(var(--i) * 80ms), calc(0.45s + var(--i) * 80ms);
 }
 
+.digest-face--peek {
+  z-index: 12;
+  animation-play-state: paused;
+}
+
+.digest-face-btn {
+  appearance: none;
+  display: block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.digest-face-btn:disabled {
+  cursor: default;
+}
+
 .digest-face :deep(.identicon) {
   display: block;
 }
@@ -219,7 +324,77 @@ onUnmounted(clearTimers);
   top: -0.55rem;
   right: -0.35rem;
   font-size: 0.95rem;
+  pointer-events: none;
   animation: digest-cheer 0.9s ease-in-out 0.7s 3;
+}
+
+.digest-peek {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.4rem);
+  z-index: 4;
+  width: max-content;
+  max-width: min(16.5rem, calc(100vw - 1.5rem));
+  transform: translateX(calc(-50% + var(--peek-shift, 0px)));
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.55rem;
+  border: 1px solid var(--border);
+  background: var(--colors-neutral-50);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: left;
+  box-shadow: 0 10px 24px color-mix(in oklch, var(--colors-neutral) 28%, transparent);
+}
+
+.digest-peek::before {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: calc(50% - var(--peek-shift, 0px));
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--border);
+}
+
+.digest-peek::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: calc(50% - var(--peek-shift, 0px));
+  transform: translateX(-50%) translateY(-1px);
+  border: 6px solid transparent;
+  border-top-color: var(--colors-neutral-50);
+}
+
+.digest-peek-handle {
+  margin: 0 0 0.35rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.digest-peek-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.85rem;
+  margin: 0;
+}
+
+.digest-peek-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.digest-peek-nim {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--gold, #e5c158);
+  white-space: nowrap;
 }
 
 .digest-nim {
@@ -262,7 +437,8 @@ onUnmounted(clearTimers);
 .digest-modal--departing .digest-nim,
 .digest-modal--departing .digest-thanks,
 .digest-modal--departing .digest-continue,
-.digest-modal--departing .digest-cheer {
+.digest-modal--departing .digest-cheer,
+.digest-modal--departing .digest-peek {
   animation: none;
   opacity: 0;
   transition: opacity 0.18s ease;

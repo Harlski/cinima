@@ -128,6 +128,7 @@ import { computed, onActivated, onMounted, ref, watch } from "vue";
 import { RouterLink, useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
 import { shuffleVisibleWatchlistIds, type MediaType, type TitleSummary } from "@cinima/shared";
+import { watchlistFlingDeckFocus } from "@/lib/watchlistFling";
 import { useFavoritesStore } from "@/stores/favorites";
 import { useWatchlistStore } from "@/stores/watchlist";
 import { useCommunityRecommends } from "@/composables/useCommunityRecommends";
@@ -329,10 +330,18 @@ async function onFling() {
   for (const title of titles.value) {
     mediaById[title.id] = mediaKind(title);
   }
+  const visibleNow = titles.value.filter(
+    (title) => mediaKind(title) === activeTab.value
+  );
+  const focusedSlot = selectedTitleId.value
+    ? visibleNow.findIndex((title) => title.id === selectedTitleId.value)
+    : -1;
   const result = shuffleVisibleWatchlistIds(
     titles.value.map((title) => title.id),
     mediaById,
-    activeTab.value
+    activeTab.value,
+    Math.random,
+    focusedSlot >= 0 ? focusedSlot : undefined
   );
   if (!result.ok) return;
   const byId = new Map<string, TitleSummary>(
@@ -345,6 +354,11 @@ async function onFling() {
   const visibleIds = next
     .filter((title) => mediaKind(title) === activeTab.value)
     .map((title) => title.id);
+  const focus = watchlistFlingDeckFocus(
+    visibleIds,
+    focusedSlot >= 0 ? focusedSlot : undefined
+  );
+  if (focus.selectedId) selectedTitleId.value = focus.selectedId;
   watchlistStore.applyOrder(next);
   try {
     await watchlistStore.persistFling(activeTab.value, visibleIds);

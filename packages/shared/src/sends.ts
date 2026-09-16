@@ -228,13 +228,107 @@ export const DIGEST_THANKER_CAP = 8;
 /** Presence gap that counts as a return (matches API heartbeat max gap). */
 export const DIGEST_RETURN_GAP_MS = 90_000;
 
+export type DigestThankerTitle = {
+  titleId: string;
+  titleName: string;
+  nim: number;
+};
+
 export type DigestThanker = {
   walletAddress: string;
   handle: string | null;
+  titles: DigestThankerTitle[];
+};
+
+export type DigestThankerHit = {
+  walletAddress: string;
+  handle: string | null;
+  titleId: string;
+  titleName: string;
+  nim: number;
+  at: number;
+};
+
+export type DigestThankerPeek = {
+  handle: string;
+  rows: { titleName: string; nimLabel: string | null }[];
 };
 
 export function capDigestThankers<T>(thankers: T[], cap = DIGEST_THANKER_CAP): T[] {
   return thankers.slice(0, Math.max(0, cap));
+}
+
+/** One Title row; Reward and User Send on the same Title add together. */
+export function foldDigestThankerTitles(
+  hits: { titleId: string; titleName: string; nim: number }[]
+): DigestThankerTitle[] {
+  const byId = new Map<string, DigestThankerTitle>();
+  const order: string[] = [];
+  for (const hit of hits) {
+    const existing = byId.get(hit.titleId);
+    if (!existing) {
+      byId.set(hit.titleId, {
+        titleId: hit.titleId,
+        titleName: hit.titleName,
+        nim: Number(hit.nim || 0),
+      });
+      order.push(hit.titleId);
+      continue;
+    }
+    existing.nim += Number(hit.nim || 0);
+  }
+  return order.map((id) => byId.get(id)!);
+}
+
+/** Peek NIM: `{n} NIM`, omitted when that Title was social-only. */
+export function digestPeekNimLabel(nim: number): string | null {
+  const n = Number(nim || 0);
+  if (n <= 0) return null;
+  return `${n} NIM`;
+}
+
+export function digestThankerPeek(thanker: DigestThanker): DigestThankerPeek {
+  return {
+    handle: displayName(thanker.handle, thanker.walletAddress),
+    rows: (thanker.titles ?? []).map((title) => ({
+      titleName: title.titleName,
+      nimLabel: digestPeekNimLabel(title.nim),
+    })),
+  };
+}
+
+/** Tap the open Identicon to close; tap another to replace. */
+export function nextDigestPeek(
+  openWallet: string | null,
+  tappedWallet: string
+): string | null {
+  return openWallet === tappedWallet ? null : tappedWallet;
+}
+
+export function groupDigestThankers(
+  hits: DigestThankerHit[],
+  cap = DIGEST_THANKER_CAP
+): DigestThanker[] {
+  const sorted = [...hits].sort((a, b) => b.at - a.at);
+  const byWallet = new Map<string, DigestThankerHit[]>();
+  const handles = new Map<string, string | null>();
+  const order: string[] = [];
+  for (const hit of sorted) {
+    if (!byWallet.has(hit.walletAddress)) {
+      byWallet.set(hit.walletAddress, []);
+      handles.set(hit.walletAddress, hit.handle);
+      order.push(hit.walletAddress);
+    }
+    byWallet.get(hit.walletAddress)!.push(hit);
+  }
+  return capDigestThankers(
+    order.map((walletAddress) => ({
+      walletAddress,
+      handle: handles.get(walletAddress) ?? null,
+      titles: foldDigestThankerTitles(byWallet.get(walletAddress) ?? []),
+    })),
+    cap
+  );
 }
 
 export function shouldShowReturnDigest(input: {

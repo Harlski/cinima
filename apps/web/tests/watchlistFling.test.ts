@@ -8,9 +8,11 @@ import {
 import {
   isWatchlistFling,
   isWatchlistFlingReorder,
-  watchlistFlingToss,
-  WATCHLIST_FLING_SETTLE_MS,
-  WATCHLIST_FLING_TOSS_MS,
+  watchlistFlingCycleFrames,
+  watchlistFlingDeckFocus,
+  watchlistStripSlotGesture,
+  WATCHLIST_FLING_CYCLE_STEPS,
+  WATCHLIST_FLING_CYCLE_STEP_MS,
 } from "../src/lib/watchlistFling";
 
 describe("Watchlist fling order", () => {
@@ -83,8 +85,27 @@ describe("Watchlist fling order", () => {
       )
     ).toEqual({
       ok: true,
-      orderedIds: ["m2", "t1", "m3", "t2", "m1"],
+      orderedIds: ["m1", "t1", "m3", "t2", "m2"],
     });
+  });
+
+  it("never leaves the same title in the focused slot", () => {
+    let calls = 0;
+    const random = () => {
+      const seq = [0, 0.9];
+      return seq[calls++] ?? 0;
+    };
+    const result = shuffleVisibleWatchlistIds(
+      ["m1", "t1", "m2", "t2", "m3"],
+      mediaById,
+      "movie",
+      random,
+      1
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const nextVisible = result.orderedIds.filter((id) => mediaById[id] === "movie");
+    expect(nextVisible[1]).not.toBe("m2");
   });
 });
 
@@ -107,12 +128,34 @@ describe("Watchlist fling gesture", () => {
     expect(isWatchlistFlingReorder(["a"], ["a"])).toBe(false);
   });
 
-  it("tosses strip cards down and askew so a fling looks mixed", () => {
-    const toss = watchlistFlingToss(0);
-    expect(toss.y).toBeGreaterThan(0);
-    expect(Math.abs(toss.rotate)).toBeGreaterThan(0);
-    expect(WATCHLIST_FLING_TOSS_MS).toBeGreaterThan(0);
-    expect(WATCHLIST_FLING_SETTLE_MS).toBeGreaterThan(WATCHLIST_FLING_TOSS_MS);
+  it("cycles title posters in place and lands on the mixed order", () => {
+    const frames = watchlistFlingCycleFrames({
+      previousIds: ["a", "b", "c"],
+      nextIds: ["c", "a", "b"],
+      steps: 4,
+      random: () => 0,
+    });
+    expect(frames).toHaveLength(4);
+    expect(frames[0]).toEqual(["c", "c", "c"]);
+    expect(frames.at(-1)).toEqual(["c", "a", "b"]);
+    expect(WATCHLIST_FLING_CYCLE_STEPS).toBeGreaterThan(2);
+    expect(WATCHLIST_FLING_CYCLE_STEP_MS).toBeGreaterThan(0);
+  });
+
+  it("stays on the same deck slot after a fling", () => {
+    expect(watchlistFlingDeckFocus(["c", "a", "e", "d", "b"], 4)).toEqual({
+      selectedIndex: 4,
+      selectedId: "b",
+    });
+    expect(watchlistFlingDeckFocus(["c", "a", "e"], 0)).toEqual({
+      selectedIndex: 0,
+      selectedId: "c",
+    });
+  });
+
+  it("lets the strip pan from any title and only flings the selected one", () => {
+    expect(watchlistStripSlotGesture(0, 2)).toEqual({ pan: true, fling: false });
+    expect(watchlistStripSlotGesture(2, 2)).toEqual({ pan: true, fling: true });
   });
 });
 
@@ -131,7 +174,21 @@ describe("Watchlist fling wiring", () => {
     expect(listSrc).toContain("@fling");
     expect(listSrc).toContain("shuffleVisibleWatchlistIds");
     expect(listSrc).toContain("persistFling");
+    expect(listSrc).toContain("watchlistFlingDeckFocus");
     expect(pickerSrc).toContain("allowFling");
     expect(pickerSrc).toContain("strip--flingable");
+  });
+
+  it("cycles posters in stationary slots instead of moving cards", () => {
+    expect(pickerSrc).toContain("watchlistFlingCycleFrames");
+    expect(pickerSrc).toContain("WATCHLIST_FLING_CYCLE_STEP_MS");
+    expect(pickerSrc).not.toContain("watchlistFlingToss");
+    expect(pickerSrc).toContain("allowFling ? `fling-slot-${index}`");
+    expect(listSrc).toContain("focusedSlot");
+  });
+
+  it("lets the strip pan from any title and only flings the selected one", () => {
+    expect(pickerSrc).toContain("watchlistStripSlotGesture");
+    expect(pickerSrc).not.toContain("if (index !== selectedIndex.value) return;");
   });
 });

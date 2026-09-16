@@ -21,6 +21,11 @@ import {
   USER_SEND_COST_LABEL,
   USER_SEND_SUB,
   capDigestThankers,
+  digestPeekNimLabel,
+  digestThankerPeek,
+  foldDigestThankerTitles,
+  groupDigestThankers,
+  nextDigestPeek,
   creatorPingMemo,
   decideSystemPing,
   defaultUserSendNoteId,
@@ -247,6 +252,71 @@ describe("Return digest", () => {
     expect(digestNimReceivedLabel(4)).toBe("+4 NIM received");
     expect(digestNimReceivedLabel(1)).toBe("+1 NIM received");
     expect(digestNimReceivedLabel(0)).toBeNull();
+  });
+
+  it("folds peek rows by Title and adds Reward plus User Send", () => {
+    expect(
+      foldDigestThankerTitles([
+        { titleId: "tmdb:movie:1", titleName: "Dune", nim: 1 },
+        { titleId: "tmdb:tv:2", titleName: "The Bear", nim: 1 },
+        { titleId: "tmdb:movie:1", titleName: "Dune", nim: 1 },
+      ])
+    ).toEqual([
+      { titleId: "tmdb:movie:1", titleName: "Dune", nim: 2 },
+      { titleId: "tmdb:tv:2", titleName: "The Bear", nim: 1 },
+    ]);
+  });
+
+  it("labels peek NIM without a plus and hides a social-only amount", () => {
+    expect(digestPeekNimLabel(2)).toBe("2 NIM");
+    expect(digestPeekNimLabel(1)).toBe("1 NIM");
+    expect(digestPeekNimLabel(0)).toBeNull();
+  });
+
+  it("names the Handle then each Title with NIM on the right", () => {
+    expect(
+      digestThankerPeek({
+        walletAddress: "NQ05THANKSTESTWALLETME00000000001",
+        handle: "alice",
+        titles: [
+          { titleId: "tmdb:movie:1", titleName: "Dune", nim: 2 },
+          { titleId: "tmdb:tv:2", titleName: "The Bear", nim: 1 },
+          { titleId: "tmdb:movie:3", titleName: "Heat", nim: 0 },
+        ],
+      })
+    ).toEqual({
+      handle: "alice",
+      rows: [
+        { titleName: "Dune", nimLabel: "2 NIM" },
+        { titleName: "The Bear", nimLabel: "1 NIM" },
+        { titleName: "Heat", nimLabel: null },
+      ],
+    });
+  });
+
+  it("opens one Identicon peek at a time", () => {
+    expect(nextDigestPeek(null, "NQ1")).toBe("NQ1");
+    expect(nextDigestPeek("NQ1", "NQ1")).toBe(null);
+    expect(nextDigestPeek("NQ1", "NQ2")).toBe("NQ2");
+  });
+
+  it("groups thanker peeks newest first and caps Identicons at eight", () => {
+    const hits = Array.from({ length: 9 }, (_, i) => ({
+      walletAddress: `NQ0${i}`,
+      handle: `h${i}`,
+      titleId: `tmdb:movie:${i}`,
+      titleName: `Title ${i}`,
+      nim: 1,
+      at: 1_000 + i,
+    }));
+    const grouped = groupDigestThankers(hits);
+    expect(grouped).toHaveLength(8);
+    expect(grouped[0]).toEqual({
+      walletAddress: "NQ08",
+      handle: "h8",
+      titles: [{ titleId: "tmdb:movie:8", titleName: "Title 8", nim: 1 }],
+    });
+    expect(grouped[7]?.walletAddress).toBe("NQ01");
   });
 
   it("treats a Presence gap as a return, not the first heartbeat", () => {

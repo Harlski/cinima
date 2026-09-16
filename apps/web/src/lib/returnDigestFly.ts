@@ -34,3 +34,16 @@ export function digestFlySettleMs(count: number): number {
   if (n === 0) return 0;
   return DIGEST_FLY_MS + (n - 1) * DIGEST_FLY_STAGGER_MS;
 }
+
+/** Keep an Identicon peek on-screen; arrow stays aimed at the face. */
+export function digestPeekShift(
+  box: { left: number; right: number },
+  viewportWidth: number,
+  pad = 10
+): number {
+  const width = Math.max(0, viewportWidth);
+  const inset = Math.max(0, pad);
+  if (box.left < inset) return inset - box.left;
+  if (box.right > width - inset) return width - inset - box.right;
+  return 0;
+}

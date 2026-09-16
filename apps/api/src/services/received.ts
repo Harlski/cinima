@@ -1,15 +1,15 @@
 import {
-  DIGEST_THANKER_CAP,
   JOIN_GRANT_NIM,
   REWARD_NIM,
   USER_SEND_NIM,
-  capDigestThankers,
+  groupDigestThankers,
   isReturnPresence,
   normalizeWallet,
+  type DigestThankerHit,
   type ReceivedItem,
   type ReturnDigest,
 } from "@cinima/shared";
-import { and, desc, eq, gt, sql } from "drizzle-orm";
+import { and, desc, eq, gt, or, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { commentThanks, comments, sends, thanks, titles, users } from "../db/schema.js";
 import { lastPresenceAt } from "./sends.js";
@@ -19,6 +19,36 @@ function previewComment(body: string): string {
   const text = String(body ?? "").trim();
   if (text.length <= 80) return text;
   return `${text.slice(0, 79)}…`;
+}
+
+function digestHitFromThanks(
+  row: {
+    fromWallet: string;
+    fromHandle: string | null;
+    titleId: string;
+    titleName: string | null;
+    createdAt: Date;
+    sendTxAt: Date | null;
+    sendTxHash: string | null;
+  },
+  sinceMs: number,
+  rewardNim: number,
+  sendNim: number
+): DigestThankerHit | null {
+  const createdAt = row.createdAt.getTime();
+  const sendAt = row.sendTxAt?.getTime() ?? 0;
+  const thanksNew = createdAt > sinceMs;
+  const sendNew = Boolean(row.sendTxHash) && sendAt > sinceMs;
+  if (!thanksNew && !sendNew) return null;
+  const nim = thanksNew ? rewardNim + sendNim : sendNim;
+  return {
+    walletAddress: row.fromWallet,
+    handle: row.fromHandle,
+    titleId: row.titleId,
+    titleName: row.titleName ?? row.titleId,
+    nim,
+    at: Math.max(thanksNew ? createdAt : 0, sendNew ? sendAt : 0),
+  };
 }
 
 export async function listReceivedThanks(
@@ -138,89 +168,83 @@ export async function returnDigestSince(
 ): Promise<ReturnDigest> {
   const wallet = normalizeWallet(walletRaw);
 
-  const titleThanks = await db
+  const sinceMs = since.getTime();
+
+  const titleRows = await db
     .select({
       fromWallet: thanks.fromWallet,
       fromHandle: users.handle,
+      titleId: thanks.titleId,
+      titleName: titles.title,
       createdAt: thanks.createdAt,
+      sendTxAt: thanks.sendTxAt,
+      sendTxHash: thanks.sendTxHash,
+      rewardTxHash: thanks.tipTxHash,
     })
     .from(thanks)
     .leftJoin(users, eq(thanks.fromWallet, users.walletAddress))
-    .where(and(eq(thanks.toWallet, wallet), gt(thanks.createdAt, since)));
-
-  const commentThanksRows = await db
-    .select({
-      fromWallet: commentThanks.fromWallet,
-      fromHandle: users.handle,
-      createdAt: commentThanks.createdAt,
-    })
-    .from(commentThanks)
-    .innerJoin(comments, eq(commentThanks.commentId, comments.id))
-    .leftJoin(users, eq(commentThanks.fromWallet, users.walletAddress))
-    .where(and(eq(comments.walletAddress, wallet), gt(commentThanks.createdAt, since)));
-
-  const titleSends = await db
-    .select({
-      fromWallet: thanks.fromWallet,
-      fromHandle: users.handle,
-      at: thanks.sendTxAt,
-    })
-    .from(thanks)
-    .leftJoin(users, eq(thanks.fromWallet, users.walletAddress))
+    .leftJoin(titles, eq(thanks.titleId, titles.id))
     .where(
       and(
         eq(thanks.toWallet, wallet),
-        sql`${thanks.sendTxHash} is not null`,
-        gt(thanks.sendTxAt, since)
+        or(
+          gt(thanks.createdAt, since),
+          and(sql`${thanks.sendTxHash} is not null`, gt(thanks.sendTxAt, since))
+        )
       )
     );
 
-  const commentSends = await db
+  const commentRows = await db
     .select({
       fromWallet: commentThanks.fromWallet,
       fromHandle: users.handle,
-      at: commentThanks.sendTxAt,
+      titleId: comments.titleId,
+      titleName: titles.title,
+      createdAt: commentThanks.createdAt,
+      sendTxAt: commentThanks.sendTxAt,
+      sendTxHash: commentThanks.sendTxHash,
+      rewardTxHash: sends.txHash,
+      rewardStatus: sends.status,
     })
     .from(commentThanks)
     .innerJoin(comments, eq(commentThanks.commentId, comments.id))
     .leftJoin(users, eq(commentThanks.fromWallet, users.walletAddress))
+    .leftJoin(titles, eq(comments.titleId, titles.id))
+    .leftJoin(
+      sends,
+      and(
+        eq(sends.idempotencyKey, sql`'reward:comment:' || ${commentThanks.id}`),
+        eq(sends.kind, "reward")
+      )
+    )
     .where(
       and(
         eq(comments.walletAddress, wallet),
-        sql`${commentThanks.sendTxHash} is not null`,
-        gt(commentThanks.sendTxAt, since)
+        or(
+          gt(commentThanks.createdAt, since),
+          and(sql`${commentThanks.sendTxHash} is not null`, gt(commentThanks.sendTxAt, since))
+        )
       )
     );
 
-  const events = [
-    ...titleThanks.map((r) => ({
-      walletAddress: r.fromWallet,
-      handle: r.fromHandle,
-      at: r.createdAt.getTime(),
-    })),
-    ...commentThanksRows.map((r) => ({
-      walletAddress: r.fromWallet,
-      handle: r.fromHandle,
-      at: r.createdAt.getTime(),
-    })),
-    ...titleSends.map((r) => ({
-      walletAddress: r.fromWallet,
-      handle: r.fromHandle,
-      at: r.at?.getTime() ?? 0,
-    })),
-    ...commentSends.map((r) => ({
-      walletAddress: r.fromWallet,
-      handle: r.fromHandle,
-      at: r.at?.getTime() ?? 0,
-    })),
-  ].sort((a, b) => b.at - a.at);
-
-  const seen = new Set<string>();
-  const thankers: { walletAddress: string; handle: string | null }[] = [];
-  for (const e of events) {
-    if (seen.has(e.walletAddress)) continue;
-    seen.add(e.walletAddress);
-    thankers.push({ walletAddress: e.walletAddress, handle: e.handle });
+  const hits: DigestThankerHit[] = [];
+  for (const r of titleRows) {
+    const hit = digestHitFromThanks(
+      r,
+      sinceMs,
+      r.rewardTxHash ? REWARD_NIM : 0,
+      r.sendTxHash ? USER_SEND_NIM : 0
+    );
+    if (hit) hits.push(hit);
+  }
+  for (const r of commentRows) {
+    const hit = digestHitFromThanks(
+      r,
+      sinceMs,
+      r.rewardStatus === "sent" && r.rewardTxHash ? REWARD_NIM : 0,
+      r.sendTxHash ? USER_SEND_NIM : 0
+    );
+    if (hit) hits.push(hit);
   }
 
   const [rewardRow] = await db
@@ -257,14 +281,16 @@ export async function returnDigestSince(
       )
     );
 
-  const thanksCount = titleThanks.length + commentThanksRows.length;
+  const thanksCount =
+    titleRows.filter((r) => r.createdAt.getTime() > sinceMs).length +
+    commentRows.filter((r) => r.createdAt.getTime() > sinceMs).length;
   const userSends = Number(extraTitleSends[0]?.n || 0) + Number(extraCommentSends[0]?.n || 0);
   const nimReceived = Number(rewardRow?.n || 0) * REWARD_NIM + userSends * USER_SEND_NIM;
 
   return {
     thanksCount,
     nimReceived,
-    thankers: capDigestThankers(thankers, DIGEST_THANKER_CAP),
+    thankers: groupDigestThankers(hits),
   };
 }
 

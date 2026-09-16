@@ -114,6 +114,46 @@ describe("popup modal chrome", () => {
     expect(titleGate.indexOf("gate-hero")).toBeLessThan(titleGate.indexOf("<h2"));
   });
 
+  it("peeks a Return digest Identicon like Send Custom Message info", () => {
+    const src = readFileSync(
+      path.join(webRoot, "src/components/ReturnDigestHost.vue"),
+      "utf8"
+    );
+    expect(src).toContain("digest-peek");
+    expect(src).toContain("digestThankerPeek");
+    expect(src).toContain("nextDigestPeek");
+    expect(src).toContain('role="tooltip"');
+    expect(src).toMatch(
+      /\.digest-peek\s*\{[^}]*bottom:\s*calc\(100% \+ 0\.4rem\);/s
+    );
+    expect(src).toMatch(/\.digest-peek\s*\{[^}]*left:\s*50%;/s);
+    expect(src).toMatch(
+      /\.digest-peek\s*\{[^}]*background:\s*var\(--colors-neutral-50\)/s
+    );
+    expect(src).toMatch(
+      /\.digest-peek::before\s*\{[^}]*left:\s*calc\(50% - var\(--peek-shift/s
+    );
+    expect(src).toMatch(
+      /\.digest-peek::before\s*\{[^}]*border-top-color:\s*var\(--border\)/s
+    );
+    expect(src).toMatch(/\.digest-peek-row\s*\{[^}]*justify-content:\s*space-between;/s);
+    expect(src).toMatch(
+      /\.digest-peek-nim\s*\{[^}]*color:\s*var\(--gold, #e5c158\)/s
+    );
+  });
+
+  it("does not replay Identicon pop when switching peeks", () => {
+    const src = readFileSync(
+      path.join(webRoot, "src/components/ReturnDigestHost.vue"),
+      "utf8"
+    );
+    expect(src).toMatch(/\.digest-face--peek \{[\s\S]*?z-index:\s*12/);
+    expect(src).not.toMatch(/\.digest-face--peek \{[^}]*\banimation:\s*none/);
+    expect(src).toMatch(
+      /\.digest-face--peek \{[\s\S]*?animation-play-state:\s*paused/
+    );
+  });
+
   it("styles Join overlay thanks without Achievement copy", () => {
     const src = readFileSync(
       path.join(webRoot, "src/components/JoinOverlayHost.vue"),

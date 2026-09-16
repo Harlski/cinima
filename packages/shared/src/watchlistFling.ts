@@ -78,13 +78,42 @@ export function shuffleVisibleWatchlistIds(
   orderedIds: readonly string[],
   mediaById: Readonly<Record<string, MediaType>>,
   mediaType: MediaType,
-  random: () => number = Math.random
+  random: () => number = Math.random,
+  focusedSlot?: number
 ): WatchlistFlingOrderResult {
   const visible = orderedIds.filter((id) => mediaById[id] === mediaType);
   if (visible.length < 2) return { ok: false, error: "too-few" };
 
+  const hold =
+    focusedSlot !== undefined &&
+    Number.isInteger(focusedSlot) &&
+    focusedSlot >= 0 &&
+    focusedSlot < visible.length
+      ? focusedSlot
+      : Math.floor((visible.length - 1) / 2);
+  const current = visible[hold];
+  const candidates = visible.filter((id) => id !== current);
+  if (!current || candidates.length === 0) {
+    return { ok: false, error: "unchanged" };
+  }
+
   for (let attempt = 0; attempt < 24; attempt++) {
-    const nextVisible = fisherYates(visible, random);
+    const pick = Math.floor(random() * candidates.length);
+    const newFocus = candidates[Math.min(Math.max(pick, 0), candidates.length - 1)];
+    if (!newFocus) continue;
+    const remaining = visible.filter((id) => id !== newFocus);
+    const shuffledRest = fisherYates(remaining, random);
+    const nextVisible: string[] = [];
+    let restI = 0;
+    for (let i = 0; i < visible.length; i++) {
+      if (i === hold) {
+        nextVisible.push(newFocus);
+        continue;
+      }
+      const id = shuffledRest[restI];
+      restI += 1;
+      if (id) nextVisible.push(id);
+    }
     const result = applyWatchlistFlingOrder({
       orderedIds,
       mediaById,

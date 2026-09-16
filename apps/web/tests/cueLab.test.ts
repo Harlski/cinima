@@ -86,6 +86,13 @@ describe("Cue lab", () => {
     expect(digest.thankers).toHaveLength(8);
     expect(digest.thanksCount).toBeGreaterThan(digest.thankers.length);
     expect(digest.nimReceived).toBeGreaterThan(0);
+    expect(digest.thankers[0]?.titles).toEqual([
+      { titleId: "tmdb:movie:438631", titleName: "Dune", nim: 2 },
+      { titleId: "tmdb:tv:136315", titleName: "The Bear", nim: 1 },
+    ]);
+    expect(digest.thankers[2]?.titles).toEqual([
+      { titleId: "tmdb:movie:949", titleName: "Heat", nim: 0 },
+    ]);
   });
 
   it("previews Send Custom Message as a title User Send without paying", () => {

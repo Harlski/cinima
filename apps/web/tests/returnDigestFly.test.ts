@@ -4,6 +4,7 @@ import {
   DIGEST_FLY_STAGGER_MS,
   digestFaceFly,
   digestFlySettleMs,
+  digestPeekShift,
 } from "../src/lib/returnDigestFly";
 
 describe("Return digest fly to Me", () => {
@@ -24,5 +25,11 @@ describe("Return digest fly to Me", () => {
     expect(digestFlySettleMs(0)).toBe(0);
     expect(digestFlySettleMs(1)).toBe(DIGEST_FLY_MS);
     expect(digestFlySettleMs(8)).toBe(DIGEST_FLY_MS + 7 * DIGEST_FLY_STAGGER_MS);
+  });
+
+  it("slides an Identicon peek back onto the screen", () => {
+    expect(digestPeekShift({ left: -40, right: 180 }, 390)).toBe(50);
+    expect(digestPeekShift({ left: 20, right: 400 }, 390)).toBe(-20);
+    expect(digestPeekShift({ left: 40, right: 200 }, 390)).toBe(0);
   });
 });

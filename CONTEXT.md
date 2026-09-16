@@ -61,8 +61,8 @@ The sequence of titles in a Watchlist. Starts newest-add first. A Watchlist flin
 _Avoid_: recency as the only order, mixing Movies into the TV deck
 
 **Watchlist fling**:
-A downward drag on the selected Watchlist title that mixes up the visible deck and persists Watchlist order. Needs at least two titles of that media type. Distinct from Pass.
-_Avoid_: Pass, refresh, drag-to-reorder as a list editor
+A downward drag on the selected Watchlist title that mixes up the visible deck and persists Watchlist order. Cards stay put; posters cycle and land on a new title in the same center slot. The center title always changes. Needs at least two titles of that media type. Distinct from Pass.
+_Avoid_: Pass, refresh, drag-to-reorder as a list editor, physically moving cards, landing on the same title
 
 **Watchlist leave**:
 A recorded exit from Watchlist. An optional Watchlist leave reason is stored so a watched history can exist later; Cinima does not show that history yet.
@@ -193,8 +193,8 @@ The Me Guestbook of what this Handle received: Thanks (thanker Identicon, title,
 _Avoid_: Activity, notifications, inbox as a tab, Marquee, thanker Handle on the card, a peer Identicon on the Join grant row
 
 **Return digest**:
-The panel on return Presence when Thanks or NIM arrived since last Presence: up to eight thanker Identicons, then +{x} NIM received, then Continue into the app. Join grant NIM is not this NIM. Not Marquee. Skip during Favorites onboarding and the Guided tour. After Welcome, a pending Join overlay shows first.
-_Avoid_: login modal, notification, Activity, Marquee, received cue, Join overlay
+The panel on return Presence when Thanks or NIM arrived since last Presence: up to eight thanker Identicons (tap one for that Handle's peek: Handle, then each Title they Thanked, title left and NIM right; Reward and User Send on the same Title add together; social-only Titles omit NIM; one peek at a time), then +{x} NIM received, then Continue into the app. Join grant NIM is not this NIM. Not Marquee. Skip during Favorites onboarding and the Guided tour. After Welcome, a pending Join overlay shows first.
+_Avoid_: login modal, notification, Activity, Marquee, received cue, Join overlay, username popup
 
 **Reward**:
 A Send of 1 NIM attached to a Thanks or Comment Thanks, funded by Cinima. A thanker gets at most five Rewards per UTC day; further Thanks that day stay social-only. Thank all spends remaining Rewards in Favorited order, then Thanks the rest without NIM.
