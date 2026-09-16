@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  FOR_YOU_BANK_SIZE,
   FOR_YOU_PASS_MS,
   FOR_YOU_SET_SIZE,
+  dealForYouSet,
   fifoForYouCandidateIds,
+  fillForYouBank,
   isPassActive,
   nextForYouIds,
   remainingForYouIds,
@@ -18,6 +21,7 @@ const HOUR_MS = 60 * 60 * 1000;
 describe("For You set", () => {
   it("holds five titles", () => {
     expect(FOR_YOU_SET_SIZE).toBe(5);
+    expect(FOR_YOU_BANK_SIZE).toBe(10);
   });
 
   it("keeps remaining titles when some are excluded", () => {
@@ -70,12 +74,92 @@ describe("For You set", () => {
     ]);
   });
 
-  it("warms the next set once two or fewer titles remain", () => {
-    expect(shouldPrefetchForYou(5)).toBe(false);
-    expect(shouldPrefetchForYou(3)).toBe(false);
+  it("warms the banked next set whenever titles remain on screen", () => {
+    expect(shouldPrefetchForYou(5)).toBe(true);
+    expect(shouldPrefetchForYou(3)).toBe(true);
     expect(shouldPrefetchForYou(2)).toBe(true);
     expect(shouldPrefetchForYou(1)).toBe(true);
     expect(shouldPrefetchForYou(0)).toBe(false);
+  });
+
+  it("fills a bank of two sets behind the visible set", () => {
+    expect(
+      fillForYouBank(
+        ["a", "b", "c", "d", "e"],
+        [],
+        ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o"]
+      )
+    ).toEqual(["f", "g", "h", "i", "j", "k", "l", "m", "n", "o"]);
+  });
+
+  it("keeps an already banked collection instead of reshuffling from candidates", () => {
+    expect(
+      fillForYouBank(
+        ["a", "b"],
+        ["x", "y", "z", "p", "q", "r", "s", "t", "u", "v"],
+        ["a", "b", "c", "d", "e", "f", "g"]
+      )
+    ).toEqual(["x", "y", "z", "p", "q", "r", "s", "t", "u", "v"]);
+  });
+
+  it("deals one banked set when the visible set is empty, and keeps two sets banked", () => {
+    expect(
+      dealForYouSet({
+        remainingIds: [],
+        bankIds: ["f", "g", "h", "i", "j", "k", "l", "m", "n", "o"],
+        candidateIds: [
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o",
+          "p",
+          "q",
+          "r",
+          "s",
+          "t",
+        ],
+      })
+    ).toEqual({
+      ids: ["f", "g", "h", "i", "j"],
+      bankIds: ["k", "l", "m", "n", "o", "p", "q", "r", "s", "t"],
+      refilled: true,
+    });
+  });
+
+  it("banks the next two sets while the current set is still full", () => {
+    expect(
+      dealForYouSet({
+        remainingIds: ["a", "b", "c", "d", "e"],
+        bankIds: [],
+        candidateIds: [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o",
+        ],
+      })
+    ).toEqual({
+      ids: ["a", "b", "c", "d", "e"],
+      bankIds: ["f", "g", "h", "i", "j", "k", "l", "m", "n", "o"],
+      refilled: false,
+    });
   });
 });
 

@@ -1,13 +1,14 @@
 import {
+  FOR_YOU_BANK_SIZE,
+  FOR_YOU_SET_SIZE,
+  dealForYouSet,
+  fillForYouBank,
   isPassActive,
-  nextForYouIds,
   recycleForYouIds,
   remainingForYouIds,
   removeFromForYouIds,
   restoreTourForYouSet,
-  shouldPrefetchForYou,
   stageTourForYouSet,
-  upcomingForYouIds,
   type ForYouPassResponse,
   type OverlapSuggestion,
 } from "@cinima/shared";
@@ -40,7 +41,7 @@ function parseSetIds(raw: string | null | undefined): string[] {
 
 async function loadSetRow(
   wallet: string
-): Promise<{ ids: string[]; holdOutIds: string[] }> {
+): Promise<{ ids: string[]; holdOutIds: string[]; upcomingIds: string[] }> {
   const [row] = await db
     .select()
     .from(forYouSets)
@@ -49,6 +50,7 @@ async function loadSetRow(
   return {
     ids: parseSetIds(row?.titleIds),
     holdOutIds: parseSetIds(row?.holdOutTitleIds),
+    upcomingIds: parseSetIds(row?.upcomingTitleIds),
   };
 }
 
@@ -59,26 +61,33 @@ async function loadSetIds(wallet: string): Promise<string[]> {
 async function saveSetIds(
   wallet: string,
   ids: string[],
-  holdOutIds?: string[]
+  holdOutIds?: string[],
+  upcomingIds?: string[]
 ): Promise<void> {
   const now = new Date();
   const titleIds = JSON.stringify(ids);
-  const holdOutJson =
-    holdOutIds != null ? JSON.stringify(holdOutIds) : undefined;
+  const holdOutJson = holdOutIds != null ? JSON.stringify(holdOutIds) : undefined;
+  const upcomingJson = upcomingIds != null ? JSON.stringify(upcomingIds) : undefined;
+  const set: {
+    titleIds: string;
+    updatedAt: Date;
+    holdOutTitleIds?: string;
+    upcomingTitleIds?: string;
+  } = { titleIds, updatedAt: now };
+  if (holdOutJson != null) set.holdOutTitleIds = holdOutJson;
+  if (upcomingJson != null) set.upcomingTitleIds = upcomingJson;
   await db
     .insert(forYouSets)
     .values({
       walletAddress: wallet,
       titleIds,
       holdOutTitleIds: holdOutJson ?? "[]",
+      upcomingTitleIds: upcomingJson ?? "[]",
       updatedAt: now,
     })
     .onConflictDoUpdate({
       target: forYouSets.walletAddress,
-      set:
-        holdOutJson != null
-          ? { titleIds, holdOutTitleIds: holdOutJson, updatedAt: now }
-          : { titleIds, updatedAt: now },
+      set,
     });
 }
 
@@ -117,7 +126,7 @@ async function recycledPassIds(wallet: string, skip: ReadonlySet<string>): Promi
   const oldest = rows
     .filter((row) => hasPoster(row.posterPath))
     .map((row) => row.titleId);
-  return recycleForYouIds(oldest, skip);
+  return recycleForYouIds(oldest, skip, FOR_YOU_SET_SIZE + FOR_YOU_BANK_SIZE);
 }
 
 async function hydrate(
@@ -138,12 +147,29 @@ async function hydrate(
   });
 }
 
-async function resolveSet(
+type ForYouPlan = {
+  stored: string[];
+  storedBank: string[];
+  remainingIds: string[];
+  candidateIds: string[];
+  candidates: OverlapSuggestion[];
+};
+
+function dropHeld(
+  ids: readonly string[],
+  remainingIds: readonly string[],
+  blocked: ReadonlySet<string>
+): string[] {
+  const held = new Set(remainingIds);
+  return ids.filter((id) => !held.has(id) && !blocked.has(id));
+}
+
+async function planSet(
   wallet: string,
   extraExclude: Iterable<string> = []
-): Promise<{ suggestions: OverlapSuggestion[]; refilled: boolean }> {
+): Promise<ForYouPlan> {
   const nowMs = Date.now();
-  const { ids: stored, holdOutIds } = await loadSetRow(wallet);
+  const { ids: stored, holdOutIds, upcomingIds } = await loadSetRow(wallet);
   const sticky = await loadTasteExcludeIds(wallet);
   const blocked = await excludeIds(wallet, nowMs);
   for (const id of [...extraExclude, ...holdOutIds]) {
@@ -154,50 +180,86 @@ async function resolveSet(
   const remaining = remainingForYouIds(stored, sticky);
   const hydratedRemaining = await hydrate(remaining, candidates, wallet);
   const remainingIds = hydratedRemaining.map((s) => s.title.id);
+  const storedBank = dropHeld(upcomingIds, remainingIds, blocked);
   let candidateIds: string[] = candidates
     .map((s) => s.title.id)
     .filter((id) => !blocked.has(id));
   const skip = new Set([...sticky, ...remainingIds]);
-  if (candidateIds.filter((id) => !skip.has(id)).length === 0) {
+  const available = candidateIds.filter((id) => !skip.has(id));
+  const bankShortfall = Math.max(0, FOR_YOU_BANK_SIZE - storedBank.length);
+  const dealShortfall =
+    remainingIds.length > 0 ? 0 : Math.max(0, FOR_YOU_SET_SIZE - storedBank.length);
+  if (available.length < dealShortfall + bankShortfall) {
     candidateIds = [...candidateIds, ...(await recycledPassIds(wallet, skip))];
   }
-  const next = nextForYouIds(remainingIds, candidateIds);
-  const idsChanged = next.ids.join("|") !== stored.join("|");
-  if (next.refilled) {
-    await saveSetIds(wallet, next.ids, []);
-  } else if (idsChanged) {
-    await saveSetIds(wallet, next.ids);
-  }
   return {
-    suggestions: await hydrate(next.ids, candidates, wallet),
-    refilled: next.refilled,
+    stored,
+    storedBank,
+    remainingIds,
+    candidateIds,
+    candidates,
   };
 }
 
-export async function peekUpcomingForYou(wallet: string): Promise<OverlapSuggestion[]> {
-  const nowMs = Date.now();
-  const { ids: stored, holdOutIds } = await loadSetRow(wallet);
-  const sticky = await loadTasteExcludeIds(wallet);
-  const blocked = await excludeIds(wallet, nowMs);
-  for (const id of holdOutIds) {
-    sticky.add(id);
-    blocked.add(id);
+async function persistDealt(
+  wallet: string,
+  stored: string[],
+  storedBank: string[],
+  next: { ids: string[]; bankIds: string[]; refilled: boolean },
+  candidates: OverlapSuggestion[]
+): Promise<{ suggestions: OverlapSuggestion[]; upcoming: OverlapSuggestion[]; refilled: boolean }> {
+  const suggestions = await hydrate(next.ids, candidates, wallet);
+  const upcoming = await hydrate(next.bankIds, candidates, wallet);
+  const ids = suggestions.map((s) => s.title.id);
+  const bankIds = upcoming.map((s) => s.title.id);
+  const idsChanged = ids.join("|") !== stored.join("|");
+  const bankChanged = bankIds.join("|") !== storedBank.join("|");
+  if (next.refilled) {
+    await saveSetIds(wallet, ids, [], bankIds);
+  } else if (idsChanged || bankChanged) {
+    await saveSetIds(wallet, ids, undefined, bankIds);
   }
-  const candidates = await suggestionCandidates(wallet, blocked);
-  const remaining = remainingForYouIds(stored, sticky);
-  let candidateIds: string[] = candidates
-    .map((s) => s.title.id)
-    .filter((id) => !blocked.has(id));
-  const skip = new Set([...sticky, ...remaining]);
-  if (candidateIds.filter((id) => !skip.has(id)).length === 0) {
-    candidateIds = [...candidateIds, ...(await recycledPassIds(wallet, skip))];
-  }
-  return hydrate(upcomingForYouIds(remaining, candidateIds), candidates, wallet);
+  return { suggestions, upcoming, refilled: next.refilled };
 }
 
-export async function presentForYou(wallet: string): Promise<OverlapSuggestion[]> {
-  const { suggestions } = await resolveSet(wallet);
-  return suggestions;
+async function resolveSet(
+  wallet: string,
+  extraExclude: Iterable<string> = []
+): Promise<{ suggestions: OverlapSuggestion[]; upcoming: OverlapSuggestion[]; refilled: boolean }> {
+  const plan = await planSet(wallet, extraExclude);
+  const next = dealForYouSet({
+    remainingIds: plan.remainingIds,
+    bankIds: plan.storedBank,
+    candidateIds: plan.candidateIds,
+  });
+  return persistDealt(wallet, plan.stored, plan.storedBank, next, plan.candidates);
+}
+
+export async function peekUpcomingForYou(wallet: string): Promise<OverlapSuggestion[]> {
+  const plan = await planSet(wallet);
+  if (plan.remainingIds.length === 0) {
+    const ids = plan.storedBank.length
+      ? plan.storedBank
+      : plan.candidateIds.slice(0, FOR_YOU_SET_SIZE);
+    return hydrate(ids, plan.candidates, wallet);
+  }
+  const bankIds = fillForYouBank(
+    plan.remainingIds,
+    plan.storedBank,
+    plan.candidateIds
+  );
+  if (bankIds.join("|") !== plan.storedBank.join("|")) {
+    await saveSetIds(wallet, plan.stored, undefined, bankIds);
+  }
+  return hydrate(bankIds, plan.candidates, wallet);
+}
+
+export async function presentForYou(wallet: string): Promise<{
+  suggestions: OverlapSuggestion[];
+  upcoming: OverlapSuggestion[];
+}> {
+  const resolved = await resolveSet(wallet);
+  return { suggestions: resolved.suggestions, upcoming: resolved.upcoming };
 }
 
 export async function passForYou(wallet: string, titleId: string): Promise<ForYouPassResponse> {
@@ -224,14 +286,10 @@ export async function passForYou(wallet: string, titleId: string): Promise<ForYo
   await saveSetIds(wallet, afterPass);
   const resolved = await resolveSet(wallet);
   const refilled = afterPass.length === 0 && resolved.refilled;
-  const upcoming =
-    !refilled && shouldPrefetchForYou(resolved.suggestions.length)
-      ? await peekUpcomingForYou(wallet)
-      : undefined;
   return {
     suggestions: resolved.suggestions,
     refilled,
-    upcoming,
+    upcoming: resolved.upcoming.length ? resolved.upcoming : undefined,
   };
 }
 
@@ -259,6 +317,6 @@ export async function stageGuidedTourForYou(wallet: string): Promise<OverlapSugg
   const staged = stageTourForYouSet(suggestions.map((row) => row.title.id));
   if (!staged.holdOutIds.length) return suggestions;
   await saveSetIds(wallet, staged.teachingIds, staged.holdOutIds);
-  const teaching = new Set(staged.teachingIds);
-  return suggestions.filter((row) => teaching.has(row.title.id));
+  const resolved = await resolveSet(wallet);
+  return resolved.suggestions;
 }

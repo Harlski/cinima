@@ -157,6 +157,17 @@ describe("For You narrow Android column", () => {
 });
 
 describe("For You refill flash", () => {
+  it("warms the banked next set after a refill", () => {
+    const onPass = discoverSrc.slice(
+      discoverSrc.indexOf("const onPass"),
+      discoverSrc.indexOf("async function dropFromLocalSet")
+    );
+    const refillAt = onPass.indexOf("playForYouRefill");
+    const warmAt = onPass.lastIndexOf("warmUpcomingForYou(data.upcoming)");
+    expect(refillAt).toBeGreaterThanOrEqual(0);
+    expect(warmAt).toBeGreaterThan(refillAt);
+  });
+
   it("hides the next set before those cards can paint at rest", () => {
     const onPass = discoverSrc.slice(
       discoverSrc.indexOf("const onPass"),

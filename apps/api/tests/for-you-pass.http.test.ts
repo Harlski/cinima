@@ -22,11 +22,24 @@ const POOL = [
   "movie:06",
   "movie:07",
   "movie:08",
+  "movie:09",
+  "movie:10",
+  "movie:11",
+  "movie:12",
+  "movie:13",
+  "movie:14",
+  "movie:15",
+  "movie:16",
+  "movie:17",
+  "movie:18",
+  "movie:19",
+  "movie:20",
 ] as const;
 
 type DiscoverBody = {
   mode: string;
   suggestions: { title: { id: string } }[];
+  upcoming?: { title: { id: string } }[];
 };
 
 type PassBody = {
@@ -166,7 +179,7 @@ describe("For You Pass HTTP API", () => {
       last = (await res.json()) as PassBody;
     }
     expect(last?.refilled).toBe(true);
-    expect(last?.suggestions).toHaveLength(3);
+    expect(last?.suggestions).toHaveLength(5);
     const newIds = last!.suggestions.map((s) => s.title.id);
     expect(newIds.every((id) => POOL.includes(id as (typeof POOL)[number]))).toBe(true);
     expect(newIds.some((id) => remaining.includes(id))).toBe(false);
@@ -383,6 +396,44 @@ describe("For You Pass HTTP API", () => {
     const body = await discover();
     expect(body.suggestions.map((s) => s.title.id)).toContain("movie:lonely");
     expect(body.suggestions.length).toBeGreaterThan(0);
+  });
+
+  it("banks the next For You set while the current set is still full", async () => {
+    const { eq } = await import("drizzle-orm");
+    await db.delete(schema.forYouPasses).where(eq(schema.forYouPasses.walletAddress, ME));
+    await db.delete(schema.forYouSets).where(eq(schema.forYouSets.walletAddress, ME));
+    const body = await discover();
+    expect(body.suggestions).toHaveLength(5);
+    expect((body.upcoming ?? []).length).toBe(10);
+    const held = new Set(body.suggestions.map((s) => s.title.id));
+    expect(body.upcoming!.every((s) => !held.has(s.title.id))).toBe(true);
+  });
+
+  it("deals the banked set when the current set empties", async () => {
+    const { eq } = await import("drizzle-orm");
+    await db.delete(schema.forYouPasses).where(eq(schema.forYouPasses.walletAddress, ME));
+    await db.delete(schema.forYouSets).where(eq(schema.forYouSets.walletAddress, ME));
+    const first = await discover();
+    const banked = (first.upcoming ?? []).map((s) => s.title.id);
+    expect(banked).toHaveLength(10);
+    let last: PassBody | null = null;
+    for (const row of first.suggestions) {
+      const res = await app.fetch(
+        new Request("http://test/api/discover/pass", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ titleId: row.title.id }),
+        })
+      );
+      expect(res.status).toBe(200);
+      last = (await res.json()) as PassBody;
+    }
+    expect(last?.refilled).toBe(true);
+    expect(last!.suggestions.map((s) => s.title.id)).toEqual(banked.slice(0, 5));
+    expect((last?.upcoming ?? []).length).toBe(10);
+    expect(last!.upcoming!.map((s) => s.title.id).slice(0, 5)).toEqual(banked.slice(5));
+    const dealt = new Set(last!.suggestions.map((s) => s.title.id));
+    expect(last!.upcoming!.every((s) => !dealt.has(s.title.id))).toBe(true);
   });
 
   it("includes the upcoming set on Pass once two titles remain", async () => {

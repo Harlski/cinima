@@ -1,4 +1,4 @@
-import { FOR_YOU_PASS_MS, FOR_YOU_PREFETCH_AT, FOR_YOU_SET_SIZE } from "./constants.js";
+import { FOR_YOU_BANK_SIZE, FOR_YOU_PASS_MS, FOR_YOU_SET_SIZE } from "./constants.js";
 
 export function isPassActive(
   passedAtMs: number,
@@ -42,8 +42,61 @@ export function upcomingForYouIds(
   candidateIds: readonly string[],
   size = FOR_YOU_SET_SIZE
 ): string[] {
-  const held = new Set(remainingIds);
-  return candidateIds.filter((id) => !held.has(id)).slice(0, size);
+  return fillForYouBank(remainingIds, [], candidateIds, size);
+}
+
+/** Keep a ready bank behind the visible set, skipping titles already shown or already banked. */
+export function fillForYouBank(
+  currentIds: readonly string[],
+  bankIds: readonly string[],
+  candidateIds: readonly string[],
+  size = FOR_YOU_BANK_SIZE
+): string[] {
+  const held = new Set(currentIds);
+  const filled: string[] = [];
+  for (const id of [...bankIds, ...candidateIds]) {
+    if (filled.length >= size) break;
+    if (held.has(id)) continue;
+    held.add(id);
+    filled.push(id);
+  }
+  return filled;
+}
+
+/** Visible For You ids plus a banked next set. Empty remaining deals the bank, then refills it. */
+export function dealForYouSet(input: {
+  remainingIds: readonly string[];
+  bankIds: readonly string[];
+  candidateIds: readonly string[];
+  setSize?: number;
+  bankSize?: number;
+}): { ids: string[]; bankIds: string[]; refilled: boolean } {
+  const setSize = input.setSize ?? FOR_YOU_SET_SIZE;
+  const bankSize = input.bankSize ?? FOR_YOU_BANK_SIZE;
+  if (input.remainingIds.length > 0) {
+    return {
+      ids: [...input.remainingIds],
+      bankIds: fillForYouBank(
+        input.remainingIds,
+        input.bankIds,
+        input.candidateIds,
+        bankSize
+      ),
+      refilled: false,
+    };
+  }
+  const fromBank = input.bankIds.slice(0, setSize);
+  const ids = fromBank.length > 0 ? fromBank : input.candidateIds.slice(0, setSize);
+  return {
+    ids,
+    bankIds: fillForYouBank(
+      ids,
+      input.bankIds.slice(fromBank.length),
+      input.candidateIds,
+      bankSize
+    ),
+    refilled: true,
+  };
 }
 
 /** Oldest Passes first, skipping Favorites, Watchlist, and titles already on screen. */
@@ -55,11 +108,9 @@ export function recycleForYouIds(
   return passedOldestFirst.filter((id) => !skipIds.has(id)).slice(0, size);
 }
 
-export function shouldPrefetchForYou(
-  remainingCount: number,
-  prefetchAt = FOR_YOU_PREFETCH_AT
-): boolean {
-  return remainingCount > 0 && remainingCount <= prefetchAt;
+/** Warm banked posters whenever a For You set is on screen. */
+export function shouldPrefetchForYou(remainingCount: number): boolean {
+  return remainingCount > 0;
 }
 
 /** Center card of a For You strip; matches how the picker opens. */

@@ -352,11 +352,19 @@ export async function migrate() {
     wallet_address TEXT PRIMARY KEY,
     title_ids TEXT NOT NULL,
     hold_out_title_ids TEXT NOT NULL DEFAULT '[]',
+    upcoming_title_ids TEXT NOT NULL DEFAULT '[]',
     updated_at INTEGER NOT NULL
   )`);
   try {
     await client.execute(
       `ALTER TABLE for_you_sets ADD COLUMN hold_out_title_ids TEXT NOT NULL DEFAULT '[]'`
+    );
+  } catch {
+    /* column already exists */
+  }
+  try {
+    await client.execute(
+      `ALTER TABLE for_you_sets ADD COLUMN upcoming_title_ids TEXT NOT NULL DEFAULT '[]'`
     );
   } catch {
     /* column already exists */

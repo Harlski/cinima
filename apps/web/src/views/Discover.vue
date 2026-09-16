@@ -444,7 +444,7 @@ const applyDiscoverResponse = async (data: DiscoverResponse) => {
     if (activeTab.value === "following") {
       await ensureFollowingTabData();
     }
-    void warmUpcomingForYou();
+    void warmUpcomingForYou(data.upcoming);
   }
   discoverApplied.value = true;
   forYouDebugLog(
@@ -873,9 +873,8 @@ const onPass = async (titleId: string) => {
     if (data.refilled && data.suggestions.length) {
       warmedUpcomingKey = "";
       await playForYouRefill(data.suggestions);
-    } else {
-      void warmUpcomingForYou(data.upcoming);
     }
+    void warmUpcomingForYou(data.upcoming);
     if (data.earnedAchievements?.length) {
       useMarqueeStore().enqueue(data.earnedAchievements);
     }

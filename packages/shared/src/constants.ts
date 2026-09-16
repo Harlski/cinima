@@ -31,8 +31,8 @@ export const DISCOVER_RECOMMEND_WEIGHT = 3;
 /** Titles shown at once on For You */
 export const FOR_YOU_SET_SIZE = 5;
 
-/** Warm the next For You set once this many titles remain */
-export const FOR_YOU_PREFETCH_AT = 2;
+/** Extra titles kept ready behind the visible For You set (two full sets) */
+export const FOR_YOU_BANK_SIZE = FOR_YOU_SET_SIZE * 2;
 
 /** A Pass hides a Title from For You for this long */
 export const FOR_YOU_PASS_MS = 48 * 60 * 60 * 1000;

@@ -290,10 +290,12 @@ export async function discoverFor(
     }
   }
 
+  const forYou = await presentForYou(w);
   return {
     mode: "overlap",
     favoriteCount: favs.length,
     minFavorites: MIN_FAVORITES_FOR_DISCOVER,
-    suggestions: await presentForYou(w),
+    suggestions: forYou.suggestions,
+    upcoming: forYou.upcoming.length ? forYou.upcoming : undefined,
   };
 }

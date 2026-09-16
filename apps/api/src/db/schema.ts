@@ -119,6 +119,7 @@ export const forYouSets = sqliteTable("for_you_sets", {
   walletAddress: text("wallet_address").primaryKey(),
   titleIds: text("title_ids").notNull(),
   holdOutTitleIds: text("hold_out_title_ids").notNull().default("[]"),
+  upcomingTitleIds: text("upcoming_title_ids").notNull().default("[]"),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 });
 

@@ -135,6 +135,7 @@ export type DiscoverResponse = {
   minFavorites: number;
   onboardingCandidates?: TitleSummary[];
   suggestions?: OverlapSuggestion[];
+  upcoming?: OverlapSuggestion[];
 };
 
 export type ForYouPassResponse = {
