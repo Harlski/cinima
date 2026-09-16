@@ -905,7 +905,9 @@ async function drainPassQueue() {
           pendingPassIds: pendingAfter,
         });
         if (reconciled.adopt) {
-          const byId = new Map(data.suggestions.map((row) => [row.title.id, row]));
+          const byId = new Map<string, OverlapSuggestion>(
+            data.suggestions.map((row) => [row.title.id, row])
+          );
           const ordered = reconciled.ids.flatMap((id) => {
             const row = byId.get(id) ?? suggestions.value.find((item) => item.title.id === id);
             return row ? [row] : [];
