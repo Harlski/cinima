@@ -1,3 +1,5 @@
+import { FOR_YOU_SET_SIZE } from "@cinima/shared";
+
 export const PASS_SWIPE_DY = 56;
 export const PASS_AXIS_SLOP = 10;
 
@@ -143,6 +145,66 @@ export function passCollapseShouldHold(input: {
 }): boolean {
   if (passCollapseCanApplyPool(input)) return false;
   return input.elapsedMs < (input.holdMs ?? PASS_COLLAPSE_HOLD_MS);
+}
+
+/** Drop titles that already left so a timed-out collapse cannot resurrect them. */
+export function omitPassLeavingIds<T extends { title: { id: string } }>(
+  items: readonly T[],
+  leavingIds: readonly string[]
+): T[] {
+  if (!leavingIds.length) return [...items];
+  const leaving = new Set(leavingIds);
+  return items.filter((item) => !leaving.has(item.title.id));
+}
+
+/** Remove a Passed title locally; empty remaining deals the next banked set immediately. */
+export function applyLocalForYouPass<T extends { title: { id: string } }>(input: {
+  current: readonly T[];
+  passedId: string;
+  bank: readonly T[];
+  setSize?: number;
+}): { suggestions: T[]; bank: T[]; refilled: boolean } {
+  const remaining = input.current.filter((row) => row.title.id !== input.passedId);
+  if (remaining.length > 0) {
+    return { suggestions: remaining, bank: [...input.bank], refilled: false };
+  }
+  const size = input.setSize ?? FOR_YOU_SET_SIZE;
+  const dealt = input.bank.slice(0, size);
+  return {
+    suggestions: [...dealt],
+    bank: input.bank.slice(dealt.length),
+    refilled: dealt.length > 0,
+  };
+}
+
+/**
+ * Keep a locally dealt next set when an earlier Pass response still has leftovers
+ * that later Passes already removed on the client.
+ */
+export function reconcileForYouPass(input: {
+  localIds: readonly string[];
+  serverIds: readonly string[];
+  serverRefilled: boolean;
+  pendingPassIds: readonly string[];
+}): { ids: string[]; adopt: boolean } {
+  const pending = new Set(input.pendingPassIds);
+  const serverKept = input.serverIds.filter((id) => !pending.has(id));
+  if (input.serverRefilled) {
+    if (input.localIds.join("|") === input.serverIds.join("|")) {
+      return { ids: [...input.localIds], adopt: false };
+    }
+    return { ids: [...input.serverIds], adopt: true };
+  }
+  const localIsNewSet =
+    input.localIds.length > 0 &&
+    input.localIds.every((id) => !input.serverIds.includes(id));
+  if (serverKept.length === 0 && localIsNewSet) {
+    return { ids: [...input.localIds], adopt: false };
+  }
+  if (serverKept.join("|") === input.localIds.join("|")) {
+    return { ids: [...input.localIds], adopt: false };
+  }
+  return { ids: serverKept, adopt: true };
 }
 
 export function addPassLeavingId(ids: readonly string[], id: string): string[] {

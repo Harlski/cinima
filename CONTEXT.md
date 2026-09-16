@@ -137,7 +137,7 @@ The Discover tab of personalized Title suggestions for a Handle, shown as a For 
 _Avoid_: home feed, Recommends as the same tab, Search, overlap suggestions as the product name
 
 **For You set**:
-The five Title suggestions currently shown on For You. A Pass, Favorite, or Watchlist add removes that Title from the set without backfill. Cinima keeps a bank of the next two sets (ten titles, posters warmed) whenever a set is on screen; when the set is empty, it deals the first banked five and fills the bank back to two sets. The strip always opens on the center card. A refill lays all five slots out first so that center stays in the middle, then turns each card on as it lands (LTR 4 2 1 3 5: center, left, right, far left, far right).
+The five Title suggestions currently shown on For You. A Pass, Favorite, or Watchlist add removes that Title from the set without backfill. Cinima keeps a bank of the next two sets (ten titles, posters warmed) whenever a set is on screen; when the set is empty, it deals the first banked five immediately and fills the bank back to two sets. The strip always opens on the center card. A refill lays all five slots out first so that center stays in the middle, then turns each card on as it lands (LTR 4 2 1 3 5: center, left, right, far left, far right).
 _Avoid_: deck window, suggestion window, refresh cycle, caught up empty copy
 
 **Pass**:

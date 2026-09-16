@@ -158,24 +158,33 @@ describe("For You narrow Android column", () => {
 
 describe("For You refill flash", () => {
   it("warms the banked next set after a refill", () => {
-    const onPass = discoverSrc.slice(
-      discoverSrc.indexOf("const onPass"),
+    const passSrc = discoverSrc.slice(
+      discoverSrc.indexOf("function playLocalForYouPass"),
       discoverSrc.indexOf("async function dropFromLocalSet")
     );
-    const refillAt = onPass.indexOf("playForYouRefill");
-    const warmAt = onPass.lastIndexOf("warmUpcomingForYou(data.upcoming)");
+    const refillAt = passSrc.indexOf("playForYouRefill");
+    const warmAt = passSrc.lastIndexOf("warmUpcomingForYou(data.upcoming)");
     expect(refillAt).toBeGreaterThanOrEqual(0);
     expect(warmAt).toBeGreaterThan(refillAt);
   });
 
   it("hides the next set before those cards can paint at rest", () => {
+    const passSrc = discoverSrc.slice(
+      discoverSrc.indexOf("function playLocalForYouPass"),
+      discoverSrc.indexOf("async function dropFromLocalSet")
+    );
+    const hideAt = passSrc.indexOf("beginRefill");
+    const assignAt = passSrc.indexOf("suggestions.value = next.suggestions");
+    expect(hideAt).toBeGreaterThanOrEqual(0);
+    expect(assignAt).toBeGreaterThan(hideAt);
+  });
+
+  it("does not drop a Pass while another Pass request is in flight", () => {
     const onPass = discoverSrc.slice(
       discoverSrc.indexOf("const onPass"),
       discoverSrc.indexOf("async function dropFromLocalSet")
     );
-    const hideAt = onPass.indexOf("beginRefill");
-    const assignAt = onPass.indexOf("suggestions.value = data.suggestions");
-    expect(hideAt).toBeGreaterThanOrEqual(0);
-    expect(assignAt).toBeGreaterThan(hideAt);
+    expect(onPass).not.toMatch(/if \(passBusy\.value\) return/);
+    expect(onPass).toContain("passQueue.push");
   });
 });

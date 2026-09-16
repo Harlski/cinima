@@ -228,7 +228,12 @@ import type {
   TitleSummary,
 } from "@cinima/shared";
 import { shouldPrefetchForYou } from "@cinima/shared";
-import { FOR_YOU_SLOT_ATTR, PASS_COLLAPSE_MS } from "@/lib/forYouPass";
+import {
+  applyLocalForYouPass,
+  FOR_YOU_SLOT_ATTR,
+  PASS_COLLAPSE_MS,
+  reconcileForYouPass,
+} from "@/lib/forYouPass";
 import { forYouDebugLog } from "@/lib/forYouDebug";
 import FavoritesOnboarding from "@/components/FavoritesOnboarding.vue";
 import HandleOnboarding from "@/components/HandleOnboarding.vue";
@@ -338,6 +343,9 @@ const handleBusy = ref(false);
 const handleSaveError = ref<string | null>(null);
 const suggestions = ref<OverlapSuggestion[]>([]);
 let warmedUpcomingKey = "";
+const upcomingBank = ref<OverlapSuggestion[]>([]);
+const passQueue: string[] = [];
+let drainingPasses = false;
 const commentFeed = ref<CommentFeedItem[]>([]);
 const followingPeople = ref<FollowingPerson[]>([]);
 const peekWallet = ref<string | null>(null);
@@ -777,10 +785,11 @@ watch(
 
 
 async function warmUpcomingForYou(upcoming?: OverlapSuggestion[]) {
-  if (!shouldPrefetchForYou(suggestions.value.length)) return;
+  if (!shouldPrefetchForYou(suggestions.value.length) && !(upcoming?.length)) return;
   const rows =
     upcoming ??
     (await request<ForYouUpcomingResponse>("/discover/for-you/upcoming")).suggestions;
+  if (rows.length) upcomingBank.value = rows;
   const key = rows.map((row) => row.title.id).join("|");
   if (!key || key === warmedUpcomingKey) return;
   warmedUpcomingKey = key;
@@ -845,46 +854,108 @@ async function stageTourForYou() {
       { method: "POST" }
     );
     if (data.suggestions) suggestions.value = data.suggestions;
+    warmedUpcomingKey = "";
+    upcomingBank.value = [];
+    await warmUpcomingForYou();
   } catch {
     // Staging is best-effort; the live set still teaches Pass.
   }
 }
 
-const onPass = async (titleId: string) => {
-  if (passBusy.value) return;
-  const suggestion = suggestions.value.find((s) => s.title.id === titleId);
-  if (!suggestion) return;
-  const touring = tourForYouPassStep.value;
+function playLocalForYouPass(titleId: string): boolean {
+  if (!suggestions.value.some((row) => row.title.id === titleId)) return false;
+  const next = applyLocalForYouPass({
+    current: suggestions.value,
+    passedId: titleId,
+    bank: upcomingBank.value,
+  });
+  if (next.refilled && next.suggestions.length) {
+    forYouMotion.beginRefill(next.suggestions.length);
+  }
+  suggestions.value = next.suggestions;
+  upcomingBank.value = next.bank;
+  forYouDebugLog(
+    `pass ${titleId} n=${next.suggestions.length} refilled=${next.refilled ? "1" : "0"} local=1`
+  );
+  if (next.refilled && next.suggestions.length) {
+    warmedUpcomingKey = "";
+    void playForYouRefill(next.suggestions);
+  }
+  return true;
+}
+
+async function drainPassQueue() {
+  if (drainingPasses) return;
+  drainingPasses = true;
   passBusy.value = true;
-  if (touring) tour.setForYouPassAwaitingRefill(true);
   try {
-    const data = await request<ForYouPassResponse>("/discover/pass", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ titleId }),
-    });
-    if (data.refilled && data.suggestions.length) {
-      forYouMotion.beginRefill(data.suggestions.length);
+    while (passQueue.length) {
+      const titleId = passQueue[0]!;
+      const pendingAfter = passQueue.slice(1);
+      try {
+        const data = await request<ForYouPassResponse>("/discover/pass", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ titleId }),
+        });
+        const reconciled = reconcileForYouPass({
+          localIds: suggestions.value.map((row) => row.title.id),
+          serverIds: data.suggestions.map((row) => row.title.id),
+          serverRefilled: data.refilled,
+          pendingPassIds: pendingAfter,
+        });
+        if (reconciled.adopt) {
+          const byId = new Map(data.suggestions.map((row) => [row.title.id, row]));
+          const ordered = reconciled.ids.flatMap((id) => {
+            const row = byId.get(id) ?? suggestions.value.find((item) => item.title.id === id);
+            return row ? [row] : [];
+          });
+          const same =
+            ordered.map((row) => row.title.id).join("|") ===
+            suggestions.value.map((row) => row.title.id).join("|");
+          if (data.refilled && ordered.length && !same) {
+            forYouMotion.beginRefill(ordered.length);
+            suggestions.value = ordered;
+            await playForYouRefill(ordered);
+          } else if (!same) {
+            suggestions.value = ordered;
+          }
+        }
+        if (data.upcoming?.length) {
+          void warmUpcomingForYou(data.upcoming);
+        }
+        if (data.earnedAchievements?.length) {
+          useMarqueeStore().enqueue(data.earnedAchievements);
+        }
+      } catch (err) {
+        forYouDebugLog(
+          `pass fail ${titleId} ${err instanceof Error ? err.message : String(err)}`
+        );
+      }
+      passQueue.shift();
     }
-    suggestions.value = data.suggestions;
-    forYouDebugLog(
-      `pass ${titleId} n=${data.suggestions.length} refilled=${data.refilled ? "1" : "0"}`
-    );
-    if (data.refilled && data.suggestions.length) {
-      warmedUpcomingKey = "";
-      await playForYouRefill(data.suggestions);
-    }
-    void warmUpcomingForYou(data.upcoming);
-    if (data.earnedAchievements?.length) {
-      useMarqueeStore().enqueue(data.earnedAchievements);
-    }
+  } finally {
+    drainingPasses = false;
+    passBusy.value = false;
+    if (passQueue.length) void drainPassQueue();
+  }
+}
+
+const onPass = async (titleId: string) => {
+  if (!playLocalForYouPass(titleId)) return;
+  const touring = tourForYouPassStep.value;
+  if (touring) tour.setForYouPassAwaitingRefill(true);
+  passQueue.push(titleId);
+  try {
     if (touring) {
+      await drainPassQueue();
       await waitUntilForYouRefillIdle();
       tour.reportAction("pass");
+    } else {
+      void drainPassQueue();
     }
   } finally {
     if (touring) tour.setForYouPassAwaitingRefill(false);
-    passBusy.value = false;
   }
 };
 

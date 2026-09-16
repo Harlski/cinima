@@ -10,6 +10,9 @@ import {
   passCollapseDeckAction,
   passCollapseCanApplyPool,
   passCollapseShouldHold,
+  omitPassLeavingIds,
+  applyLocalForYouPass,
+  reconcileForYouPass,
   addPassLeavingId,
   removePassLeavingId,
   forYouRefillDelay,
@@ -230,6 +233,53 @@ describe("Pass strip collapse", () => {
     ).toBe(false);
     expect(pickerSrc).toContain("passCollapseShouldHold");
     expect(pickerSrc).toContain("finishPassCollapse");
+    expect(pickerSrc).toContain("omitPassLeavingIds");
+  });
+
+  it("omits Passed titles when the collapse hold gives up, instead of bringing a card back", () => {
+    expect(
+      omitPassLeavingIds(
+        [{ title: { id: "a" } }, { title: { id: "b" } }],
+        ["a"]
+      ).map((row) => row.title.id)
+    ).toEqual(["b"]);
+    expect(omitPassLeavingIds([{ title: { id: "a" } }], ["a"])).toEqual([]);
+  });
+
+  it("deals the banked set as soon as the last visible card is Passed", () => {
+    const next = applyLocalForYouPass({
+      current: [{ title: { id: "a" } }],
+      passedId: "a",
+      bank: ["f", "g", "h", "i", "j", "k", "l", "m", "n", "o"].map((id) => ({
+        title: { id },
+      })),
+    });
+    expect(next.refilled).toBe(true);
+    expect(next.suggestions.map((row) => row.title.id)).toEqual([
+      "f",
+      "g",
+      "h",
+      "i",
+      "j",
+    ]);
+    expect(next.bank.map((row) => row.title.id)).toEqual([
+      "k",
+      "l",
+      "m",
+      "n",
+      "o",
+    ]);
+  });
+
+  it("keeps a locally dealt set when an earlier Pass response still lists leftover titles", () => {
+    expect(
+      reconcileForYouPass({
+        localIds: ["f", "g", "h", "i", "j"],
+        serverIds: ["b"],
+        serverRefilled: false,
+        pendingPassIds: ["b"],
+      })
+    ).toEqual({ ids: ["f", "g", "h", "i", "j"], adopt: false });
   });
 
   it("keeps an earlier Passed card hidden while a later Pass collapses", () => {

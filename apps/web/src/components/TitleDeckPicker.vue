@@ -216,6 +216,7 @@ import {
   lockPassAxis,
   passCollapseDeckAction,
   passCollapseShouldHold,
+  omitPassLeavingIds,
   passDragProgress,
   passStripSnapBehavior,
   removePassLeavingId,
@@ -386,11 +387,14 @@ function prefersReducedMotion() {
   );
 }
 
-function resetFromPool(behavior: ScrollBehavior = "auto") {
+function resetFromPool(
+  behavior: ScrollBehavior = "auto",
+  pool: DeckItem[] = props.items
+) {
   const previousIds = deckItems.value.map((item) => item.title.id);
   const previousSelected = selectedIndex.value;
   const remembered = selectionMemory();
-  const next = syncDeckItems(props.items, remembered);
+  const next = syncDeckItems(pool, remembered);
   if (props.alwaysCenter && !remembered) {
     next.selectedIndex = selectedIndexAfterDeckChange(
       previousIds,
@@ -425,11 +429,12 @@ function finishPassCollapse() {
     collapseTimer = setTimeout(finishPassCollapse, 50);
     return;
   }
+  const pool = omitPassLeavingIds(props.items, leaving);
   collapsingPassIds.value = [];
   leavingPassIds.value = [];
   const strip = stripEl.value;
   if (strip) strip.style.scrollSnapType = "";
-  resetFromPool(passStripSnapBehavior(prefersReducedMotion()));
+  resetFromPool(passStripSnapBehavior(prefersReducedMotion()), pool);
 }
 
 function schedulePassCollapseSettle() {
