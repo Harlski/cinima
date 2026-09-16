@@ -215,6 +215,7 @@ import {
   isPassSwipe,
   lockPassAxis,
   passCollapseDeckAction,
+  passCollapseShouldHold,
   passDragProgress,
   passStripSnapBehavior,
   removePassLeavingId,
@@ -406,6 +407,24 @@ function resetFromPool(behavior: ScrollBehavior = "auto") {
 }
 
 function finishPassCollapse() {
+  const leaving = [
+    ...new Set([...collapsingPassIds.value, ...leavingPassIds.value]),
+  ];
+  const nextIds = props.items.map((item) => item.title.id);
+  const elapsed = collapseStartedAt ? Date.now() - collapseStartedAt : 0;
+  if (
+    passCollapseShouldHold({
+      leavingIds: leaving,
+      nextIds,
+      elapsedMs: elapsed,
+    })
+  ) {
+    const strip = stripEl.value;
+    if (strip) strip.style.scrollSnapType = "none";
+    if (collapseTimer) clearTimeout(collapseTimer);
+    collapseTimer = setTimeout(finishPassCollapse, 50);
+    return;
+  }
   collapsingPassIds.value = [];
   leavingPassIds.value = [];
   const strip = stripEl.value;

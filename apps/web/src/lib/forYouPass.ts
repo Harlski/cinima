@@ -123,6 +123,28 @@ export function passCollapseDeckAction(input: {
   return "apply";
 }
 
+/** False while Pass is still in flight: applying the pool would resurrect the card. */
+export function passCollapseCanApplyPool(input: {
+  leavingIds: readonly string[];
+  nextIds: readonly string[];
+}): boolean {
+  if (!input.leavingIds.length) return true;
+  return input.leavingIds.every((id) => !input.nextIds.includes(id));
+}
+
+/** Keep the hole closed until the set drops the title, or the Pass request gives up. */
+export const PASS_COLLAPSE_HOLD_MS = 8_000;
+
+export function passCollapseShouldHold(input: {
+  leavingIds: readonly string[];
+  nextIds: readonly string[];
+  elapsedMs: number;
+  holdMs?: number;
+}): boolean {
+  if (passCollapseCanApplyPool(input)) return false;
+  return input.elapsedMs < (input.holdMs ?? PASS_COLLAPSE_HOLD_MS);
+}
+
 export function addPassLeavingId(ids: readonly string[], id: string): string[] {
   return ids.includes(id) ? [...ids] : [...ids, id];
 }

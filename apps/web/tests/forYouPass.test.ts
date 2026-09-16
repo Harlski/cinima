@@ -8,6 +8,8 @@ import {
   passFizzleAt,
   passStripSnapBehavior,
   passCollapseDeckAction,
+  passCollapseCanApplyPool,
+  passCollapseShouldHold,
   addPassLeavingId,
   removePassLeavingId,
   forYouRefillDelay,
@@ -184,6 +186,50 @@ describe("Pass strip collapse", () => {
         nextIds: ["b", "c", "d", "e"],
       })
     ).toBe("collapse-removed");
+  });
+
+  it("does not restore a Passed card while the live set still contains it", () => {
+    expect(
+      passCollapseCanApplyPool({
+        leavingIds: ["a"],
+        nextIds: ["a", "b", "c", "d"],
+      })
+    ).toBe(false);
+    expect(
+      passCollapseCanApplyPool({
+        leavingIds: ["a"],
+        nextIds: ["b", "c", "d"],
+      })
+    ).toBe(true);
+    expect(
+      passCollapseCanApplyPool({
+        leavingIds: [],
+        nextIds: ["a", "b"],
+      })
+    ).toBe(true);
+    expect(
+      passCollapseShouldHold({
+        leavingIds: ["a"],
+        nextIds: ["a", "b", "c"],
+        elapsedMs: 400,
+      })
+    ).toBe(true);
+    expect(
+      passCollapseShouldHold({
+        leavingIds: ["a"],
+        nextIds: ["b", "c"],
+        elapsedMs: 400,
+      })
+    ).toBe(false);
+    expect(
+      passCollapseShouldHold({
+        leavingIds: ["a"],
+        nextIds: ["a", "b", "c"],
+        elapsedMs: 8_000,
+      })
+    ).toBe(false);
+    expect(pickerSrc).toContain("passCollapseShouldHold");
+    expect(pickerSrc).toContain("finishPassCollapse");
   });
 
   it("keeps an earlier Passed card hidden while a later Pass collapses", () => {
