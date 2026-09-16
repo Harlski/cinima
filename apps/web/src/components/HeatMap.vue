@@ -121,6 +121,7 @@
       <div
         v-if="selected"
         class="episode-dialog-root"
+        data-scroll-trap
         role="dialog"
         aria-modal="true"
         :aria-label="dialogLabel"

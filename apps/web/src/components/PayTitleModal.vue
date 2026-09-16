@@ -1,5 +1,5 @@
 <template>
-  <div class="gate-modal" role="presentation" @click.self="$emit('close')">
+  <div class="gate-modal" data-scroll-trap role="presentation" @click.self="$emit('close')">
     <div
       class="gate-dialog nq-card"
       role="dialog"

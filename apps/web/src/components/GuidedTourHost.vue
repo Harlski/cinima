@@ -4,6 +4,7 @@
     <div
       v-if="tour.offering"
       class="tour-offer"
+      data-scroll-trap
       role="dialog"
       aria-modal="true"
       aria-labelledby="tour-offer-title"
@@ -30,6 +31,7 @@
     <div
       v-else-if="tour.skipNotice"
       class="tour-offer"
+      data-scroll-trap
       role="dialog"
       aria-modal="true"
       aria-labelledby="tour-skip-title"
@@ -51,6 +53,7 @@
     <div
       v-else-if="tour.active && step && step.id === 'tour-done'"
       class="tour-done"
+      data-scroll-trap
       role="dialog"
       aria-modal="true"
       aria-labelledby="tour-done-title"
@@ -99,7 +102,7 @@
       role="status"
       aria-live="polite"
     >
-      <div class="tour-coach-card nq-card">
+      <div class="tour-coach-card nq-card" data-scroll-trap>
         <div class="tour-coach-top">
           <p class="tour-coach-step">
             {{ tour.stepIndex + 1 }} / {{ stepCount }}

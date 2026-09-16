@@ -4,9 +4,20 @@ export type ScrollMetrics = {
   scrollTop: number;
   scrollHeight: number;
   clientHeight: number;
+  /** Overlay chrome: ancestors past this node are not page scroll. */
+  isScrollTrap?: boolean;
 };
 
+export const SCROLL_TRAP_ATTR = "data-scroll-trap";
+
 const SCROLLABLE_OVERFLOW = new Set(["auto", "scroll", "overlay"]);
+
+function isHorizontalOnlyScroller(metrics: ScrollMetrics): boolean {
+  return (
+    SCROLLABLE_OVERFLOW.has(metrics.overflowX ?? "visible") &&
+    !SCROLLABLE_OVERFLOW.has(metrics.overflowY)
+  );
+}
 
 /**
  * Positive contentDeltaY = finger moved up (content wants to scroll down).
@@ -89,24 +100,32 @@ export function nestedScrollHandoff(
   return null;
 }
 
+/** Ancestors past overlay chrome are the page; they must not take the gesture. */
+function chainInsideScrollTrap(chain: ScrollMetrics[]): ScrollMetrics[] {
+  const trapAt = chain.findIndex((metrics) => metrics.isScrollTrap);
+  if (trapAt < 0) return chain;
+  return chain.slice(0, trapAt + 1);
+}
+
 /**
  * True when a vertical drag has no scroll container that can move further —
  * the case that rubber-bands Nimiq Pay / mobile WebViews and slides content
- * under fixed chrome.
+ * under fixed chrome. Overlay traps cut the page scroller out of the chain.
  */
 export function shouldBlockRubberBandScroll(
   chain: ScrollMetrics[],
   contentDeltaY: number
 ): boolean {
   if (contentDeltaY === 0) return false;
+  const effective = chainInsideScrollTrap(chain);
   // A carousel (Watchlist strip, Discover rows) needs native pan so a flick can
   // glide. preventDefault on the first slightly-vertical sample kills that.
-  if (
-    chain.some((metrics) => SCROLLABLE_OVERFLOW.has(metrics.overflowX ?? "visible"))
-  ) {
+  // overflow-y: auto also computes overflow-x: auto in CSS — that is not a
+  // carousel, and leftover vertical travel must still stop.
+  if (effective.some(isHorizontalOnlyScroller)) {
     return false;
   }
-  return !chain.some((metrics) =>
+  return !effective.some((metrics) =>
     canAbsorbVerticalScroll(metrics, contentDeltaY)
   );
 }
@@ -119,6 +138,8 @@ export function scrollMetricsFromElement(el: Element): ScrollMetrics {
     scrollTop: (el as HTMLElement).scrollTop,
     scrollHeight: el.scrollHeight,
     clientHeight: el.clientHeight,
+    isScrollTrap:
+      el instanceof HTMLElement && el.hasAttribute(SCROLL_TRAP_ATTR),
   };
 }
 

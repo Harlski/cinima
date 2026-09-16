@@ -3,6 +3,7 @@
     <div
       v-if="pending || receiptHash"
       class="send-nim-modal"
+      data-scroll-trap
       role="presentation"
       @click.self="onCancel"
     >

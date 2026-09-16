@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div class="peek-modal" role="presentation" @click.self="$emit('close')">
+    <div class="peek-modal" data-scroll-trap role="presentation" @click.self="$emit('close')">
       <div
         class="peek-dialog nq-card"
         role="dialog"

@@ -1,5 +1,5 @@
 <template>
-  <div class="pay-only-modal" role="presentation" @click.self="$emit('close')">
+  <div class="pay-only-modal" data-scroll-trap role="presentation" @click.self="$emit('close')">
     <div
       class="pay-only-dialog nq-card"
       role="dialog"

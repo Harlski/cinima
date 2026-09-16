@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div class="favoriters-modal" role="presentation" @click.self="$emit('close')">
+    <div class="favoriters-modal" data-scroll-trap role="presentation" @click.self="$emit('close')">
       <div
         class="favoriters-dialog nq-card"
         role="dialog"

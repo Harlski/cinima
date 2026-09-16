@@ -3,6 +3,7 @@
     <div
       v-if="digest"
       class="digest-modal"
+      data-scroll-trap
       :class="{
         'digest-modal--static': reduceMotion,
         'digest-modal--departing': departing,

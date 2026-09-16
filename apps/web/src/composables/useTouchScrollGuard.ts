@@ -6,8 +6,9 @@ import {
 
 /**
  * Stops vertical rubber-band / overscroll when no ancestor can absorb the
- * gesture. Needed in Nimiq Pay WebViews where overscroll-behavior alone is
- * not enough and content slides under the fixed header.
+ * gesture, including overlay chrome marked data-scroll-trap. Needed in Nimiq
+ * Pay WebViews where overscroll-behavior alone is not enough and content
+ * slides under the fixed header.
  */
 export function useTouchScrollGuard() {
   let lastX = 0;
@@ -35,15 +36,27 @@ export function useTouchScrollGuard() {
 
     // Horizontal carousels (Discover rows, onboarding) keep native pan-x.
     if (Math.abs(deltaX) > Math.abs(deltaY)) return;
-
-    const chain = scrollMetricsChainFromTarget(event.target);
-    if (shouldBlockRubberBandScroll(chain, deltaY)) {
-      event.preventDefault();
-    }
+    preventIfBlocked(event.target, deltaY, event);
   }
 
   function onTouchEnd() {
     tracking = false;
+  }
+
+  function onWheel(event: WheelEvent) {
+    if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+    preventIfBlocked(event.target, event.deltaY, event);
+  }
+
+  function preventIfBlocked(
+    target: EventTarget | null,
+    deltaY: number,
+    event: Event
+  ) {
+    const chain = scrollMetricsChainFromTarget(target);
+    if (shouldBlockRubberBandScroll(chain, deltaY)) {
+      event.preventDefault();
+    }
   }
 
   onMounted(() => {
@@ -63,6 +76,10 @@ export function useTouchScrollGuard() {
       passive: true,
       capture: true,
     });
+    document.addEventListener("wheel", onWheel, {
+      passive: false,
+      capture: true,
+    });
   });
 
   onUnmounted(() => {
@@ -70,5 +87,6 @@ export function useTouchScrollGuard() {
     document.removeEventListener("touchmove", onTouchMove, true);
     document.removeEventListener("touchend", onTouchEnd, true);
     document.removeEventListener("touchcancel", onTouchEnd, true);
+    document.removeEventListener("wheel", onWheel, true);
   });
 }

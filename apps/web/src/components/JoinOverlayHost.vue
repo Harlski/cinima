@@ -3,6 +3,7 @@
     <div
       v-if="shown"
       class="join-overlay-modal"
+      data-scroll-trap
       role="dialog"
       aria-modal="true"
       aria-labelledby="join-overlay-title"

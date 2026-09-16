@@ -1,5 +1,11 @@
 <template>
-  <div v-if="current && title" class="marquee" role="status" aria-live="polite">
+  <div
+    v-if="current && title"
+    class="marquee"
+    data-scroll-trap
+    role="status"
+    aria-live="polite"
+  >
     <Transition name="marquee-pop" appear mode="out-in">
       <div :key="current.kind" class="marquee-slide">
         <button type="button" class="marquee-bar" aria-label="Open Credits" @click="openCredits">

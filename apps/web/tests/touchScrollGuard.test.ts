@@ -90,6 +90,73 @@ describe("shouldBlockRubberBandScroll", () => {
   });
 });
 
+const overlayChrome: ScrollMetrics = {
+  overflowY: "visible",
+  scrollTop: 0,
+  scrollHeight: 120,
+  clientHeight: 120,
+  isScrollTrap: true,
+};
+
+const overlayInnerList: ScrollMetrics = {
+  overflowY: "auto",
+  scrollTop: 0,
+  scrollHeight: 800,
+  clientHeight: 360,
+};
+
+describe("shouldBlockRubberBandScroll overlay trap", () => {
+  it("blocks a swipe on overlay chrome even when the page behind can scroll", () => {
+    expect(
+      shouldBlockRubberBandScroll([overlayChrome, pageScroller], 18)
+    ).toBe(true);
+    expect(
+      shouldBlockRubberBandScroll([overlayChrome, pageScroller], -18)
+    ).toBe(true);
+  });
+
+  it("lets a nested list inside the overlay keep scrolling", () => {
+    expect(
+      shouldBlockRubberBandScroll(
+        [overlayInnerList, overlayChrome, pageScroller],
+        18
+      )
+    ).toBe(false);
+  });
+
+  it("does not hand leftover travel to the page once the overlay list ends", () => {
+    expect(
+      shouldBlockRubberBandScroll(
+        [overlayInnerList, overlayChrome, pageScroller],
+        -18
+      )
+    ).toBe(true);
+    expect(
+      shouldBlockRubberBandScroll(
+        [
+          { ...overlayInnerList, scrollTop: 440 },
+          overlayChrome,
+          pageScroller,
+        ],
+        18
+      )
+    ).toBe(true);
+  });
+
+  it("still stops leftover when CSS computes overflow-x auto on a vertical list", () => {
+    const computedYList: ScrollMetrics = {
+      ...overlayInnerList,
+      overflowX: "auto",
+    };
+    expect(
+      shouldBlockRubberBandScroll(
+        [computedYList, overlayChrome, pageScroller],
+        -18
+      )
+    ).toBe(true);
+  });
+});
+
 const heatmapBox: ScrollMetrics = {
   overflowY: "auto",
   scrollTop: 0,

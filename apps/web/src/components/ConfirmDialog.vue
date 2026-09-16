@@ -1,5 +1,5 @@
 <template>
-  <div class="confirm-modal" role="presentation" @click.self="$emit('cancel')">
+  <div class="confirm-modal" data-scroll-trap role="presentation" @click.self="$emit('cancel')">
     <div
       class="confirm-dialog nq-card"
       role="dialog"

@@ -12,6 +12,7 @@
       <div
         v-if="open"
         class="comment-modal"
+        data-scroll-trap
         role="presentation"
         @click.self="dismiss"
       >

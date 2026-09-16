@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div class="find-modal" role="presentation" @click.self="$emit('close')">
+    <div class="find-modal" data-scroll-trap role="presentation" @click.self="$emit('close')">
       <div
         class="find-dialog nq-card"
         :class="{ 'find-dialog--tour-glow': highlightCreator }"

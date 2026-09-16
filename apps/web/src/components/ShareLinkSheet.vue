@@ -1,5 +1,5 @@
 <template>
-  <div class="share-modal" role="presentation" @click.self="$emit('close')">
+  <div class="share-modal" data-scroll-trap role="presentation" @click.self="$emit('close')">
     <div
       class="share-dialog nq-card"
       role="dialog"

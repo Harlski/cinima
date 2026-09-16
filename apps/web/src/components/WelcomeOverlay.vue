@@ -4,6 +4,7 @@
       <div
         v-if="open"
         class="welcome-overlay"
+        data-scroll-trap
         role="status"
         aria-live="polite"
       >

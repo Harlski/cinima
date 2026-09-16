@@ -151,6 +151,7 @@
     <div
       v-if="xEditorOpen"
       class="x-modal"
+      data-scroll-trap
       role="presentation"
       @click.self="xEditorOpen = false"
     >

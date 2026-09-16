@@ -9,13 +9,13 @@
     @close="$emit('close')"
   />
 
-  <div v-else-if="handle && loading" class="share-modal" role="presentation" @click.self="$emit('close')">
+  <div v-else-if="handle && loading" class="share-modal" data-scroll-trap role="presentation" @click.self="$emit('close')">
     <div class="share-dialog nq-card" role="dialog" aria-modal="true">
       <NqSpinner />
     </div>
   </div>
 
-  <div v-else class="share-modal" role="presentation" @click.self="$emit('close')">
+  <div v-else class="share-modal" data-scroll-trap role="presentation" @click.self="$emit('close')">
     <div
       class="share-dialog nq-card"
       role="dialog"

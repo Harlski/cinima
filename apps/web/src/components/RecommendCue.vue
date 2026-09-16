@@ -1,5 +1,5 @@
 <template>
-  <div class="recommend-cue" role="status" aria-live="polite">
+  <div class="recommend-cue" data-scroll-trap role="status" aria-live="polite">
     <div class="recommend-cue-bar">
       <p class="recommend-cue-copy">{{ titleName }} now recommended</p>
       <button type="button" class="nq-pill-gold recommend-cue-share" @click="$emit('share')">
