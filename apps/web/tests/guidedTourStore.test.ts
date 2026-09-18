@@ -78,14 +78,28 @@ describe("Guided tour store skip last-chance and Me replay", () => {
     tour.offerFromMe();
     expect(tour.offering).toBe(true);
     expect(tour.offerCopy.declineLabel).toBe("Not now");
-    expect(tour.offerCopy.title.includes("+10 NIM") || tour.offerCopy.body.includes("+10 NIM")).toBe(
-      true
-    );
+    expect(tour.offerCopy.title).toBe("Using CINIMA");
+
+    tour.declineOffer();
+    expect(tour.offerCopy.title).toBe("The tour is quick");
+    expect(tour.phase).toBe("skip-offer");
 
     tour.declineOffer();
     expect(tour.phase).toBe("idle");
     expect(tour.skipNotice).toBe(false);
     expect(loadTourPersistedStatus("NQ01TOURSTORETEST")).toBe("never");
+  });
+
+  it("Not now on Using CINIMA opens last-chance, Keep going starts the tour", () => {
+    const tour = useGuidedTourStore();
+    tour.showOffer();
+    expect(tour.offerCopy.title).toBe("Using CINIMA");
+    tour.declineOffer();
+    expect(tour.offerCopy.title).toBe("The tour is quick");
+    expect(tour.phase).toBe("skip-offer");
+    tour.acceptOffer();
+    expect(tour.phase).toBe("active");
+    expect(tour.step?.id).toBe("watchlist-home");
   });
 
   it("Cue lab skip last-chance does not persist Skip anyway", () => {

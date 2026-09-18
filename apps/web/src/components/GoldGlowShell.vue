@@ -1,7 +1,10 @@
 <template>
   <div
     class="gold-glow-shell"
-    :class="{ 'gold-glow-shell--soft': soft }"
+    :class="{
+      'gold-glow-shell--soft': useSoft,
+      'gold-glow-shell--strong': strong,
+    }"
     :style="shellStyle"
   >
     <div class="gold-glow-content">
@@ -13,8 +16,10 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import {
+  goldGlowHaloBlurPx,
   goldGlowHaloInsetPx,
   goldGlowRimInsetPx,
+  goldGlowRimWidthPx,
   goldGlowShellBleedPx,
 } from "@/lib/goldGlow";
 
@@ -24,18 +29,25 @@ const props = withDefaults(
     radius?: string;
     /** Soft blurred halo behind the rotating outline (share cards). */
     soft?: boolean;
+    /** Thicker rim and brighter bloom (Guided tour targets). */
+    strong?: boolean;
   }>(),
   {
     radius: "12px",
     soft: true,
+    strong: false,
   }
 );
 
+const useSoft = computed(() => props.soft || props.strong);
+
 const shellStyle = computed(() => ({
   "--gold-glow-radius": props.radius,
-  "--gold-glow-bleed": `${goldGlowShellBleedPx(props.soft)}px`,
-  "--gold-glow-halo-inset": `${goldGlowHaloInsetPx(props.soft)}px`,
-  "--gold-glow-rim-inset": `${goldGlowRimInsetPx()}px`,
+  "--gold-glow-bleed": `${goldGlowShellBleedPx(useSoft.value, props.strong)}px`,
+  "--gold-glow-halo-inset": `${goldGlowHaloInsetPx(useSoft.value, props.strong)}px`,
+  "--gold-glow-halo-blur": `${goldGlowHaloBlurPx(props.strong)}px`,
+  "--gold-glow-rim-inset": `${goldGlowRimInsetPx(props.strong)}px`,
+  "--gold-glow-rim-width": `${goldGlowRimWidthPx(props.strong)}px`,
 }));
 </script>
 
@@ -72,19 +84,41 @@ const shellStyle = computed(() => ({
 .gold-glow-shell--soft::before {
   z-index: 0;
   inset: calc(var(--gold-glow-bleed, 0px) - var(--gold-glow-halo-inset, 8px));
-  filter: blur(12px);
+  filter: blur(var(--gold-glow-halo-blur, 12px));
   opacity: 0.65;
+}
+
+.gold-glow-shell--strong::before,
+.gold-glow-shell--strong::after {
+  background: conic-gradient(
+    from var(--gold-glow-angle, 0deg),
+    color-mix(in oklch, var(--gold) 42%, transparent) 0deg,
+    var(--gold) 50deg,
+    #ffe9a8 90deg,
+    var(--gold) 135deg,
+    color-mix(in oklch, var(--gold) 58%, transparent) 200deg,
+    color-mix(in oklch, var(--gold) 32%, transparent) 275deg,
+    color-mix(in oklch, var(--gold) 42%, transparent) 360deg
+  );
+}
+
+.gold-glow-shell--strong::before {
+  opacity: 0.92;
 }
 
 .gold-glow-shell::after {
   z-index: 0;
-  padding: 1.5px;
+  padding: var(--gold-glow-rim-width, 1.5px);
   opacity: 0.95;
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
+}
+
+.gold-glow-shell--strong::after {
+  opacity: 1;
 }
 
 .gold-glow-content {

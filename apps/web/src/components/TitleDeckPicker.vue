@@ -168,6 +168,7 @@
             v-if="tourPassSpotlight"
             :id="TOUR_SPOTLIGHT.forYouPassCard"
             radius="12px"
+            :strong="false"
             class="for-you-tour-glow"
           />
           <button
@@ -1039,7 +1040,7 @@ function onResize() {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .meta h2 {

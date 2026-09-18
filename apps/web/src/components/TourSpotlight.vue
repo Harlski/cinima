@@ -3,6 +3,7 @@
     v-if="active"
     :radius="radius"
     :soft="false"
+    :strong="strong"
     class="tour-spotlight"
     :class="{ 'tour-spotlight--fit': fit }"
   >
@@ -24,11 +25,14 @@ const props = withDefaults(
     radius?: string;
     /** Stretch to fill a flex parent (bottom tabs). */
     fit?: boolean;
+    /** Bloom around small pills. Tabs and title cards keep the rim only. */
+    strong?: boolean;
   }>(),
   {
     id: null,
     radius: "12px",
     fit: false,
+    strong: true,
   }
 );
 
@@ -39,6 +43,10 @@ const active = computed(() =>
 </script>
 
 <style scoped>
+.tour-spotlight {
+  z-index: 4;
+}
+
 .tour-spotlight--fit {
   flex: 1;
   display: flex;

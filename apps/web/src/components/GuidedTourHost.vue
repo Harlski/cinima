@@ -11,8 +11,16 @@
     >
       <div class="tour-offer-card nq-card">
         <h2 id="tour-offer-title">{{ offerCopy.title }}</h2>
-        <p>{{ offerCopy.body }}</p>
-        <p class="tour-wrap-nim">{{ wrapNim }}</p>
+        <p class="tour-offer-body">
+          <span
+            v-for="(part, i) in offerBodySegments"
+            :key="i"
+            :class="{
+              'tour-offer-gold': part.gold,
+              'tour-offer-italic': part.italic,
+            }"
+          >{{ part.text }}</span>
+        </p>
         <button type="button" class="nq-pill-blue nq-pill-stretch" @click="onAccept">
           {{ offerCopy.acceptLabel }}
         </button>
@@ -36,7 +44,9 @@
     >
       <div class="tour-offer-card nq-card">
         <h2 id="tour-skip-title">{{ skipNoticeTitle }}</h2>
-        <p>{{ skipNoticeBody }}</p>
+        <p>
+          You can "Take the Tour" anytime from your profile (The <b>Me</b> tab).
+        </p>
         <button
           type="button"
           class="nq-pill-blue nq-pill-stretch"
@@ -131,16 +141,15 @@
 import { computed, watch } from "vue";
 import { useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
-import { JOIN_OVERLAY_NIM_LABEL } from "@cinima/shared";
 import NqIcon from "@/components/NqIcon.vue";
 import { useGuidedTourStore } from "@/stores/guidedTour";
 import { payGateSocial } from "@/lib/contact";
 import {
   GUIDED_TOUR_STEPS,
   TOUR_CREATOR_WALLET,
-  TOUR_SKIP_NOTICE_BODY,
   TOUR_SKIP_NOTICE_TITLE,
   TOUR_WRAP_BODY,
+  TOUR_WRAP_NIM,
   TOUR_WRAP_TITLE,
   tourCoachContinueLabel,
   tourCoachPlacement,
@@ -150,16 +159,15 @@ import {
 } from "@/lib/guidedTour";
 
 const tour = useGuidedTourStore();
-const { step, offerCopy } = storeToRefs(tour);
+const { step, offerCopy, offerBodySegments } = storeToRefs(tour);
 const router = useRouter();
 
 const stepCount = GUIDED_TOUR_STEPS.length;
 const feedbackChannels = payGateSocial;
 const skipNoticeTitle = TOUR_SKIP_NOTICE_TITLE;
-const skipNoticeBody = TOUR_SKIP_NOTICE_BODY;
 const wrapTitle = TOUR_WRAP_TITLE;
 const wrapBody = TOUR_WRAP_BODY;
-const wrapNim = JOIN_OVERLAY_NIM_LABEL;
+const wrapNim = TOUR_WRAP_NIM;
 
 const showWrap = computed(
   () => tour.wrapPreview || (tour.active && step.value?.id === "tour-done")
@@ -287,6 +295,21 @@ watch(
   color: var(--text-secondary);
 }
 
+.tour-offer-body {
+  white-space: pre-line;
+}
+
+.tour-offer-gold {
+  color: var(--gold, #e5c158);
+  font-weight: 700;
+}
+
+.tour-offer-italic {
+  display: block;
+  font-style: italic;
+  margin-top: 0.75rem;
+}
+
 .tour-done {
   position: fixed;
   inset: 0;
@@ -325,11 +348,10 @@ watch(
   color: var(--text-secondary);
 }
 
-.tour-offer-card > p.tour-wrap-nim,
 .tour-done-card > p.tour-wrap-nim {
-  margin: 0.15rem 0 0;
-  font-size: 1.15rem;
-  font-weight: 700;
+  margin: 0.1rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 500;
   color: var(--gold, #e5c158);
 }
 

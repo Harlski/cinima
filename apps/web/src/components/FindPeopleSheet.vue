@@ -210,6 +210,15 @@ defineEmits<{
   display: flex;
 }
 
+.person-row--tour-glow :deep(.gold-glow-content) {
+  background: var(--bg-surface, var(--colors-neutral-50));
+  border-radius: 12px;
+}
+
+.person-row--tour-glow .person-main {
+  padding-inline: 0.45rem;
+}
+
 .person-main {
   flex: 1;
   min-width: 0;

@@ -104,43 +104,59 @@ export type TourOfferCopy = {
   declineLabel: string;
 };
 
+export type TourOfferBodyPart = {
+  text: string;
+  gold?: true;
+  italic?: true;
+};
+
+export const TOUR_OFFER_BODY_SEGMENTS: readonly TourOfferBodyPart[] = [
+  { text: "Learn how to " },
+  { text: "search", gold: true },
+  { text: " content for your:\n" },
+  { text: "Watchlist", gold: true },
+  { text: ", " },
+  { text: "Favorites", gold: true },
+  { text: " & " },
+  { text: "Recommendations", gold: true },
+];
+
+function joinTourOfferBody(parts: readonly TourOfferBodyPart[]): string {
+  return parts.reduce((out, part) => {
+    const gap = part.italic && out.length > 0 && !out.endsWith("\n") ? "\n" : "";
+    return out + gap + part.text;
+  }, "");
+}
+
 export const TOUR_OFFER_VARIANTS: readonly TourOfferCopy[] = [
   {
-    title: "Complimentary +10 NIM",
-    body: "Finish this short walkthrough of Watchlist, Search, Recommends, and finding people. Complete it and +10 NIM is on its way.",
-    acceptLabel: "I'll take it",
-    declineLabel: "Not now",
-  },
-  {
-    title: "Your ticket includes +10 NIM",
-    body: "A few minutes through Watchlist, Search, Recommends, For You, and Find people. Stay through the credits and +10 NIM is on its way.",
-    acceptLabel: "Take my seat",
-    declineLabel: "Not now",
-  },
-  {
-    title: "Walk through. Walk out +10 NIM.",
-    body: "Learn the moves that matter. Complete the tour and +10 NIM is on its way.",
-    acceptLabel: "Start the tour",
-    declineLabel: "Not now",
-  },
-  {
-    title: "Stay for the credits",
-    body: "Skip and you miss how Cinima works. Finish the tour and pocket +10 NIM.",
+    title: "Using CINIMA",
+    body: joinTourOfferBody(TOUR_OFFER_BODY_SEGMENTS),
     acceptLabel: "Let's go",
     declineLabel: "Not now",
   },
 ];
 
+export const TOUR_SKIP_OFFER_BODY_SEGMENTS: readonly TourOfferBodyPart[] = [
+  { text: "We'll send you " },
+  { text: "+10 NIM", gold: true },
+  {
+    text: " on completion - you can use this to thank other users on CINIMA.",
+  },
+  { text: "You'll feel at home in <60 seconds", italic: true },
+];
+
 export const TOUR_SKIP_OFFER: TourOfferCopy = {
-  title: "Wait - +10 NIM is on the table",
-  body: "Skip and you miss the moves that matter. Finish the tour and +10 NIM is on its way.",
+  title: "The tour is quick",
+  body: joinTourOfferBody(TOUR_SKIP_OFFER_BODY_SEGMENTS),
   acceptLabel: "Keep going",
   declineLabel: "Skip anyway",
 };
 
-export const TOUR_WRAP_TITLE = "+10 NIM is on its way";
+export const TOUR_WRAP_TITLE = "Think CINIMA";
 export const TOUR_WRAP_BODY =
-  "There's more to discover. Reach out on X or Telegram if you have a suggestion or feedback.";
+  "You're set! Start browsing & come back anytime you need something new to watch.";
+export const TOUR_WRAP_NIM = "+10 NIM is on its way";
 
 export function pickTourOfferIndex(random: () => number = Math.random): number {
   const n = TOUR_OFFER_VARIANTS.length;
@@ -156,6 +172,14 @@ export function tourOfferAt(index: number): TourOfferCopy {
 export function tourOfferCopy(kind: TourOfferKind, index: number): TourOfferCopy {
   if (kind === "skip") return TOUR_SKIP_OFFER;
   return tourOfferAt(index);
+}
+
+export function tourOfferBodySegments(
+  kind: TourOfferKind,
+  _index: number
+): readonly TourOfferBodyPart[] {
+  if (kind === "skip") return TOUR_SKIP_OFFER_BODY_SEGMENTS;
+  return TOUR_OFFER_BODY_SEGMENTS;
 }
 
 export function tourCoachPlacement(
@@ -320,7 +344,6 @@ export const GUIDED_TOUR_STEPS: readonly TourStepDef[] = [
     actionText: "Swipe up on the card to Pass",
     spotlights: [
       TOUR_SPOTLIGHT.tabDiscover,
-      TOUR_SPOTLIGHT.discoverTabForYou,
       TOUR_SPOTLIGHT.forYouPassCard,
     ],
     routeName: "discover",
@@ -478,7 +501,7 @@ export function skipTour(state: TourRuntimeState): TourRuntimeState {
 }
 
 export function offerSkipLastChance(state: TourRuntimeState): TourRuntimeState {
-  if (state.phase !== "active") return state;
+  if (state.phase !== "active" && state.phase !== "offer") return state;
   return { ...state, phase: "skip-offer" };
 }
 
@@ -650,7 +673,7 @@ export function shouldOfferRecommendCue(opts: {
 
 export const TOUR_SKIP_NOTICE_TITLE = "Tour skipped";
 export const TOUR_SKIP_NOTICE_BODY =
-  "You can take the tour and complete it anytime from Me.";
+  'You can "Take the Tour" anytime from your profile (The Me tab).';
 
 /** Fight Club - always available so Community Recommends is never empty during the tour. */
 export const TOUR_COMMUNITY_FALLBACK_TITLE_ID = makeTitleId("movie", 550);

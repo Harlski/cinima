@@ -14,7 +14,7 @@
       </div>
     </div>
     <nav class="bottom-tabs">
-      <TourSpotlight :id="TOUR_SPOTLIGHT.tabDiscover" radius="10px" fit>
+      <TourSpotlight :id="TOUR_SPOTLIGHT.tabDiscover" radius="10px" fit :strong="false">
         <RouterLink
           to="/discover"
           class="tab"
@@ -24,7 +24,7 @@
           <span>Discover</span>
         </RouterLink>
       </TourSpotlight>
-      <TourSpotlight :id="TOUR_SPOTLIGHT.tabWatchlist" radius="10px" fit>
+      <TourSpotlight :id="TOUR_SPOTLIGHT.tabWatchlist" radius="10px" fit :strong="false">
         <RouterLink
           to="/my-list"
           class="tab"
@@ -39,7 +39,7 @@
           <span>Watchlist</span>
         </RouterLink>
       </TourSpotlight>
-      <TourSpotlight :id="TOUR_SPOTLIGHT.tabSearch" radius="10px" fit>
+      <TourSpotlight :id="TOUR_SPOTLIGHT.tabSearch" radius="10px" fit :strong="false">
         <RouterLink
           to="/search"
           class="tab"

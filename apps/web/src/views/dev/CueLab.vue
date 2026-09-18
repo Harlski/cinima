@@ -52,9 +52,10 @@
           returning grant: thanks for coming back and +10 NIM.
         </p>
         <p v-if="group.group === 'Guided tour'" class="hint">
-          Offer is a +10 NIM invite. Skip last chance is the hold when they tap
-          Skip tour. Tour wrap is +10 NIM is on its way. Start tour runs the
-          real walkthrough and leaves this screen.
+          Offer is Using CINIMA (no NIM). Not now and Skip tour both open skip
+          last chance, where +10 NIM lands. Tour wrap is Think CINIMA, with
+          +10 NIM is on its way in small type.
+          Start tour runs the real walkthrough and leaves this screen.
         </p>
         <div class="actions">
           <button

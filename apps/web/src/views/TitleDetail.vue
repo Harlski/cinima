@@ -931,7 +931,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .meta-title {

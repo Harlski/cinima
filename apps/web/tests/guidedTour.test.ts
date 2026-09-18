@@ -33,12 +33,14 @@ import {
   TOUR_SKIP_NOTICE_TITLE,
   TOUR_SKIP_OFFER,
   TOUR_WRAP_BODY,
+  TOUR_WRAP_NIM,
   TOUR_WRAP_TITLE,
   offerSkipLastChance,
   pickTourOfferIndex,
   requestTourSkip,
   resumeTour,
   tourOfferAt,
+  tourOfferBodySegments,
   tourOfferCopy,
   withTourCommunityFallback,
   tourStepAt,
@@ -166,7 +168,6 @@ const EXPECTED_WALKTHROUGH: readonly {
     coach: "header",
     spotlights: [
       TOUR_SPOTLIGHT.tabDiscover,
-      TOUR_SPOTLIGHT.discoverTabForYou,
       TOUR_SPOTLIGHT.forYouPassCard,
     ],
     action: "pass",
@@ -302,12 +303,13 @@ describe("Guided tour step contracts", () => {
     expect(forYou?.actionText).toBe("Swipe up on the card to Pass");
     expect(TOUR_SKIP_NOTICE_TITLE).toBe("Tour skipped");
     expect(TOUR_SKIP_NOTICE_BODY).toBe(
-      "You can take the tour and complete it anytime from Me."
+      'You can "Take the Tour" anytime from your profile (The Me tab).'
     );
-    expect(TOUR_WRAP_TITLE).toBe("+10 NIM is on its way");
+    expect(TOUR_WRAP_TITLE).toBe("Think CINIMA");
     expect(TOUR_WRAP_BODY).toBe(
-      "There's more to discover. Reach out on X or Telegram if you have a suggestion or feedback."
+      "You're set! Start browsing & come back anytime you need something new to watch."
     );
+    expect(TOUR_WRAP_NIM).toBe("+10 NIM is on its way");
     expect(GUIDED_TOUR_STEPS.find((s) => s.id === "tour-done")?.title).toBe(
       TOUR_WRAP_TITLE
     );
@@ -642,62 +644,56 @@ describe("Guided tour step machine", () => {
     state = offerSkipLastChance(initialTourRuntime());
     expect(state.phase).toBe("idle");
   });
+
+  it("Not now on the Using CINIMA offer opens skip last-chance", () => {
+    let state = offerTour(initialTourRuntime());
+    state = offerSkipLastChance(state);
+    expect(state.phase).toBe("skip-offer");
+    expect(state.stepIndex).toBe(0);
+  });
 });
 
 describe("Guided tour +10 NIM offer", () => {
-  it("has four unique offer variants that each dangle +10 NIM", () => {
-    expect(TOUR_OFFER_VARIANTS).toHaveLength(4);
-    const titles = TOUR_OFFER_VARIANTS.map((row) => row.title);
-    expect(new Set(titles).size).toBe(4);
-    for (const row of TOUR_OFFER_VARIANTS) {
-      expect(row.title.includes("+10 NIM") || row.body.includes("+10 NIM")).toBe(
-        true
-      );
-      expect(row.acceptLabel.length).toBeGreaterThan(0);
-      expect(row.declineLabel).toBe("Not now");
-    }
-    expect(TOUR_OFFER_VARIANTS.map((row) => row.title)).toEqual([
-      "Complimentary +10 NIM",
-      "Your ticket includes +10 NIM",
-      "Walk through. Walk out +10 NIM.",
-      "Stay for the credits",
+  it("offers Using CINIMA without +10 NIM in the copy", () => {
+    expect(TOUR_OFFER_VARIANTS).toEqual([
+      {
+        title: "Using CINIMA",
+        body: "Learn how to search content for your:\nWatchlist, Favorites & Recommendations",
+        acceptLabel: "Let's go",
+        declineLabel: "Not now",
+      },
     ]);
-    expect(TOUR_OFFER_VARIANTS[0]).toEqual({
-      title: "Complimentary +10 NIM",
-      body: "Finish this short walkthrough of Watchlist, Search, Recommends, and finding people. Complete it and +10 NIM is on its way.",
-      acceptLabel: "I'll take it",
-      declineLabel: "Not now",
-    });
-    expect(TOUR_OFFER_VARIANTS[1]).toEqual({
-      title: "Your ticket includes +10 NIM",
-      body: "A few minutes through Watchlist, Search, Recommends, For You, and Find people. Stay through the credits and +10 NIM is on its way.",
-      acceptLabel: "Take my seat",
-      declineLabel: "Not now",
-    });
-    expect(TOUR_OFFER_VARIANTS[2]).toEqual({
-      title: "Walk through. Walk out +10 NIM.",
-      body: "Learn the moves that matter. Complete the tour and +10 NIM is on its way.",
-      acceptLabel: "Start the tour",
-      declineLabel: "Not now",
-    });
-    expect(TOUR_OFFER_VARIANTS[3]).toEqual({
-      title: "Stay for the credits",
-      body: "Skip and you miss how Cinima works. Finish the tour and pocket +10 NIM.",
-      acceptLabel: "Let's go",
-      declineLabel: "Not now",
-    });
+    expect(TOUR_OFFER_VARIANTS[0]!.title.includes("+10 NIM")).toBe(false);
+    expect(TOUR_OFFER_VARIANTS[0]!.body.includes("+10 NIM")).toBe(false);
+    expect(
+      tourOfferBodySegments("start", 0)
+        .filter((part) => part.gold)
+        .map((part) => part.text)
+    ).toEqual(["search", "Watchlist", "Favorites", "Recommendations"]);
+    expect(
+      tourOfferBodySegments("replay", 0)
+        .filter((part) => part.gold)
+        .map((part) => part.text)
+    ).toEqual(["search", "Watchlist", "Favorites", "Recommendations"]);
+    expect(tourOfferBodySegments("skip", 0)).toEqual([
+      { text: "We'll send you " },
+      { text: "+10 NIM", gold: true },
+      {
+        text: " on completion - you can use this to thank other users on CINIMA.",
+      },
+      { text: "You'll feel at home in <60 seconds", italic: true },
+    ]);
   });
 
-  it("picks an offer variant and uses a stronger last-chance on Skip tour", () => {
+  it("uses the same Using CINIMA offer on start and replay, and a last-chance on Skip tour", () => {
     expect(pickTourOfferIndex(() => 0)).toBe(0);
-    expect(pickTourOfferIndex(() => 0.99)).toBe(3);
-    expect(tourOfferAt(0).title).toBe("Complimentary +10 NIM");
-    expect(tourOfferAt(4).title).toBe("Complimentary +10 NIM");
-    expect(tourOfferCopy("start", 1).title).toBe("Your ticket includes +10 NIM");
-    expect(tourOfferCopy("replay", 3).title).toBe("Stay for the credits");
+    expect(pickTourOfferIndex(() => 0.99)).toBe(0);
+    expect(tourOfferAt(0).title).toBe("Using CINIMA");
+    expect(tourOfferCopy("start", 0).title).toBe("Using CINIMA");
+    expect(tourOfferCopy("replay", 0).title).toBe("Using CINIMA");
     expect(tourOfferCopy("skip", 0)).toEqual({
-      title: "Wait - +10 NIM is on the table",
-      body: "Skip and you miss the moves that matter. Finish the tour and +10 NIM is on its way.",
+      title: "The tour is quick",
+      body: "We'll send you +10 NIM on completion - you can use this to thank other users on CINIMA.\nYou'll feel at home in <60 seconds",
       acceptLabel: "Keep going",
       declineLabel: "Skip anyway",
     });
@@ -710,16 +706,31 @@ describe("Guided tour +10 NIM offer", () => {
     expect(me).not.toMatch(/startGuidedTour\s*=\s*\(\)\s*=>\s*\{\s*tour\.beginTour\(\)/);
   });
 
-  it("wrap card names +10 NIM is on its way", () => {
+  it("wrap card is Think CINIMA with +10 NIM is on its way in small type", () => {
     const host = fs.readFileSync(
       path.join(srcRoot, "components/GuidedTourHost.vue"),
       "utf8"
     );
     expect(host).toContain("offerCopy");
     expect(host).toContain("TOUR_WRAP_TITLE");
+    expect(host).toContain("TOUR_WRAP_NIM");
     expect(host).toContain("tour-wrap-nim");
-    expect(host).toContain("JOIN_OVERLAY_NIM_LABEL");
+    expect(host).not.toContain("JOIN_OVERLAY_NIM_LABEL");
+    expect(host).not.toContain("showOfferNim");
+    expect(host).toContain("offerBodySegments");
+    expect(host).toContain("tour-offer-gold");
+    expect(host).toMatch(/'tour-offer-gold': part\.gold/);
+    expect(host).toMatch(/'tour-offer-italic': part\.italic/);
+    expect(host).toMatch(/\.tour-offer-gold[\s\S]*color:\s*var\(--gold/);
+    expect(host).toMatch(
+      /\.tour-offer-italic[\s\S]*font-style:\s*italic[\s\S]*margin-top/
+    );
+    expect(host).toMatch(/tour-offer-body[\s\S]*white-space:\s*pre-line/);
+    expect(host).toContain("<b>Me</b>");
     expect(host).toMatch(/tour-done-card[\s\S]*Done\s*<\/button>/);
+    expect(host).toMatch(
+      /\.tour-done-card > p\.tour-wrap-nim \{[\s\S]*?font-size:\s*0\.78rem/
+    );
   });
 });
 
@@ -915,6 +926,65 @@ describe("Guided tour spotlight targets in source", () => {
     expect(host).toContain("nq-pill-gold");
     expect(host).toContain("0 0 18px rgba(255, 255, 255, 0.42)");
     expect(host).not.toContain("0 10px 32px rgba(0, 0, 0, 0.45)");
+  });
+
+  it("uses a strong gold glow so Add to Watchlist reads as the tap target", () => {
+    const spotlight = fs.readFileSync(
+      path.join(srcRoot, "components/TourSpotlight.vue"),
+      "utf8"
+    );
+    expect(spotlight).toMatch(/strong:\s*true/);
+    expect(spotlight).toMatch(/:soft="false"/);
+    const title = fs.readFileSync(
+      path.join(srcRoot, "views/TitleDetail.vue"),
+      "utf8"
+    );
+    expect(title).toMatch(/TourSpotlight :id="TOUR_SPOTLIGHT.titleWatchlist"/);
+    expect(title).not.toMatch(
+      /TourSpotlight :id="TOUR_SPOTLIGHT.titleWatchlist"[^>]*:strong="false"/
+    );
+  });
+
+  it("keeps a rim on Discover and the For You card without outlining For You", () => {
+    const forYou = GUIDED_TOUR_STEPS.find((s) => s.id === "for-you");
+    expect([...forYou!.spotlights]).toEqual([
+      TOUR_SPOTLIGHT.tabDiscover,
+      TOUR_SPOTLIGHT.forYouPassCard,
+    ]);
+    const shell = fs.readFileSync(
+      path.join(srcRoot, "views/AppShell.vue"),
+      "utf8"
+    );
+    expect(shell).toMatch(
+      /TourSpotlight :id="TOUR_SPOTLIGHT.tabDiscover"[^>]*:strong="false"/
+    );
+    const picker = fs.readFileSync(
+      path.join(srcRoot, "components/TitleDeckPicker.vue"),
+      "utf8"
+    );
+    expect(picker).toMatch(
+      /TOUR_SPOTLIGHT.forYouPassCard[\s\S]*?:strong="false"/
+    );
+  });
+
+  it("keeps Find people movies/TV counts on the card surface in front of the Creator glow", () => {
+    const find = fs.readFileSync(
+      path.join(srcRoot, "components/FindPeopleSheet.vue"),
+      "utf8"
+    );
+    const glowContent = find.slice(find.indexOf(".person-row--tour-glow :deep(.gold-glow-content)"));
+    expect(glowContent).toMatch(/background:\s*var\(--bg-surface/);
+    expect(find).toContain("movieFavoriteCount }} movies");
+  });
+
+  it("does not clip Add to Watchlist glow inside the title column", () => {
+    const title = fs.readFileSync(
+      path.join(srcRoot, "views/TitleDetail.vue"),
+      "utf8"
+    );
+    const meta = title.match(/\.meta \{[^}]*\}/);
+    expect(meta?.[0]).toBeTruthy();
+    expect(meta?.[0]).not.toMatch(/overflow:\s*hidden/);
   });
 
   it("every TOUR_SPOTLIGHT id appears as data-tour in templates", () => {

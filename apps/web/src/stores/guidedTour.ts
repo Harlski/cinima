@@ -5,10 +5,10 @@ import {
   advanceTourNext,
   completeTour,
   consumeForceGuidedTour,
-  dismissOffer,
   initialTourRuntime,
   isTourSpotlightActive,
   loadTourPersistedStatus,
+  offerSkipLastChance,
   offerTour,
   pickTourOfferIndex,
   reportTourAction,
@@ -21,6 +21,7 @@ import {
   stepWantsCreatorFilter,
   shouldHideForYouPassCoach,
   tourOfferCopy,
+  tourOfferBodySegments,
   tourResolutionSyncPath,
   tourStepAt,
   type TourAction,
@@ -62,6 +63,9 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
   const offerCopy = computed(() =>
     tourOfferCopy(offerKind.value, offerIndex.value)
   );
+  const offerBodySegments = computed(() =>
+    tourOfferBodySegments(offerKind.value, offerIndex.value)
+  );
   const discoverTab = computed(() => stepDiscoverTab(runtime.value));
   const filterFindPeopleToCreator = computed(() =>
     stepWantsCreatorFilter(runtime.value)
@@ -95,6 +99,8 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
 
   /** When false, declining the offer does not persist skipped (Cue lab preview). */
   let persistDecline = true;
+  /** True when last-chance opened from Skip tour, so Keep going resumes the step. */
+  let skipOfferResumes = false;
 
   function showOffer(opts?: {
     persistDecline?: boolean;
@@ -103,6 +109,7 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
   }) {
     wrapPreview.value = false;
     persistDecline = opts?.persistDecline ?? true;
+    skipOfferResumes = false;
     offerKind.value = opts?.kind ?? "start";
     offerIndex.value =
       opts?.offerIndex ?? pickTourOfferIndex();
@@ -115,7 +122,13 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
     wrapPreview.value = false;
     if (offerKind.value === "skip") {
       offerKind.value = "start";
-      runtime.value = resumeTour(runtime.value);
+      if (skipOfferResumes) {
+        skipOfferResumes = false;
+        runtime.value = resumeTour(runtime.value);
+        return;
+      }
+      skipOfferShownThisRun.value = false;
+      runtime.value = startTour(runtime.value);
       return;
     }
     offerKind.value = "start";
@@ -125,26 +138,20 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
 
   function declineOffer() {
     const kind = offerKind.value;
-    offerKind.value = "start";
     wrapPreview.value = false;
-    if (kind === "skip") {
-      const skipped = requestTourSkip(runtime.value, true);
-      runtime.value = skipped.state;
-      if (persistDecline) {
-        persist("dismissed");
-        skipNotice.value = true;
-        void notifyTourSkipped();
-      } else {
-        skipNotice.value = false;
-      }
-      persistDecline = true;
+    if (kind === "start" || kind === "replay") {
+      skipOfferResumes = false;
+      offerKind.value = "skip";
+      runtime.value = offerSkipLastChance(runtime.value);
       return;
     }
-    runtime.value = dismissOffer(runtime.value);
+    offerKind.value = "start";
+    const skipped = requestTourSkip(runtime.value, true);
+    runtime.value = skipped.state;
     if (persistDecline) {
       persist("dismissed");
-      void notifyTourSkipped();
       skipNotice.value = true;
+      void notifyTourSkipped();
     } else {
       skipNotice.value = false;
     }
@@ -156,11 +163,12 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
     skipNotice.value = false;
     wrapPreview.value = false;
     skipOfferShownThisRun.value = false;
+    skipOfferResumes = false;
     offerKind.value = "start";
     runtime.value = startTour(runtime.value);
   }
 
-  /** Replay from Me: same +10 NIM offer, without overwriting a completed tour. */
+  /** Replay from Me: Using CINIMA again, without overwriting a completed tour. */
   function offerFromMe() {
     showOffer({ persistDecline: false, kind: "replay" });
   }
@@ -237,6 +245,7 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
     const result = requestTourSkip(runtime.value, skipOfferShownThisRun.value);
     if (result.intercepted) {
       skipOfferShownThisRun.value = true;
+      skipOfferResumes = true;
       persistDecline = true;
       offerKind.value = "skip";
       wrapPreview.value = false;
@@ -317,6 +326,7 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
     persistDecline = true;
     offerKind.value = "start";
     skipOfferShownThisRun.value = false;
+    skipOfferResumes = false;
     runtime.value = initialTourRuntime();
   }
 
@@ -329,6 +339,7 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
     active,
     offering,
     offerCopy,
+    offerBodySegments,
     offerKind,
     wrapPreview,
     skipNotice,

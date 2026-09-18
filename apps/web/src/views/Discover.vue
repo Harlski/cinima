@@ -122,7 +122,7 @@
       >
         <div class="discover-feed-tabs-inner">
           <div class="discover-tabs" role="tablist">
-            <TourSpotlight :id="TOUR_SPOTLIGHT.discoverTabForYou" radius="6px">
+            <TourSpotlight :id="TOUR_SPOTLIGHT.discoverTabForYou" radius="6px" :strong="false">
               <button
                 type="button"
                 role="tab"
@@ -135,7 +135,7 @@
                 For You
               </button>
             </TourSpotlight>
-            <TourSpotlight :id="TOUR_SPOTLIGHT.discoverTabRecommends" radius="6px">
+            <TourSpotlight :id="TOUR_SPOTLIGHT.discoverTabRecommends" radius="6px" :strong="false">
               <button
                 type="button"
                 role="tab"
@@ -148,7 +148,7 @@
                 Recommends
               </button>
             </TourSpotlight>
-            <TourSpotlight :id="TOUR_SPOTLIGHT.discoverTabFollowing" radius="6px">
+            <TourSpotlight :id="TOUR_SPOTLIGHT.discoverTabFollowing" radius="6px" :strong="false">
               <button
                 type="button"
                 role="tab"

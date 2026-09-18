@@ -257,8 +257,8 @@ function showGold(title: TitleSummary): boolean {
 
 .poster-slider--tour-glow {
   overflow: visible;
-  padding: 4px;
-  margin: -4px;
+  padding: 1.25rem;
+  margin: -1.25rem;
 }
 
 .poster-slider--fit .media-item {
