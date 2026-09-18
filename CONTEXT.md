@@ -141,7 +141,7 @@ The signal that a tap has landed while Cinima is still on the same screen talkin
 _Avoid_: toast, silent dimmed button, Following as a wait label, spinner-only on Continue / Enter / Skip
 
 **Guided tour**:
-An optional walkthrough of Watchlist, Search, community Recommends (always at least one title, a hardcoded fallback when nobody else has Recommended), Watchlist actions, a required Favorite, a required Recommend, taking that title off the profile, For You (one remaining Title, a required Pass, then the next five land, then Continue), and Find people (Creator profile). Offered after Favorites onboarding and again from Me as Using CINIMA (no NIM on that card). Not now and Skip tour both open a last-chance: the tour is quick, +10 NIM on completion (the Join grant, not a second Send). Skip anyway notices that Take the Tour is on Me. Completing shows Think CINIMA, with +10 NIM is on its way in small type, then awards That's a wrap as the first gated Achievement. Completing or skipping it is what opens Achievement earning for good, except Joined the crew (replay does not close the gate).
+An optional walkthrough of Watchlist, Search, community Recommends (always at least one title, a hardcoded fallback when nobody else has Recommended), Watchlist actions, a required Favorite, a required Recommend, taking that title off the profile, For You (one remaining Title, a required Pass, then the next five land, then Continue), and Find people (Creator profile). Offered after Favorites onboarding (after Return digest and Join overlay when those are pending) and again from Me as Using CINIMA (no NIM on that card). Not now and Skip tour both open a last-chance: the tour is quick, +10 NIM on completion (the Join grant, not a second Send). Skip anyway notices that Take the Tour is on Me. Completing shows Think CINIMA, with +10 NIM is on its way in small type, then awards That's a wrap as the first gated Achievement. Completing or skipping it is what opens Achievement earning for good, except Joined the crew (replay does not close the gate).
 _Avoid_: product tour as a separate product term, tutorial modal stack, skippable Favorite or Recommend as the way to finish the walkthrough, a second 10 NIM Send for finishing the tour
 
 **For You**:
@@ -181,19 +181,23 @@ How many Thanks and Comment Thanks other users have sent to this Handle. The soc
 _Avoid_: thank rating, thanks score, tip count, Reward count
 
 **Send**:
-An outgoing NIM transfer from the Sender wallet to a Handle's wallet, with a memo Nimiq Pay shows in its header. Rewards, Pings, and Join grants are Sends. Distinct from a User Send.
+An outgoing NIM transfer from the Sender wallet to a Handle's wallet, with a memo Nimiq Pay shows in its header. Rewards, Pings, and Join grants are Sends. Distinct from a User Send. A sent Send with a chain hash has a Nimiq Watch confirmation.
 _Avoid_: notification, tip, payout, treasury transfer, like, User Send
 
 **User Send**:
-A 1 NIM transfer the thanker approves in Nimiq Pay to the thankee, with an optional custom memo picked from a fixed list. Pay may broadcast from a hop wallet rather than the signed-in address. UI: Send Custom Message. Paid note on one-to-one Thanks or Comment Thanks; the Free Thanks note lands the mark with no NIM. Custom-message NIM goes to them, not Cinima. At most one successful User Send per Thanks. Cancel or fail after the mark has landed leaves Thanks in place.
+A 1 NIM transfer the thanker approves in Nimiq Pay to the thankee, with an optional custom memo picked from a fixed list. Pay may broadcast from a hop wallet rather than the signed-in address. UI: Send Custom Message. Paid note on one-to-one Thanks or Comment Thanks; the Free Thanks note lands the mark with no NIM. Custom-message NIM goes to them, not Cinima. At most one successful User Send per Thanks. Cancel or fail after the mark has landed leaves Thanks in place. A successful User Send has a Nimiq Watch confirmation.
 _Avoid_: tip, gift, Reward, Send, profile gift, payment to Cinima, free-text memo
 
+**Nimiq Watch confirmation**:
+The public chain page for a broadcast Send or User Send. Studio sent Sends, Guestbook +NIM, and a User Send receipt open it. Demo hashes have no page.
+_Avoid_: explorer, blockchain receipt, tx as a product term
+
 **Received list**:
-The Me Guestbook of what this Handle received: Thanks (thanker Identicon, title, a line naming Thanks or Comment Thanks, User Send note, and NIM when present) and the Join grant (the line "Joined Cinima" and +10 NIM; no thanker Identicon, no title).
+The Me Guestbook of what this Handle received: Thanks (thanker Identicon, title, a line naming Thanks or Comment Thanks, User Send note, and NIM when present) and the Join grant (the line "Joined Cinima" and +10 NIM; no thanker Identicon, no title). Each +NIM amount opens that Send or User Send's Nimiq Watch confirmation when a chain hash exists.
 _Avoid_: Activity, notifications, inbox as a tab, Marquee, thanker Handle on the card, a peer Identicon on the Join grant row
 
 **Return digest**:
-The panel on return Presence when Thanks or NIM arrived since last Presence: up to eight thanker Identicons (tap one for that Handle's peek: Handle, then each Title they Thanked, title left and NIM right; Reward and User Send on the same Title add together; social-only Titles omit NIM; one peek at a time), then +{x} NIM received, then Continue into the app. Join grant NIM is not this NIM. Not Marquee. Skip during Favorites onboarding and the Guided tour. After Welcome, a pending Join overlay shows first.
+The panel on return Presence when Thanks or NIM arrived since last Presence: up to eight thanker Identicons (tap one for that Handle's peek: Handle, then each Title they Thanked, title left and NIM right; Reward and User Send on the same Title add together; social-only Titles omit NIM; one peek at a time), then +{x} NIM received, then Continue into the app. Join grant NIM is not this NIM. Not Marquee. Skip during Favorites onboarding and the Guided tour walkthrough. After Welcome, this panel shows before a pending Join overlay and Tour Offer.
 _Avoid_: login modal, notification, Activity, Marquee, received cue, Join overlay, username popup
 
 **Reward**:
@@ -229,7 +233,7 @@ The wallet that operates Cinima. The guided tour introduces this Handle; Studio 
 _Avoid_: admin, owner, superuser, operator as a product term
 
 **Studio**:
-The Creator-only screen of how people use Cinima: signups, Presence, searches, title views, shares, Share visits, follows, and Sends. The Creator enqueues a Creator Ping from here. Not part of the public product. Entry is at the bottom of Me.
+The Creator-only screen of how people use Cinima: signups, Presence, searches, title views, shares, Share visits, follows, and Sends. Sent Sends with a chain hash open their Nimiq Watch confirmation. The Creator enqueues a Creator Ping from here. Not part of the public product. Entry is at the bottom of Me.
 _Avoid_: admin dashboard, analytics, backoffice, CMS, Door alarm
 
 **Share visit**:
@@ -257,7 +261,7 @@ A gold bar that slides down from the Cinima brand header when the signed-in Hand
 _Avoid_: toast, modal, floating gold card, confetti blast, blocking dialog, slide-up above the tab bar, surface-colored Achievement bar, gold glow, white type on gold, Join overlay
 
 **Join overlay**:
-The one-time Pay-only screen for a wallet that already existed when its Join grant is given: "Thanks for joining Cinima", then small uppercase "Thanks for coming back!", then +10 NIM. Shown after Welcome, once. Not shown to a wallet created in that same session. Skip during Favorites onboarding and the Guided tour until those clear. Not Welcome, Return digest, or Marquee.
+The one-time Pay-only screen for a wallet that already existed when its Join grant is given: "Thanks for joining Cinima", then small uppercase "Thanks for coming back!", then +10 NIM. Shown after Welcome, once. After Return digest when that panel is also pending; then Tour Offer. Not shown to a wallet created in that same session. Skip during Favorites onboarding and the Guided tour walkthrough until those clear. Not Welcome, Return digest, or Marquee.
 _Avoid_: splash, Welcome overlay, login modal, Return digest, Marquee
 
 **Recommend cue**:

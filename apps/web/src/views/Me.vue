@@ -119,7 +119,18 @@
                 {{ item.sendMemo }}
               </button>
             </div>
-            <span v-if="nimLabel(item)" class="received-nim">{{ nimLabel(item) }}</span>
+            <span v-if="nimWatchParts(item).length" class="received-nim">
+              <template v-for="(part, i) in nimWatchParts(item)" :key="i">
+                <a
+                  v-if="part.href"
+                  class="received-nim-link"
+                  :href="part.href ?? undefined"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >{{ part.label }}</a>
+                <span v-else>{{ part.label }}</span>
+              </template>
+            </span>
           </li>
         </ul>
       </section>
@@ -230,7 +241,7 @@ import {
   RECEIVED_LIST_HEADING,
   displayName,
   receivedHow,
-  receivedNimLabel,
+  receivedNimWatchParts,
   type HeatmapDay,
   type MeResponse,
   type PublicProfile,
@@ -291,8 +302,13 @@ function toggleMemo(item: ReceivedItem) {
   openMemos.value = next;
 }
 
-function nimLabel(item: ReceivedItem) {
-  return receivedNimLabel(item.rewardNim, item.sendNim);
+function nimWatchParts(item: ReceivedItem) {
+  return receivedNimWatchParts({
+    rewardNim: item.rewardNim,
+    sendNim: item.sendNim,
+    rewardTxHash: item.kind === "join" ? null : item.rewardTxHash,
+    sendTxHash: item.sendTxHash,
+  });
 }
 
 const sharePreview = computed(() => {
@@ -577,11 +593,27 @@ onUnmounted(() => {
   flex-shrink: 0;
   align-self: center;
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.12rem;
   font-size: 0.78rem;
   font-weight: 700;
   line-height: 1.3;
   color: var(--gold, #e5c158);
   white-space: nowrap;
+}
+
+.received-nim-link {
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  text-decoration: none;
+}
+
+.received-nim-link:hover,
+.received-nim-link:focus-visible {
+  text-decoration: underline;
 }
 
 .tour-replay,

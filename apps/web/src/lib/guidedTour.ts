@@ -719,6 +719,16 @@ export function shouldAutoOfferTour(opts: {
   return opts.persisted === "never";
 }
 
+/** Start and Using CINIMA wait; skip last chance does not. */
+export function shouldHoldTourOffer(opts: {
+  digestOpen: boolean;
+  joinPending: boolean;
+  offerKind: TourOfferKind;
+}): boolean {
+  if (opts.offerKind === "skip") return false;
+  return opts.digestOpen || opts.joinPending;
+}
+
 /** Sync local tour skip/complete onto the server Achievement gate. */
 export function tourResolutionSyncPath(
   persisted: TourPersistedStatus

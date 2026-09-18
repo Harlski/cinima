@@ -25,6 +25,7 @@ export function cueLabMarqueeKinds(): AchievementKind[] {
 export const CUE_LAB_OVERLAYS = [
   { id: "recommend-cue", label: "Recommend cue", group: "Cues" },
   { id: "return-digest", label: "Return digest", group: "Cues" },
+  { id: "return-screens", label: "Return screens", group: "Cues" },
   { id: "title-flight-watchlist", label: "Title flight · Watchlist", group: "Cues" },
   { id: "title-flight-favorite", label: "Title flight · Favorite", group: "Cues" },
   { id: "title-flight-recommend", label: "Title flight · Recommend", group: "Cues" },

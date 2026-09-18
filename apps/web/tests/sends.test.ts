@@ -42,6 +42,7 @@ import {
   rewardMemo,
   rewardMemoFor,
   rewardsRemainingToday,
+  nextReturnScreen,
   shouldShowJoinOverlay,
   shouldShowReturnDigest,
   truncateMemo,
@@ -53,6 +54,9 @@ import {
   USER_SEND_NOTES,
   watchlistPingMemo,
   nimiqWatchTxUrl,
+  receivedNimWatchParts,
+  studioSendWatchUrl,
+  NIMIQ_WATCH_LINK_LABEL,
 } from "@cinima/shared";
 
 describe("Reward quota", () => {
@@ -134,6 +138,69 @@ describe("Send memos", () => {
     }
   });
 
+  it("links a sent Studio Send to its nimiq.watch confirmation", () => {
+    expect(
+      studioSendWatchUrl(
+        "sent",
+        "F6AB3B34E0569E6E5733820D90C8A5BF98EADC317E398464A9A405423B5E5D37"
+      )
+    ).toBe("https://nimiq.watch/#f6ab3b34e0569e6e5733820d90c8a5bf98eadc317e398464a9a405423b5e5d37");
+    expect(
+      studioSendWatchUrl(
+        "queued",
+        "f6ab3b34e0569e6e5733820d90c8a5bf98eadc317e398464a9a405423b5e5d37"
+      )
+    ).toBeNull();
+    expect(studioSendWatchUrl("sending", "aa".repeat(32))).toBeNull();
+    expect(studioSendWatchUrl("failed", "aa".repeat(32))).toBeNull();
+    expect(studioSendWatchUrl("sent", "demo:join")).toBeNull();
+    expect(studioSendWatchUrl("sent", null)).toBeNull();
+    expect(NIMIQ_WATCH_LINK_LABEL).toBe("View on Nimiq Watch");
+  });
+
+  it("makes Guestbook +NIM a nimiq.watch confirmation when a chain hash exists", () => {
+    const joinHash = "F6AB3B34E0569E6E5733820D90C8A5BF98EADC317E398464A9A405423B5E5D37";
+    const joinUrl =
+      "https://nimiq.watch/#f6ab3b34e0569e6e5733820d90c8a5bf98eadc317e398464a9a405423b5e5d37";
+    const rewardHash = "bb".repeat(32);
+    const sendHash = "cc".repeat(32);
+    expect(
+      receivedNimWatchParts({ rewardNim: 0, sendNim: 10, sendTxHash: joinHash })
+    ).toEqual([{ label: "+10 NIM", href: joinUrl }]);
+    expect(
+      receivedNimWatchParts({ rewardNim: 1, sendNim: 0, rewardTxHash: rewardHash })
+    ).toEqual([{ label: "+1 NIM", href: `https://nimiq.watch/#${rewardHash}` }]);
+    expect(
+      receivedNimWatchParts({ rewardNim: 0, sendNim: 1, sendTxHash: sendHash })
+    ).toEqual([{ label: "+1 NIM", href: `https://nimiq.watch/#${sendHash}` }]);
+    expect(
+      receivedNimWatchParts({
+        rewardNim: 1,
+        sendNim: 1,
+        rewardTxHash: rewardHash,
+        sendTxHash: sendHash,
+      })
+    ).toEqual([
+      { label: "+1 NIM", href: `https://nimiq.watch/#${rewardHash}` },
+      { label: "+1 NIM", href: `https://nimiq.watch/#${sendHash}` },
+    ]);
+    expect(
+      receivedNimWatchParts({ rewardNim: 0, sendNim: 10, sendTxHash: "demo:join" })
+    ).toEqual([{ label: "+10 NIM", href: null }]);
+    expect(
+      receivedNimWatchParts({
+        rewardNim: 1,
+        sendNim: 1,
+        rewardTxHash: rewardHash,
+        sendTxHash: "demo:user-send",
+      })
+    ).toEqual([
+      { label: "+1 NIM", href: `https://nimiq.watch/#${rewardHash}` },
+      { label: "+1 NIM", href: null },
+    ]);
+    expect(receivedNimWatchParts({ rewardNim: 0, sendNim: 0 })).toEqual([]);
+  });
+
   it("names the Me Guestbook and +NIM on the card", () => {
     expect(RECEIVED_LIST_HEADING).toBe("Guestbook");
     expect(receivedNimLabel(1, 0)).toBe("+1 NIM");
@@ -175,6 +242,14 @@ describe("Send memos", () => {
     ).toBe(false);
     expect(
       shouldShowJoinOverlay({ pending: false, onboarding: false, tourActive: false })
+    ).toBe(false);
+    expect(
+      shouldShowJoinOverlay({
+        pending: true,
+        onboarding: false,
+        tourActive: false,
+        digestOpen: true,
+      })
     ).toBe(false);
   });
 
@@ -221,21 +296,12 @@ describe("Return digest", () => {
     expect(capDigestThankers(nine)[7]).toEqual({ walletAddress: "NQ7", handle: "h7" });
   });
 
-  it("hides when onboarding, touring, Join overlay is waiting, or nothing arrived", () => {
+  it("hides when onboarding, touring, or nothing arrived", () => {
     expect(
       shouldShowReturnDigest({ thanksCount: 2, nimReceived: 1, onboarding: true, tourActive: false })
     ).toBe(false);
     expect(
       shouldShowReturnDigest({ thanksCount: 2, nimReceived: 1, onboarding: false, tourActive: true })
-    ).toBe(false);
-    expect(
-      shouldShowReturnDigest({
-        thanksCount: 2,
-        nimReceived: 1,
-        onboarding: false,
-        tourActive: false,
-        joinOverlayPending: true,
-      })
     ).toBe(false);
     expect(
       shouldShowReturnDigest({ thanksCount: 0, nimReceived: 0, onboarding: false, tourActive: false })
@@ -246,6 +312,31 @@ describe("Return digest", () => {
     expect(
       shouldShowReturnDigest({ thanksCount: 0, nimReceived: 1, onboarding: false, tourActive: false })
     ).toBe(true);
+  });
+
+  it("plays Digest, then Join overlay, then Tour Offer", () => {
+    const allPending = {
+      onboarding: false,
+      tourHoldsQueue: false,
+      digestEligible: true,
+      joinPending: true,
+      tourOfferEligible: true,
+    };
+    expect(nextReturnScreen(allPending)).toBe("digest");
+    expect(nextReturnScreen({ ...allPending, digestEligible: false })).toBe("join");
+    expect(
+      nextReturnScreen({ ...allPending, digestEligible: false, joinPending: false })
+    ).toBe("tour-offer");
+    expect(
+      nextReturnScreen({
+        ...allPending,
+        digestEligible: false,
+        joinPending: false,
+        tourOfferEligible: false,
+      })
+    ).toBeNull();
+    expect(nextReturnScreen({ ...allPending, onboarding: true })).toBeNull();
+    expect(nextReturnScreen({ ...allPending, tourHoldsQueue: true })).toBeNull();
   });
 
   it("names +NIM received on the panel", () => {

@@ -26,7 +26,7 @@
           target="_blank"
           rel="noopener noreferrer"
         >
-          View on Nimiq Watch
+          {{ watchLabel }}
         </a>
         <div class="send-nim-actions">
           <button type="button" class="nq-pill-blue nq-pill-lg" @click="onCancel">
@@ -136,6 +136,7 @@
 import { computed, ref, useId, watch } from "vue";
 import { storeToRefs } from "pinia";
 import {
+  NIMIQ_WATCH_LINK_LABEL,
   USER_SEND_CTA,
   USER_SEND_NOTES,
   USER_SEND_SUB,
@@ -158,6 +159,7 @@ const cancelledCopy = PAY_CANCELLED_MESSAGE;
 const notes = USER_SEND_NOTES;
 const costLabel = computed(() => userSendNoteCostLabel(noteId.value));
 const watchUrl = computed(() => (receiptHash.value ? nimiqWatchTxUrl(receiptHash.value) : null));
+const watchLabel = NIMIQ_WATCH_LINK_LABEL;
 const infoCopy =
   "If this Handle has notifications enabled, they may see this message.";
 

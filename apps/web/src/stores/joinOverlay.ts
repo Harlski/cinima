@@ -18,11 +18,16 @@ export const useJoinOverlayStore = defineStore("joinOverlay", () => {
     previewing.value = true;
   }
 
-  function visible(opts: { onboarding: boolean; tourActive: boolean }): boolean {
+  function visible(opts: {
+    onboarding: boolean;
+    tourActive: boolean;
+    digestOpen?: boolean;
+  }): boolean {
     return shouldShowJoinOverlay({
       pending: open.value,
       onboarding: opts.onboarding,
       tourActive: opts.tourActive,
+      digestOpen: opts.digestOpen,
     });
   }
 

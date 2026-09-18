@@ -47,6 +47,7 @@ describe("Cue lab", () => {
     expect(cueLabOverlayIds()).toEqual([
       "recommend-cue",
       "return-digest",
+      "return-screens",
       "title-flight-watchlist",
       "title-flight-favorite",
       "title-flight-recommend",

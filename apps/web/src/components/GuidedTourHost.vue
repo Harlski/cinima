@@ -2,7 +2,7 @@
   <Teleport to="body">
     <!-- Opt-in after Favorites onboarding -->
     <div
-      v-if="tour.offering"
+      v-if="tour.offering && !holdTourOffer"
       class="tour-offer"
       data-scroll-trap
       role="dialog"
@@ -156,11 +156,24 @@ import {
   tourCoachPrimaryGold,
   tourCoachShowsActionText,
   tourCoachShowsContinue,
+  shouldHoldTourOffer,
 } from "@/lib/guidedTour";
+import { useJoinOverlayStore } from "@/stores/joinOverlay";
+import { useReturnDigestStore } from "@/stores/returnDigest";
 
 const tour = useGuidedTourStore();
+const digest = useReturnDigestStore();
+const joinOverlay = useJoinOverlayStore();
 const { step, offerCopy, offerBodySegments } = storeToRefs(tour);
 const router = useRouter();
+
+const holdTourOffer = computed(() =>
+  shouldHoldTourOffer({
+    digestOpen: digest.digest != null,
+    joinPending: joinOverlay.open,
+    offerKind: tour.offerKind,
+  })
+);
 
 const stepCount = GUIDED_TOUR_STEPS.length;
 const feedbackChannels = payGateSocial;

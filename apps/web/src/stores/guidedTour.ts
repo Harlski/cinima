@@ -77,6 +77,14 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
       awaitingRefill: forYouPassAwaitingRefill.value,
     })
   );
+  /** Walkthrough, skip last chance, skip notice, and wrap block Return screens. */
+  const holdsReturnQueue = computed(
+    () =>
+      runtime.value.phase === "active" ||
+      runtime.value.phase === "skip-offer" ||
+      skipNotice.value ||
+      wrapPreview.value
+  );
 
   function setForYouPassAwaitingRefill(value: boolean) {
     forYouPassAwaitingRefill.value = value;
@@ -348,6 +356,7 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
     forYouPassAwaitingRefill,
     forYouPassLanded,
     hideForYouPassCoach,
+    holdsReturnQueue,
     isSpotlight,
     showOffer,
     acceptOffer,

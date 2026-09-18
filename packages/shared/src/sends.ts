@@ -23,14 +23,38 @@ export function joinGrantIdempotencyKey(wallet: string): string {
   return `join:${wallet}`;
 }
 
+export type ReturnScreen = "digest" | "join" | "tour-offer";
+
+/** One at a time after Welcome: Return digest, then Join overlay, then Tour Offer. */
+export function nextReturnScreen(input: {
+  onboarding: boolean;
+  tourHoldsQueue: boolean;
+  digestEligible: boolean;
+  joinPending: boolean;
+  tourOfferEligible: boolean;
+}): ReturnScreen | null {
+  if (input.onboarding || input.tourHoldsQueue) return null;
+  if (input.digestEligible) return "digest";
+  if (input.joinPending) return "join";
+  if (input.tourOfferEligible) return "tour-offer";
+  return null;
+}
+
 export function shouldShowJoinOverlay(input: {
   pending: boolean;
   onboarding: boolean;
   tourActive: boolean;
+  digestOpen?: boolean;
 }): boolean {
-  if (!input.pending) return false;
-  if (input.onboarding || input.tourActive) return false;
-  return true;
+  return (
+    nextReturnScreen({
+      onboarding: input.onboarding,
+      tourHoldsQueue: input.tourActive,
+      digestEligible: input.digestOpen === true,
+      joinPending: input.pending,
+      tourOfferEligible: false,
+    }) === "join"
+  );
 }
 
 /** Dust Ping; enough to surface the memo in Nimiq Pay. */
@@ -180,12 +204,24 @@ export function userSendMemoOrDefault(memo: string, kind: "title" | "comment"): 
   return userSendMemoForNote(defaultPaidUserSendNoteId(kind));
 }
 
-/** Mainnet explorer for a User Send hash. Demo hashes have no chain page. */
+/** Studio and User Send receipt copy for the confirmation link. */
+export const NIMIQ_WATCH_LINK_LABEL = "View on Nimiq Watch";
+
+/** Mainnet explorer for a Send or User Send hash. Demo hashes have no chain page. */
 export function nimiqWatchTxUrl(txHash: string): string | null {
   let hex = String(txHash ?? "").trim();
   if (hex.startsWith("0x") || hex.startsWith("0X")) hex = hex.slice(2);
   if (!/^[0-9a-fA-F]{64}$/.test(hex)) return null;
   return `https://nimiq.watch/#${hex.toLowerCase()}`;
+}
+
+/** Studio confirmation link: only a sent Send with a chain hash. */
+export function studioSendWatchUrl(
+  status: SendStatus,
+  txHash: string | null | undefined
+): string | null {
+  if (status !== "sent") return null;
+  return nimiqWatchTxUrl(String(txHash ?? ""));
 }
 
 /** Me Guestbook heading: cinema guestbook as a Handle's received history. */
@@ -213,6 +249,36 @@ export function receivedNimLabel(rewardNim: number, sendNim: number): string | n
   const n = Number(rewardNim || 0) + Number(sendNim || 0);
   if (n <= 0) return null;
   return `+${n} NIM`;
+}
+
+export type NimWatchPart = {
+  label: string;
+  href: string | null;
+};
+
+/** Guestbook +NIM parts: one per Reward or User Send / Join grant, linked when a chain hash exists. */
+export function receivedNimWatchParts(input: {
+  rewardNim: number;
+  sendNim: number;
+  rewardTxHash?: string | null;
+  sendTxHash?: string | null;
+}): NimWatchPart[] {
+  const parts: NimWatchPart[] = [];
+  const rewardNim = Number(input.rewardNim || 0);
+  const sendNim = Number(input.sendNim || 0);
+  if (rewardNim > 0) {
+    parts.push({
+      label: `+${rewardNim} NIM`,
+      href: nimiqWatchTxUrl(String(input.rewardTxHash ?? "")),
+    });
+  }
+  if (sendNim > 0) {
+    parts.push({
+      label: `+${sendNim} NIM`,
+      href: nimiqWatchTxUrl(String(input.sendTxHash ?? "")),
+    });
+  }
+  return parts;
 }
 
 /** Return digest gold line when NIM arrived since last Presence. */
@@ -336,10 +402,16 @@ export function shouldShowReturnDigest(input: {
   nimReceived: number;
   onboarding: boolean;
   tourActive: boolean;
-  joinOverlayPending?: boolean;
 }): boolean {
-  if (input.onboarding || input.tourActive || input.joinOverlayPending) return false;
-  return input.thanksCount > 0 || input.nimReceived > 0;
+  return (
+    nextReturnScreen({
+      onboarding: input.onboarding,
+      tourHoldsQueue: input.tourActive,
+      digestEligible: input.thanksCount > 0 || input.nimReceived > 0,
+      joinPending: false,
+      tourOfferEligible: false,
+    }) === "digest"
+  );
 }
 
 export function isReturnPresence(

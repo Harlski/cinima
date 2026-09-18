@@ -298,7 +298,16 @@
               {{ row.source }} · {{ row.toHandle || row.toWallet.slice(0, 8) }}
               · {{ row.memo }}
             </span>
-            <span class="row-meta">{{ row.status }}</span>
+            <span class="row-meta">
+              {{ row.status }}
+              <a
+                v-if="sendWatchUrl(row)"
+                class="watch-link"
+                :href="sendWatchUrl(row)"
+                target="_blank"
+                rel="noopener noreferrer"
+              >{{ watchLabel }}</a>
+            </span>
           </li>
         </ul>
         <p v-else class="empty">No Sends yet.</p>
@@ -349,14 +358,22 @@ import {
 import {
   displayName,
   LUNA_PER_NIM,
+  NIMIQ_WATCH_LINK_LABEL,
+  studioSendWatchUrl,
   type PingHandleMatch,
   type StudioPersonRef,
+  type StudioSendRow,
   type StudioSnapshot,
 } from "@cinima/shared";
 
 const router = useRouter();
 const auth = useAuthStore();
 const { request } = useApi();
+const watchLabel = NIMIQ_WATCH_LINK_LABEL;
+
+function sendWatchUrl(row: Pick<StudioSendRow, "status" | "txHash">): string | undefined {
+  return studioSendWatchUrl(row.status, row.txHash) ?? undefined;
+}
 
 const loading = ref(true);
 const snapshot = ref<StudioSnapshot | null>(null);
@@ -644,6 +661,21 @@ h1 {
 .row-meta {
   color: var(--text-secondary);
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+}
+
+.watch-link {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.watch-link:hover,
+.watch-link:focus-visible {
+  text-decoration: underline;
 }
 
 .row-main {

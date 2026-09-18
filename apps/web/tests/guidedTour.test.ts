@@ -22,6 +22,7 @@ import {
   reportTourAction,
   saveTourPersistedStatus,
   shouldAutoOfferTour,
+  shouldHoldTourOffer,
   skipTour,
   startTour,
   tourCoachPlacement,
@@ -848,6 +849,37 @@ describe("Guided tour persistence and force arm", () => {
     expect(
       shouldAutoOfferTour({ persisted: "completed", forceOffer: true })
     ).toBe(true);
+  });
+
+  it("holds Using CINIMA until Digest and Join overlay have been continued", () => {
+    expect(
+      shouldHoldTourOffer({
+        digestOpen: true,
+        joinPending: true,
+        offerKind: "start",
+      })
+    ).toBe(true);
+    expect(
+      shouldHoldTourOffer({
+        digestOpen: false,
+        joinPending: true,
+        offerKind: "replay",
+      })
+    ).toBe(true);
+    expect(
+      shouldHoldTourOffer({
+        digestOpen: false,
+        joinPending: false,
+        offerKind: "start",
+      })
+    ).toBe(false);
+    expect(
+      shouldHoldTourOffer({
+        digestOpen: true,
+        joinPending: false,
+        offerKind: "skip",
+      })
+    ).toBe(false);
   });
 
   it("syncs skipped and completed tours to the Achievement gate", () => {

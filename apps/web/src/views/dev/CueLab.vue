@@ -41,7 +41,8 @@
         <h2>{{ group.group }}</h2>
         <p v-if="group.group === 'Cues'" class="hint">
           Recommend cue slides up above the tab bar. Return digest is the panel on
-          return Presence. Title flight sends a poster to Watchlist or Me.
+          return Presence. Return screens plays Digest, then Join overlay, then
+          Tour Offer. Title flight sends a poster to Watchlist or Me.
         </p>
         <p v-if="group.group === 'Profile header'" class="hint">
           Throwaway Me layouts on a fixture Handle. Arrow keys and the bar flip
@@ -320,6 +321,16 @@ function previewOverlay(id: CueLabOverlayId) {
     return;
   }
   if (id === "return-digest") {
+    returnDigest.apply(cueLabReturnDigest(), {
+      onboarding: false,
+      tourActive: false,
+    });
+    return;
+  }
+  if (id === "return-screens") {
+    joinOverlay.preview();
+    tour.skipNotice = false;
+    tour.showOffer({ persistDecline: false });
     returnDigest.apply(cueLabReturnDigest(), {
       onboarding: false,
       tourActive: false,

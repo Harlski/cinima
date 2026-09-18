@@ -30,9 +30,11 @@ import {
 } from "@cinima/shared";
 import { useJoinOverlayStore } from "@/stores/joinOverlay";
 import { useGuidedTourStore } from "@/stores/guidedTour";
+import { useReturnDigestStore } from "@/stores/returnDigest";
 
 const store = useJoinOverlayStore();
 const tour = useGuidedTourStore();
+const digest = useReturnDigestStore();
 const { open } = storeToRefs(store);
 const onboarding = ref(false);
 let poll: ReturnType<typeof setInterval> | null = null;
@@ -49,7 +51,8 @@ function readOnboarding() {
 const shown = computed(() =>
   store.visible({
     onboarding: onboarding.value,
-    tourActive: tour.active || tour.offering,
+    tourActive: tour.holdsReturnQueue,
+    digestOpen: digest.digest != null,
   })
 );
 

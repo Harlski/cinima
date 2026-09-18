@@ -12,7 +12,7 @@ export const useReturnDigestStore = defineStore("returnDigest", () => {
 
   function apply(
     next: ReturnDigest | null,
-    opts: { onboarding: boolean; tourActive: boolean; joinOverlayPending?: boolean }
+    opts: { onboarding: boolean; tourActive: boolean }
   ) {
     if (!next) return;
     if (
@@ -21,7 +21,6 @@ export const useReturnDigestStore = defineStore("returnDigest", () => {
         nimReceived: next.nimReceived,
         onboarding: opts.onboarding,
         tourActive: opts.tourActive,
-        joinOverlayPending: opts.joinOverlayPending,
       })
     ) {
       return;
