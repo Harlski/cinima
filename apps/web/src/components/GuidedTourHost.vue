@@ -10,20 +10,18 @@
       aria-labelledby="tour-offer-title"
     >
       <div class="tour-offer-card nq-card">
-        <h2 id="tour-offer-title">Take a quick tour?</h2>
-        <p>
-          A short walk through Watchlist, Search, Recommends, and finding people
-          to follow.
-        </p>
+        <h2 id="tour-offer-title">{{ offerCopy.title }}</h2>
+        <p>{{ offerCopy.body }}</p>
+        <p class="tour-wrap-nim">{{ wrapNim }}</p>
         <button type="button" class="nq-pill-blue nq-pill-stretch" @click="onAccept">
-          Let's go
+          {{ offerCopy.acceptLabel }}
         </button>
         <button
           type="button"
           class="nq-pill-secondary nq-pill-stretch"
           @click="tour.declineOffer()"
         >
-          Not now
+          {{ offerCopy.declineLabel }}
         </button>
       </div>
     </div>
@@ -51,7 +49,7 @@
 
     <!-- Active coach card -->
     <div
-      v-else-if="tour.active && step && step.id === 'tour-done'"
+      v-else-if="showWrap"
       class="tour-done"
       data-scroll-trap
       role="dialog"
@@ -59,8 +57,9 @@
       aria-labelledby="tour-done-title"
     >
       <div class="tour-done-card nq-card">
-        <h2 id="tour-done-title">{{ step.title }}</h2>
-        <p>{{ step.body }}</p>
+        <h2 id="tour-done-title">{{ wrapTitle }}</h2>
+        <p>{{ wrapBody }}</p>
+        <p class="tour-wrap-nim">{{ wrapNim }}</p>
         <ul class="tour-feedback" aria-label="Contact Cinima">
           <li v-for="channel in feedbackChannels" :key="channel.name">
             <a
@@ -90,7 +89,7 @@
           class="nq-pill-blue nq-pill-stretch"
           @click="onPrimary"
         >
-          {{ primaryLabel }}
+          Done
         </button>
       </div>
     </div>
@@ -132,6 +131,7 @@
 import { computed, watch } from "vue";
 import { useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
+import { JOIN_OVERLAY_NIM_LABEL } from "@cinima/shared";
 import NqIcon from "@/components/NqIcon.vue";
 import { useGuidedTourStore } from "@/stores/guidedTour";
 import { payGateSocial } from "@/lib/contact";
@@ -140,6 +140,8 @@ import {
   TOUR_CREATOR_WALLET,
   TOUR_SKIP_NOTICE_BODY,
   TOUR_SKIP_NOTICE_TITLE,
+  TOUR_WRAP_BODY,
+  TOUR_WRAP_TITLE,
   tourCoachContinueLabel,
   tourCoachPlacement,
   tourCoachPrimaryGold,
@@ -148,13 +150,20 @@ import {
 } from "@/lib/guidedTour";
 
 const tour = useGuidedTourStore();
-const { step } = storeToRefs(tour);
+const { step, offerCopy } = storeToRefs(tour);
 const router = useRouter();
 
 const stepCount = GUIDED_TOUR_STEPS.length;
 const feedbackChannels = payGateSocial;
 const skipNoticeTitle = TOUR_SKIP_NOTICE_TITLE;
 const skipNoticeBody = TOUR_SKIP_NOTICE_BODY;
+const wrapTitle = TOUR_WRAP_TITLE;
+const wrapBody = TOUR_WRAP_BODY;
+const wrapNim = JOIN_OVERLAY_NIM_LABEL;
+
+const showWrap = computed(
+  () => tour.wrapPreview || (tour.active && step.value?.id === "tour-done")
+);
 
 const coachPlacement = computed(() => tourCoachPlacement(step.value));
 
@@ -195,6 +204,10 @@ function onAccept() {
 }
 
 function onPrimary() {
+  if (tour.wrapPreview && !tour.active) {
+    tour.dismissWrapPreview();
+    return;
+  }
   tour.next();
 }
 
@@ -310,6 +323,14 @@ watch(
   font-size: 0.92rem;
   line-height: 1.45;
   color: var(--text-secondary);
+}
+
+.tour-offer-card > p.tour-wrap-nim,
+.tour-done-card > p.tour-wrap-nim {
+  margin: 0.15rem 0 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--gold, #e5c158);
 }
 
 .tour-coach {

@@ -95,6 +95,69 @@ const BOTTOM_TAB_SPOTLIGHTS: ReadonlySet<TourSpotlightId> = new Set([
 /** Coach sits above content; top when the glow is on the bottom tab bar. */
 export type TourCoachPlacement = "top" | "bottom" | "header";
 
+export type TourOfferKind = "start" | "replay" | "skip";
+
+export type TourOfferCopy = {
+  title: string;
+  body: string;
+  acceptLabel: string;
+  declineLabel: string;
+};
+
+export const TOUR_OFFER_VARIANTS: readonly TourOfferCopy[] = [
+  {
+    title: "Complimentary +10 NIM",
+    body: "Finish this short walkthrough of Watchlist, Search, Recommends, and finding people. Complete it and +10 NIM is on its way.",
+    acceptLabel: "I'll take it",
+    declineLabel: "Not now",
+  },
+  {
+    title: "Your ticket includes +10 NIM",
+      body: "A few minutes through Watchlist, Search, Recommends, For You, and Find people. Stay through the credits and +10 NIM is on its way.",
+    acceptLabel: "Take my seat",
+    declineLabel: "Not now",
+  },
+  {
+    title: "Walk through. Walk out +10 NIM.",
+    body: "Learn the moves that matter. Complete the tour and +10 NIM is on its way.",
+    acceptLabel: "Start the tour",
+    declineLabel: "Not now",
+  },
+  {
+    title: "Stay for the credits",
+    body: "Skip and you miss how Cinima works. Finish the tour and pocket +10 NIM.",
+    acceptLabel: "Let's go",
+    declineLabel: "Not now",
+  },
+];
+
+export const TOUR_SKIP_OFFER: TourOfferCopy = {
+  title: "Wait - +10 NIM is on the table",
+  body: "Skip and you miss the moves that matter. Finish the tour and +10 NIM is on its way.",
+  acceptLabel: "Keep going",
+  declineLabel: "Skip anyway",
+};
+
+export const TOUR_WRAP_TITLE = "+10 NIM is on its way";
+export const TOUR_WRAP_BODY =
+  "There's more to discover. Reach out on X or Telegram if you have a suggestion or feedback.";
+
+export function pickTourOfferIndex(random: () => number = Math.random): number {
+  const n = TOUR_OFFER_VARIANTS.length;
+  return Math.min(n - 1, Math.max(0, Math.floor(random() * n)));
+}
+
+export function tourOfferAt(index: number): TourOfferCopy {
+  const n = TOUR_OFFER_VARIANTS.length;
+  const i = ((index % n) + n) % n;
+  return TOUR_OFFER_VARIANTS[i]!;
+}
+
+export function tourOfferCopy(kind: TourOfferKind, index: number): TourOfferCopy {
+  if (kind === "skip") return TOUR_SKIP_OFFER;
+  return tourOfferAt(index);
+}
+
 export function tourCoachPlacement(
   step:
     | Pick<TourStepDef, "spotlights" | "coachPlacement">
@@ -316,8 +379,8 @@ export const GUIDED_TOUR_STEPS: readonly TourStepDef[] = [
   },
   {
     id: "tour-done",
-    title: "That's it!",
-    body: "There's more to discover. Reach out on X or Telegram if you have a suggestion or feedback.",
+    title: TOUR_WRAP_TITLE,
+    body: TOUR_WRAP_BODY,
     spotlights: [],
     routeName: "discover",
     discoverTab: "for-you",
@@ -329,7 +392,7 @@ export const GUIDED_TOUR_STEPS: readonly TourStepDef[] = [
   },
 ] as const;
 
-export type TourPhase = "idle" | "offer" | "active" | "completed";
+export type TourPhase = "idle" | "offer" | "skip-offer" | "active" | "completed";
 
 export type TourPersistedStatus = "never" | "dismissed" | "completed";
 
@@ -412,6 +475,26 @@ export function skipTour(state: TourRuntimeState): TourRuntimeState {
     tourTitleRecommended: false,
     forYouPassLanded: false,
   };
+}
+
+export function offerSkipLastChance(state: TourRuntimeState): TourRuntimeState {
+  if (state.phase !== "active") return state;
+  return { ...state, phase: "skip-offer" };
+}
+
+export function resumeTour(state: TourRuntimeState): TourRuntimeState {
+  if (state.phase !== "skip-offer") return state;
+  return { ...state, phase: "active" };
+}
+
+export function requestTourSkip(
+  state: TourRuntimeState,
+  alreadyOffered: boolean
+): { state: TourRuntimeState; intercepted: boolean } {
+  if (state.phase === "active" && !alreadyOffered) {
+    return { state: offerSkipLastChance(state), intercepted: true };
+  }
+  return { state: skipTour(state), intercepted: false };
 }
 
 export function completeTour(state: TourRuntimeState): TourRuntimeState {

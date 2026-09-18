@@ -398,7 +398,7 @@ const goToTitle = (titleId: string) => {
 };
 
 const startGuidedTour = () => {
-  tour.beginTour();
+  tour.offerFromMe();
 };
 
 const onKeydown = (e: KeyboardEvent) => {

@@ -52,8 +52,9 @@
           returning grant: thanks for coming back and +10 NIM.
         </p>
         <p v-if="group.group === 'Guided tour'" class="hint">
-          Offer and skipped notice overlay here. Start tour runs the real walkthrough
-          and leaves this screen.
+          Offer is a +10 NIM invite. Skip last chance is the hold when they tap
+          Skip tour. Tour wrap is +10 NIM is on its way. Start tour runs the
+          real walkthrough and leaves this screen.
         </p>
         <div class="actions">
           <button
@@ -261,6 +262,7 @@ function closeLocalOverlays() {
   returnDigest.dismiss();
   joinOverlay.dismissPreview();
   titleFlight.clear();
+  tour.clearCueLabTour();
 }
 
 function showWelcome(returning: boolean) {
@@ -302,7 +304,13 @@ function previewOverlay(id: CueLabOverlayId) {
     setHeaderVariant(profileHeader);
     return;
   }
-  if (id !== "tour-offer" && id !== "tour-skip-notice" && id !== "tour-start") {
+  if (
+    id !== "tour-offer" &&
+    id !== "tour-skip-notice" &&
+    id !== "tour-skip-offer" &&
+    id !== "tour-start" &&
+    id !== "tour-done"
+  ) {
     tour.skipNotice = false;
   }
 
@@ -352,8 +360,16 @@ function previewOverlay(id: CueLabOverlayId) {
     tour.skipNotice = true;
     return;
   }
+  if (id === "tour-skip-offer") {
+    tour.previewSkipOffer();
+    return;
+  }
   if (id === "tour-start") {
     tour.beginTour();
+    return;
+  }
+  if (id === "tour-done") {
+    tour.previewWrap();
     return;
   }
   if (id === "confirm") {

@@ -28,8 +28,18 @@ import {
   tourResolutionSyncPath,
   TOUR_COMMUNITY_FALLBACK_TITLE,
   TOUR_COMMUNITY_FALLBACK_TITLE_ID,
+  TOUR_OFFER_VARIANTS,
   TOUR_SKIP_NOTICE_BODY,
   TOUR_SKIP_NOTICE_TITLE,
+  TOUR_SKIP_OFFER,
+  TOUR_WRAP_BODY,
+  TOUR_WRAP_TITLE,
+  offerSkipLastChance,
+  pickTourOfferIndex,
+  requestTourSkip,
+  resumeTour,
+  tourOfferAt,
+  tourOfferCopy,
   withTourCommunityFallback,
   tourStepAt,
   tourStepPrimaryLabel,
@@ -293,6 +303,16 @@ describe("Guided tour step contracts", () => {
     expect(TOUR_SKIP_NOTICE_TITLE).toBe("Tour skipped");
     expect(TOUR_SKIP_NOTICE_BODY).toBe(
       "You can take the tour and complete it anytime from Me."
+    );
+    expect(TOUR_WRAP_TITLE).toBe("+10 NIM is on its way");
+    expect(TOUR_WRAP_BODY).toBe(
+      "There's more to discover. Reach out on X or Telegram if you have a suggestion or feedback."
+    );
+    expect(GUIDED_TOUR_STEPS.find((s) => s.id === "tour-done")?.title).toBe(
+      TOUR_WRAP_TITLE
+    );
+    expect(GUIDED_TOUR_STEPS.find((s) => s.id === "tour-done")?.body).toBe(
+      TOUR_WRAP_BODY
     );
   });
 
@@ -592,6 +612,114 @@ describe("Guided tour step machine", () => {
     expect(state.phase).toBe("idle");
     state = completeTour(startTour(initialTourRuntime()));
     expect(state.phase).toBe("completed");
+  });
+
+  it("first Skip tour holds a last-chance offer and can resume the same step", () => {
+    let state = startTour(initialTourRuntime());
+    state = advanceTourNext(state);
+    expect(tourStepAt(state.stepIndex)?.id).toBe("search");
+
+    const held = requestTourSkip(state, false);
+    expect(held.intercepted).toBe(true);
+    expect(held.state.phase).toBe("skip-offer");
+    expect(held.state.stepIndex).toBe(state.stepIndex);
+
+    const resumed = resumeTour(held.state);
+    expect(resumed.phase).toBe("active");
+    expect(tourStepAt(resumed.stepIndex)?.id).toBe("search");
+
+    const skipped = requestTourSkip(resumed, true);
+    expect(skipped.intercepted).toBe(false);
+    expect(skipped.state.phase).toBe("idle");
+  });
+
+  it("skip last-chance copy keeps the step when offering from an active tour", () => {
+    let state = startTour(initialTourRuntime());
+    state = advanceTourNext(state);
+    state = offerSkipLastChance(state);
+    expect(state.phase).toBe("skip-offer");
+    expect(tourStepAt(state.stepIndex)?.id).toBe("search");
+    state = offerSkipLastChance(initialTourRuntime());
+    expect(state.phase).toBe("idle");
+  });
+});
+
+describe("Guided tour +10 NIM offer", () => {
+  it("has four unique offer variants that each dangle +10 NIM", () => {
+    expect(TOUR_OFFER_VARIANTS).toHaveLength(4);
+    const titles = TOUR_OFFER_VARIANTS.map((row) => row.title);
+    expect(new Set(titles).size).toBe(4);
+    for (const row of TOUR_OFFER_VARIANTS) {
+      expect(row.title.includes("+10 NIM") || row.body.includes("+10 NIM")).toBe(
+        true
+      );
+      expect(row.acceptLabel.length).toBeGreaterThan(0);
+      expect(row.declineLabel).toBe("Not now");
+    }
+    expect(TOUR_OFFER_VARIANTS.map((row) => row.title)).toEqual([
+      "Complimentary +10 NIM",
+      "Your ticket includes +10 NIM",
+      "Walk through. Walk out +10 NIM.",
+      "Stay for the credits",
+    ]);
+    expect(TOUR_OFFER_VARIANTS[0]).toEqual({
+      title: "Complimentary +10 NIM",
+      body: "Finish this short walkthrough of Watchlist, Search, Recommends, and finding people. Complete it and +10 NIM is on its way.",
+      acceptLabel: "I'll take it",
+      declineLabel: "Not now",
+    });
+    expect(TOUR_OFFER_VARIANTS[1]).toEqual({
+      title: "Your ticket includes +10 NIM",
+      body: "A few minutes through Watchlist, Search, Recommends, For You, and Find people. Stay through the credits and +10 NIM is on its way.",
+      acceptLabel: "Take my seat",
+      declineLabel: "Not now",
+    });
+    expect(TOUR_OFFER_VARIANTS[2]).toEqual({
+      title: "Walk through. Walk out +10 NIM.",
+      body: "Learn the moves that matter. Complete the tour and +10 NIM is on its way.",
+      acceptLabel: "Start the tour",
+      declineLabel: "Not now",
+    });
+    expect(TOUR_OFFER_VARIANTS[3]).toEqual({
+      title: "Stay for the credits",
+      body: "Skip and you miss how Cinima works. Finish the tour and pocket +10 NIM.",
+      acceptLabel: "Let's go",
+      declineLabel: "Not now",
+    });
+  });
+
+  it("picks an offer variant and uses a stronger last-chance on Skip tour", () => {
+    expect(pickTourOfferIndex(() => 0)).toBe(0);
+    expect(pickTourOfferIndex(() => 0.99)).toBe(3);
+    expect(tourOfferAt(0).title).toBe("Complimentary +10 NIM");
+    expect(tourOfferAt(4).title).toBe("Complimentary +10 NIM");
+    expect(tourOfferCopy("start", 1).title).toBe("Your ticket includes +10 NIM");
+    expect(tourOfferCopy("replay", 3).title).toBe("Stay for the credits");
+    expect(tourOfferCopy("skip", 0)).toEqual({
+      title: "Wait - +10 NIM is on the table",
+      body: "Skip and you miss the moves that matter. Finish the tour and +10 NIM is on its way.",
+      acceptLabel: "Keep going",
+      declineLabel: "Skip anyway",
+    });
+    expect(TOUR_SKIP_OFFER.acceptLabel).toBe("Keep going");
+  });
+
+  it("Me replay shows the offer instead of starting the walkthrough cold", () => {
+    const me = fs.readFileSync(path.join(srcRoot, "views/Me.vue"), "utf8");
+    expect(me).toContain("offerFromMe");
+    expect(me).not.toMatch(/startGuidedTour\s*=\s*\(\)\s*=>\s*\{\s*tour\.beginTour\(\)/);
+  });
+
+  it("wrap card names +10 NIM is on its way", () => {
+    const host = fs.readFileSync(
+      path.join(srcRoot, "components/GuidedTourHost.vue"),
+      "utf8"
+    );
+    expect(host).toContain("offerCopy");
+    expect(host).toContain("TOUR_WRAP_TITLE");
+    expect(host).toContain("tour-wrap-nim");
+    expect(host).toContain("JOIN_OVERLAY_NIM_LABEL");
+    expect(host).toMatch(/tour-done-card[\s\S]*Done\s*<\/button>/);
   });
 });
 
