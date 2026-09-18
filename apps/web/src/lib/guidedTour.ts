@@ -113,7 +113,7 @@ export const TOUR_OFFER_VARIANTS: readonly TourOfferCopy[] = [
   },
   {
     title: "Your ticket includes +10 NIM",
-      body: "A few minutes through Watchlist, Search, Recommends, For You, and Find people. Stay through the credits and +10 NIM is on its way.",
+    body: "A few minutes through Watchlist, Search, Recommends, For You, and Find people. Stay through the credits and +10 NIM is on its way.",
     acceptLabel: "Take my seat",
     declineLabel: "Not now",
   },
