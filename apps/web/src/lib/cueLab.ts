@@ -10,6 +10,10 @@ import {
   isProfileHeaderVariantId,
   type ProfileHeaderVariantId,
 } from "./profileHeaderLab";
+import {
+  isRecommendsTabVariantId,
+  type RecommendsTabVariantId,
+} from "./recommendsTabLab";
 import type { TitleFlightBox, TitleFlightKind } from "./titleFlight";
 
 /** Signed-in AppShell only; never on Landing or public share pages. */
@@ -35,6 +39,10 @@ export const CUE_LAB_OVERLAYS = [
   { id: "profile-header-strip", label: "Stats strip", group: "Profile header" },
   { id: "profile-header-cover", label: "Poster cover", group: "Profile header" },
   { id: "profile-header-banner-bleed", label: "Cover + bleed", group: "Profile header" },
+  { id: "recommends-tab-billboard", label: "Billboard hero", group: "Recommends tab" },
+  { id: "recommends-tab-chart", label: "Ranked chart", group: "Recommends tab" },
+  { id: "recommends-tab-mosaic", label: "Poster mosaic", group: "Recommends tab" },
+  { id: "recommends-tab-peers", label: "Who recommended", group: "Recommends tab" },
   { id: "welcome", label: "Welcome", group: "Welcome" },
   { id: "welcome-back", label: "Welcome Back", group: "Welcome" },
   { id: "join-overlay", label: "Join overlay", group: "Welcome" },
@@ -63,6 +71,16 @@ export function cueLabProfileHeaderVariant(
   if (!overlayId.startsWith(PROFILE_HEADER_OVERLAY_PREFIX)) return null;
   const id = overlayId.slice(PROFILE_HEADER_OVERLAY_PREFIX.length);
   return isProfileHeaderVariantId(id) ? id : null;
+}
+
+const RECOMMENDS_TAB_OVERLAY_PREFIX = "recommends-tab-";
+
+export function cueLabRecommendsTabVariant(
+  overlayId: CueLabOverlayId | string
+): RecommendsTabVariantId | null {
+  if (!overlayId.startsWith(RECOMMENDS_TAB_OVERLAY_PREFIX)) return null;
+  const id = overlayId.slice(RECOMMENDS_TAB_OVERLAY_PREFIX.length);
+  return isRecommendsTabVariantId(id) ? id : null;
 }
 
 export function cueLabOverlayIds(): CueLabOverlayId[] {

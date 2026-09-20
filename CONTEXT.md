@@ -148,6 +148,10 @@ _Avoid_: product tour as a separate product term, tutorial modal stack, skippabl
 The Discover tab of personalized Title suggestions for a Handle, shown as a For You set. Taste overlap first (shared Recommends outrank shared Favorites), then popular Catalog as a FIFO queue so For You does not empty while eligible titles remain.
 _Avoid_: home feed, Recommends as the same tab, Search, overlap suggestions as the product name
 
+**Recommends tab**:
+The Discover tab of Titles other Handles have Recommended, ranked by how many peers Recommended each Title, split by Movies and TV. Not the viewer's own Recommends (those live on Me and Public Profile) and not For You.
+_Avoid_: community feed, trending, For You as the same tab, the viewer's top picks as this tab
+
 **For You set**:
 The five Title suggestions currently shown on For You. A Pass, Favorite, or Watchlist add removes that Title from the set without backfill. Cinima keeps a bank of the next two sets (ten titles, posters warmed) whenever a set is on screen; when the set is empty, it deals the first banked five immediately and fills the bank back to two sets. The strip always opens on the center card. A refill lays all five slots out first so that center stays in the middle, then turns each card on as it lands (LTR 4 2 1 3 5: center, left, right, far left, far right).
 _Avoid_: deck window, suggestion window, refresh cycle, caught up empty copy

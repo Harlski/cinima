@@ -5,6 +5,7 @@ import {
   cueLabMarqueeKinds,
   cueLabOverlayIds,
   cueLabProfileHeaderVariant,
+  cueLabRecommendsTabVariant,
   cueLabReturnDigest,
   cueLabSendPreview,
   cueLabTitleFlightFrom,
@@ -57,6 +58,10 @@ describe("Cue lab", () => {
       "profile-header-strip",
       "profile-header-cover",
       "profile-header-banner-bleed",
+      "recommends-tab-billboard",
+      "recommends-tab-chart",
+      "recommends-tab-mosaic",
+      "recommends-tab-peers",
       "welcome",
       "welcome-back",
       "join-overlay",
@@ -144,6 +149,14 @@ describe("Cue lab", () => {
     expect(cueLabProfileHeaderVariant("recommend-cue")).toBe(null);
     expect(nextProfileHeaderVariant("banner-bleed")).toBe("solid");
     expect(prevProfileHeaderVariant("solid")).toBe("banner-bleed");
+  });
+
+  it("maps Recommends tab Cue lab buttons onto layouts", () => {
+    expect(cueLabRecommendsTabVariant("recommends-tab-billboard")).toBe(
+      "billboard"
+    );
+    expect(cueLabRecommendsTabVariant("recommends-tab-mosaic")).toBe("mosaic");
+    expect(cueLabRecommendsTabVariant("profile-header-fade")).toBe(null);
   });
 
   it("previews a fixture Handle with Recommends and Favorite-only titles", () => {

@@ -1,6 +1,12 @@
 <template>
+  <RecommendsTabLabHost
+    v-if="recommendsVariant"
+    :variant="recommendsVariant"
+    @close="setRecommendsVariant(null)"
+    @variant="setRecommendsVariant"
+  />
   <ProfileHeaderLabHost
-    v-if="headerVariant"
+    v-else-if="headerVariant"
     :variant="headerVariant"
     @close="setHeaderVariant(null)"
     @variant="setHeaderVariant"
@@ -9,9 +15,9 @@
     <div class="content">
       <h1>Cue lab</h1>
       <p class="lede">
-        Preview Marquee, Recommend cue, Return digest, Title flight, profile headers, Guided tour,
-        Welcome, and product modals without walking the product flow. Previews are
-        local; they do not award Achievements or Send NIM.
+        Preview Marquee, Recommend cue, Return digest, Title flight, profile headers,
+        Recommends tab, Guided tour, Welcome, and product modals without walking the
+        product flow. Previews are local; they do not award Achievements or Send NIM.
       </p>
 
       <section class="nq-card block">
@@ -47,6 +53,11 @@
         <p v-if="group.group === 'Profile header'" class="hint">
           Throwaway Me layouts on a fixture Handle. Arrow keys and the bar flip
           variants. Close to return here. Nothing writes to the live profile.
+        </p>
+        <p v-if="group.group === 'Recommends tab'" class="hint">
+          Throwaway Discover Recommends layouts on fixture community Recommends.
+          Arrow keys and the bar flip variants. Close to return here. Live Discover
+          stays on the current rails until one wins.
         </p>
         <p v-if="group.group === 'Welcome'" class="hint">
           Welcome is the Enter identicon overlay. Join overlay is the one-time
@@ -152,10 +163,12 @@ import RecommendCue from "@/components/RecommendCue.vue";
 import ShareLinkSheet from "@/components/ShareLinkSheet.vue";
 import WelcomeOverlay from "@/components/WelcomeOverlay.vue";
 import ProfileHeaderLabHost from "@/components/dev/ProfileHeaderLabHost.vue";
+import RecommendsTabLabHost from "@/components/dev/RecommendsTabLabHost.vue";
 import {
   cueLabMarqueeKinds,
   cueLabOverlayGroups,
   cueLabProfileHeaderVariant,
+  cueLabRecommendsTabVariant,
   cueLabReturnDigest,
   cueLabSendPreview,
   cueLabTitleFlightFrom,
@@ -167,6 +180,10 @@ import {
   isProfileHeaderVariantId,
   type ProfileHeaderVariantId,
 } from "@/lib/profileHeaderLab";
+import {
+  isRecommendsTabVariantId,
+  type RecommendsTabVariantId,
+} from "@/lib/recommendsTabLab";
 import {
   initialTourRuntime,
   TOUR_COMMUNITY_FALLBACK_TITLE,
@@ -199,15 +216,30 @@ const headerVariant = computed<ProfileHeaderVariantId | null>(() => {
   return typeof value === "string" && isProfileHeaderVariantId(value) ? value : null;
 });
 
+const recommendsVariant = computed<RecommendsTabVariantId | null>(() => {
+  const raw = route.query.recommendsTab;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return typeof value === "string" && isRecommendsTabVariantId(value) ? value : null;
+});
+
 function setHeaderVariant(id: ProfileHeaderVariantId | null) {
   const query = { ...route.query };
+  delete query.recommendsTab;
   if (id) query.profileHeader = id;
   else delete query.profileHeader;
   void router.replace({ query });
 }
 
-watch(headerVariant, (id) => {
-  if (!id) return;
+function setRecommendsVariant(id: RecommendsTabVariantId | null) {
+  const query = { ...route.query };
+  delete query.profileHeader;
+  if (id) query.recommendsTab = id;
+  else delete query.recommendsTab;
+  void router.replace({ query });
+}
+
+watch([headerVariant, recommendsVariant], () => {
+  if (!headerVariant.value && !recommendsVariant.value) return;
   const el = document.querySelector(".app-content");
   if (el instanceof HTMLElement) el.scrollTop = 0;
 });
@@ -301,9 +333,14 @@ function onRecommendCueShare() {
 
 function previewOverlay(id: CueLabOverlayId) {
   const profileHeader = cueLabProfileHeaderVariant(id);
+  const recommendsTab = cueLabRecommendsTabVariant(id);
   closeLocalOverlays();
   if (profileHeader) {
     setHeaderVariant(profileHeader);
+    return;
+  }
+  if (recommendsTab) {
+    setRecommendsVariant(recommendsTab);
     return;
   }
   if (
