@@ -158,7 +158,6 @@
           :aria-selected="index === selectedIndex"
           :data-for-you-slot="allowPass ? index : undefined"
           :data-tour="tourPassSpotlight ? TOUR_SPOTLIGHT.forYouPassCard : undefined"
-          data-flight-poster
           @pointerdown="onWrapPointerDown(index, $event)"
           @pointermove="onWrapPointerMove($event)"
           @pointerup="onWrapPointerUp($event)"
@@ -174,6 +173,7 @@
           <button
             type="button"
             class="strip-poster"
+            data-flight-poster
             :class="{
               'is-selected': index === selectedIndex,
               'strip-poster--refill-pending': isRefillPending(index),

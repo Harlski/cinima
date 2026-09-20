@@ -15,8 +15,8 @@
     :secondary-action-active="favorited"
     @open="$emit('open', $event)"
     @open-overview="$emit('open-overview', $event)"
-    @primary-action="(id, origin) => $emit('toggle-watchlist', id, origin)"
-    @secondary-action="(id, origin) => $emit('toggle-favorite', id, origin)"
+    @primary-action="onToggleWatchlist"
+    @secondary-action="onToggleFavorite"
     @select="selectedTitleId = $event"
     @pass="(id, origin) => $emit('pass', id, origin)"
   />
@@ -28,6 +28,7 @@ import type { OverlapSuggestion } from "@cinima/shared";
 import TitleDeckPicker, { type DeckItem } from "@/components/TitleDeckPicker.vue";
 import { deckCenterIndex } from "@/lib/deckSelection";
 import { watchlistButtonLabel } from "@/lib/titleActionLabels";
+import { titleFlightOriginFromForYouSet } from "@/lib/titleFlight";
 
 const props = defineProps<{
   suggestions: OverlapSuggestion[];
@@ -38,11 +39,11 @@ const props = defineProps<{
   tourPassSpotlight?: boolean;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   open: [titleId: string];
   "open-overview": [titleId: string];
-  "toggle-favorite": [titleId: string, origin: MouseEvent];
-  "toggle-watchlist": [titleId: string, origin: MouseEvent];
+  "toggle-favorite": [titleId: string, origin?: Element];
+  "toggle-watchlist": [titleId: string, origin?: Element];
   pass: [titleId: string, origin: PointerEvent];
 }>();
 
@@ -71,4 +72,20 @@ const favoriteLabel = computed(() =>
   favorited.value ? "Favorited" : "Add to Favorites"
 );
 const watchlistLabel = computed(() => watchlistButtonLabel(watchlisted.value));
+
+function titleFlightOriginForYou(titleId: string): Element | undefined {
+  if (typeof document === "undefined") return undefined;
+  const index = deckItems.value.findIndex((item) => item.title.id === titleId);
+  if (index < 0) return undefined;
+  const origin = titleFlightOriginFromForYouSet(index, document);
+  return origin instanceof Element ? origin : undefined;
+}
+
+function onToggleWatchlist(titleId: string) {
+  emit("toggle-watchlist", titleId, titleFlightOriginForYou(titleId));
+}
+
+function onToggleFavorite(titleId: string) {
+  emit("toggle-favorite", titleId, titleFlightOriginForYou(titleId));
+}
 </script>

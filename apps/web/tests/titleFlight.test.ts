@@ -1,4 +1,7 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { FOR_YOU_SLOT_ATTR } from "../src/lib/forYouPass";
 import {
   recommendCueDelayMs,
   shouldPlayTitleFlight,
@@ -8,6 +11,7 @@ import {
   TITLE_FLIGHT_POSTER_ATTR,
   TITLE_FLIGHT_RECOMMEND_STAGE_MS,
   titleFlightHintAtMs,
+  titleFlightOriginFromForYouSet,
   titleFlightPosterFrom,
   titleFlightSettleMs,
   titleFlightTab,
@@ -86,6 +90,54 @@ describe("Title flight", () => {
       },
     });
     expect(titleFlightPosterFrom(button)).toBe(poster);
+  });
+
+  it("takes For You Title flight from the selected strip card, not the large poster", () => {
+    const stripPoster = fakeNode();
+    const slot = fakeNode({
+      querySelector: (selector) =>
+        selector === `[${TITLE_FLIGHT_POSTER_ATTR}]` ? stripPoster : null,
+    });
+    const largePoster = fakeNode();
+    const root = {
+      querySelector: (selector: string) => {
+        if (selector === `[${FOR_YOU_SLOT_ATTR}="2"]`) return slot;
+        return largePoster;
+      },
+    };
+    expect(titleFlightOriginFromForYouSet(2, root)).toBe(stripPoster);
+  });
+
+  it("does not invent a For You Title flight origin when that strip slot is gone", () => {
+    expect(
+      titleFlightOriginFromForYouSet(2, { querySelector: () => null })
+    ).toBeNull();
+  });
+
+  it("does not use an unmarked For You slot as a Title flight origin", () => {
+    const slot = fakeNode();
+    expect(
+      titleFlightOriginFromForYouSet(1, {
+        querySelector: (selector) =>
+          selector === `[${FOR_YOU_SLOT_ATTR}="1"]` ? slot : null,
+      })
+    ).toBeNull();
+  });
+
+  it("For You Favorite and Watchlist Title flight leave from the selected strip card", () => {
+    const pickerSrc = readFileSync(
+      path.resolve(__dirname, "../src/components/ForYouPicker.vue"),
+      "utf8"
+    );
+    const deckSrc = readFileSync(
+      path.resolve(__dirname, "../src/components/TitleDeckPicker.vue"),
+      "utf8"
+    );
+    expect(pickerSrc).toContain("titleFlightOriginFromForYouSet");
+    expect(pickerSrc).toContain("titleFlightOriginForYou(titleId)");
+    expect(pickerSrc).toContain("item.title.id === titleId");
+    expect(pickerSrc).not.toContain("stripFlightOrigin");
+    expect(deckSrc).toMatch(/class="strip-poster"[\s\S]*?data-flight-poster/);
   });
 });
 

@@ -979,7 +979,7 @@ async function dropFromLocalSet(titleId: string) {
   void warmUpcomingForYou();
 }
 
-const toggleFavorite = async (titleId: string, origin?: MouseEvent) => {
+const toggleFavorite = async (titleId: string, origin?: MouseEvent | Element) => {
   if (tourForYouPassStep.value) return;
   const suggestion = suggestions.value.find((s) => s.title.id === titleId);
   await requestToggleFavorite(titleId, {
@@ -1001,7 +1001,7 @@ const toggleFavorite = async (titleId: string, origin?: MouseEvent) => {
 
 const toggleWatchlist = async (
   titleOrId: string | TitleSummary,
-  origin?: MouseEvent
+  origin?: MouseEvent | Element
 ) => {
   if (tourForYouPassStep.value) return;
   const title =

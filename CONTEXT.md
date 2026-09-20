@@ -269,7 +269,7 @@ A solid bar that slides up above the tab bar after a new Recommend outside the G
 _Avoid_: auto-opening Title Share, modal, Marquee
 
 **Title flight**:
-The poster of a newly Watchlisted, Favorited, or Recommended Title flying to the tab that now holds it: Watchlist tab for a Watchlist add, Me for Favorite and Recommend. Recommend stages the gold hexagon and outer glow on the poster before that fly. Not a navigation. Skip during Favorites onboarding and the Guided tour.
+The poster of a newly Watchlisted, Favorited, or Recommended Title flying to the tab that now holds it: Watchlist tab for a Watchlist add, Me for Favorite and Recommend. On For You that poster is the selected strip card. Recommend stages the gold hexagon and outer glow on the poster before that fly. Not a navigation. Skip during Favorites onboarding and the Guided tour.
 _Avoid_: toast, confetti, Return digest, Recommend cue, Marquee, opening the destination tab
 
 **Presence**:

@@ -1,3 +1,4 @@
+import { FOR_YOU_SLOT_ATTR } from "./forYouPass";
 import {
   DIGEST_FLY_MS,
   DIGEST_ME_HINT_AT_MS,
@@ -72,6 +73,20 @@ export function titleFlightPosterFrom(
       .closest(`[${TITLE_FLIGHT_ORIGIN_ATTR}]`)
       ?.querySelector(`[${TITLE_FLIGHT_POSTER_ATTR}]`) ?? null
   );
+}
+
+export type TitleFlightQueryRoot = {
+  querySelector(selector: string): TitleFlightOriginNode | null;
+};
+
+/** For You Title flight leaves from the selected strip card, not the large poster. */
+export function titleFlightOriginFromForYouSet(
+  slotIndex: number,
+  root: TitleFlightQueryRoot
+): TitleFlightOriginNode | null {
+  const slot = root.querySelector(`[${FOR_YOU_SLOT_ATTR}="${slotIndex}"]`);
+  if (!slot) return null;
+  return slot.querySelector(`[${TITLE_FLIGHT_POSTER_ATTR}]`);
 }
 
 export function titleFlightBoxFromElement(el: {
