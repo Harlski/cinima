@@ -55,6 +55,8 @@ export type TitleSummary = {
   imdbId: string | null;
   /** Present when this title is a Recommend for the profile/owner context */
   recommended?: boolean;
+  /** Peers who Recommended this Title; set on community Recommend lists */
+  recommendCount?: number;
 };
 
 export type EpisodeCell = {

@@ -1,10 +1,20 @@
 import { makeTitleId, type MediaType, type TitleSummary } from "@cinima/shared";
+import {
+  mosaicCommunityRecommends as mosaicCommunityTitles,
+  rankedCommunityRecommends,
+  recommendCountLabel,
+  type MosaicMediaFilter,
+} from "./communityRecommends";
+
+export {
+  rankedCommunityRecommends,
+  recommendCountLabel,
+  type MosaicMediaFilter,
+};
 
 /**
  * Recommends tab layouts, switchable from Cue lab.
- * Question: which layout makes community Recommends feel like taste, not a dump?
- *
- * Throwaway. Do not fold into Discover until one wins.
+ * Mosaic won for Discover; Billboard, Chart, and Peers stay here.
  */
 export const RECOMMENDS_TAB_VARIANTS = [
   { id: "billboard", label: "Billboard hero", short: "Billboard" },
@@ -31,8 +41,6 @@ export type RecommendsTabLabFixture = {
   movies: CommunityRecommendRow[];
   tv: CommunityRecommendRow[];
 };
-
-export type MosaicMediaFilter = MediaType | "all";
 
 const VARIANT_IDS: readonly RecommendsTabVariantId[] = RECOMMENDS_TAB_VARIANTS.map(
   (row) => row.id
@@ -66,33 +74,17 @@ export function prevRecommendsTabVariant(
   return VARIANT_IDS[(i - 1 + VARIANT_IDS.length) % VARIANT_IDS.length]!;
 }
 
-export function recommendCountLabel(count: number): string {
-  return count === 1 ? "1 Recommend" : `${count} Recommends`;
-}
-
 export function featuredCommunityRecommend(
   fixture: RecommendsTabLabFixture
 ): CommunityRecommendRow {
   return mosaicCommunityRecommends(fixture, "all")[0]!;
 }
 
-export function rankedCommunityRecommends(
-  rows: readonly CommunityRecommendRow[]
-): CommunityRecommendRow[] {
-  return [...rows].sort(compareCommunityRecommend);
-}
-
 export function mosaicCommunityRecommends(
   fixture: RecommendsTabLabFixture,
   filter: MosaicMediaFilter
 ): CommunityRecommendRow[] {
-  const rows =
-    filter === "movie"
-      ? fixture.movies
-      : filter === "tv"
-        ? fixture.tv
-        : [...fixture.movies, ...fixture.tv];
-  return rankedCommunityRecommends(rows);
+  return mosaicCommunityTitles(fixture.movies, fixture.tv, filter);
 }
 
 export function visibleRecommenders(
@@ -101,18 +93,6 @@ export function visibleRecommenders(
 ): { shown: RecommendsTabLabPeer[]; extra: number } {
   const shown = recommenders.slice(0, cap);
   return { shown: [...shown], extra: Math.max(0, recommenders.length - cap) };
-}
-
-function compareCommunityRecommend(
-  a: CommunityRecommendRow,
-  b: CommunityRecommendRow
-): number {
-  if (a.recommendCount !== b.recommendCount) {
-    return b.recommendCount - a.recommendCount;
-  }
-  const aMovie = a.title.mediaType === "movie" ? 0 : 1;
-  const bMovie = b.title.mediaType === "movie" ? 0 : 1;
-  return aMovie - bMovie;
 }
 
 function title(opts: {
@@ -147,6 +127,10 @@ const PEERS: readonly RecommendsTabLabPeer[] = [
   { walletAddress: "NQ05THANKSTESTWALLETPEERAA000001", handle: "ada" },
   { walletAddress: "NQ05THANKSTESTWALLETPEERBB000001", handle: "nic" },
   { walletAddress: "NQ05THANKSTESTWALLETME00000000001", handle: "meuser" },
+  { walletAddress: "NQ05RECLABPEERWALLET00000000000009", handle: "june" },
+  { walletAddress: "NQ05RECLABPEERWALLET00000000000010", handle: "theo" },
+  { walletAddress: "NQ05RECLABPEERWALLET00000000000011", handle: "mira" },
+  { walletAddress: "NQ05RECLABPEERWALLET00000000000012", handle: "otto" },
 ];
 
 function row(
@@ -179,7 +163,7 @@ export function cueLabRecommendsTabFixture(): RecommendsTabLabFixture {
           year: 1999,
           posterPath: "/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
         },
-        8
+        12
       ),
       row(
         {

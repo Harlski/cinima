@@ -132,13 +132,15 @@ describe("Community Recommends HTTP API", () => {
     );
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      movies: { id: string; recommended?: boolean }[];
-      tv: { id: string; recommended?: boolean }[];
+      movies: { id: string; recommended?: boolean; recommendCount?: number }[];
+      tv: { id: string; recommended?: boolean; recommendCount?: number }[];
     };
 
     expect(body.movies.map((t) => t.id)).toEqual(["movie:550"]);
     expect(body.tv.map((t) => t.id)).toEqual(["tv:1396"]);
     expect(body.movies.find((t) => t.id === "movie:550")?.recommended).toBe(true);
+    expect(body.movies.find((t) => t.id === "movie:550")?.recommendCount).toBe(1);
+    expect(body.tv.find((t) => t.id === "tv:1396")?.recommendCount).toBe(1);
     // Favorite-only (no recommendedAt) must never appear, even as popular filler
     expect(body.movies.some((t) => t.id === "movie:278")).toBe(false);
     expect(body.tv.some((t) => t.id === "tv:1399")).toBe(false);

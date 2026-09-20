@@ -56,8 +56,8 @@
         </p>
         <p v-if="group.group === 'Recommends tab'" class="hint">
           Throwaway Discover Recommends layouts on fixture community Recommends.
-          Arrow keys and the bar flip variants. Close to return here. Live Discover
-          stays on the current rails until one wins.
+          Arrow keys and the bar flip variants. Mosaic is live on Discover;
+          Billboard, Chart, and Peers stay here. Close to return here.
         </p>
         <p v-if="group.group === 'Welcome'" class="hint">
           Welcome is the Enter identicon overlay. Join overlay is the one-time

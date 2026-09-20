@@ -1,6 +1,6 @@
 <template>
   <div class="poster" :class="`poster--${size}`">
-    <RecommendBadge v-if="gold" :size="badgeSize" />
+    <RecommendBadge v-if="gold" :size="badgeSize" :count="recommendCount" />
     <PosterImg v-if="title.posterUrl" :src="title.posterUrl" :alt="title.title" />
     <div v-else class="fallback">{{ title.title }}</div>
   </div>
@@ -17,16 +17,18 @@ const props = withDefaults(
     title: TitleSummary;
     size?: "hero" | "rail" | "mosaic" | "thumb";
     gold?: boolean;
+    recommendCount?: number;
   }>(),
   {
     size: "rail",
     gold: true,
+    recommendCount: undefined,
   }
 );
 
 const badgeSize = computed(() => {
   if (props.size === "hero") return 36;
-  if (props.size === "mosaic") return 26;
+  if (props.size === "mosaic") return 32;
   if (props.size === "thumb") return 18;
   return 22;
 });
@@ -55,6 +57,12 @@ const badgeSize = computed(() => {
 .poster--mosaic {
   width: 100%;
   height: 100%;
+  border-radius: 12px;
+  overflow: visible;
+}
+
+.poster--mosaic :deep(.poster-img) {
+  overflow: hidden;
   border-radius: 12px;
 }
 

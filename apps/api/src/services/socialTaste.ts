@@ -250,7 +250,10 @@ export async function listCommunityRecommends(
   const tv: TitleSummary[] = [];
   for (const row of rows) {
     if (exclude.has(row.title.id)) continue;
-    const summary = withRecommended(toTitleSummary(row.title), true);
+    const summary = {
+      ...withRecommended(toTitleSummary(row.title), true),
+      recommendCount: row.recommendCount,
+    };
     if (row.title.mediaType === "movie" && movies.length < limit) movies.push(summary);
     else if (row.title.mediaType === "tv" && tv.length < limit) tv.push(summary);
     if (movies.length >= limit && tv.length >= limit) break;

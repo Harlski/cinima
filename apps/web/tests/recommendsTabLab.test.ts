@@ -3,6 +3,7 @@ import {
   cueLabRecommendsTabVariant,
   cueLabOverlayIds,
 } from "../src/lib/cueLab";
+import { recommendBadgeMark } from "../src/lib/recommendBadge";
 import {
   cueLabRecommendsTabFixture,
   featuredCommunityRecommend,
@@ -60,10 +61,10 @@ describe("Recommends tab Cue lab", () => {
     ]);
     expect(fixture.movies[0]).toEqual(
       expect.objectContaining({
-        recommendCount: 8,
+        recommendCount: 12,
       })
     );
-    expect(fixture.movies[0]?.recommenders).toHaveLength(8);
+    expect(fixture.movies[0]?.recommenders).toHaveLength(12);
     expect(fixture.movies[0]?.recommenders[0]).toEqual({
       walletAddress: "NQ05DEMOCINIMACYCLETWOWALLET0000001",
       handle: "demouser",
@@ -74,8 +75,9 @@ describe("Recommends tab Cue lab", () => {
     const fixture = cueLabRecommendsTabFixture();
     const featured = featuredCommunityRecommend(fixture);
     expect(featured.title.title).toBe("Fight Club");
-    expect(featured.recommendCount).toBe(8);
+    expect(featured.recommendCount).toBe(12);
     expect(featured.title.mediaType).toBe("movie");
+    expect(recommendBadgeMark(featured.recommendCount)).toEqual({ kind: "spread" });
   });
 
   it("ranks community Recommends by Recommend count", () => {
@@ -124,7 +126,7 @@ describe("Recommends tab Cue lab", () => {
     const fightClub = fixture.movies[0]!;
     expect(visibleRecommenders(fightClub.recommenders, 4)).toEqual({
       shown: fightClub.recommenders.slice(0, 4),
-      extra: 4,
+      extra: 8,
     });
     expect(visibleRecommenders(fightClub.recommenders.slice(0, 3), 4)).toEqual({
       shown: fightClub.recommenders.slice(0, 3),

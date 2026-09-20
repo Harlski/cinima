@@ -83,12 +83,10 @@
         >
           No community Recommends yet.
         </div>
-        <CommunityRecommends
+        <CommunityRecommendsMosaic
           v-else
           :movies="tourCommunityMovies"
           :tv="tourCommunityTv"
-          heading="What others on Cinima recommend"
-          :max-rows="4"
           tour-first-poster
           @select="goToTitleSummary"
         />
@@ -247,7 +245,7 @@ import {
 } from "@/lib/handleOnboarding";
 import { preloadImages } from "@/lib/preloadImages";
 import { useAuthStore } from "@/stores/auth";
-import CommunityRecommends from "@/components/CommunityRecommends.vue";
+import CommunityRecommendsMosaic from "@/components/CommunityRecommendsMosaic.vue";
 import CommentFeedGrouped from "@/components/CommentFeedGrouped.vue";
 import FindPeopleSheet from "@/components/FindPeopleSheet.vue";
 import FolloweePeekSheet from "@/components/FolloweePeekSheet.vue";

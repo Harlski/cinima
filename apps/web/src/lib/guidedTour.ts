@@ -690,6 +690,7 @@ export const TOUR_COMMUNITY_FALLBACK_TITLE: TitleSummary = {
   rating: 8.4,
   popularity: null,
   imdbId: "tt0137523",
+  recommendCount: 1,
 };
 
 export function withTourCommunityFallback(input: {
