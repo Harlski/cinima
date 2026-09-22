@@ -229,7 +229,12 @@ function onPrimary() {
     tour.dismissWrapPreview();
     return;
   }
+  const finishingLastStep =
+    tour.active && step.value?.id === "tour-done";
   tour.next();
+  if (finishingLastStep) {
+    void router.push({ name: "search" });
+  }
 }
 
 watch(
@@ -343,10 +348,11 @@ watch(
   padding: 1.35rem 1.25rem 1.2rem;
   text-align: center;
   background: var(--bg-surface, var(--colors-neutral-50));
+  /* Exact CINIMA wordmark gold (--gold / #e5c158); coach/offer keep the white rim. */
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.2),
-    0 0 18px rgba(255, 255, 255, 0.42),
-    0 0 44px rgba(255, 255, 255, 0.2);
+    0 0 0 1px var(--gold, #e5c158),
+    0 0 18px color-mix(in oklch, var(--gold, #e5c158) 42%, transparent),
+    0 0 44px color-mix(in oklch, var(--gold, #e5c158) 20%, transparent);
 }
 
 .tour-done-card h2 {

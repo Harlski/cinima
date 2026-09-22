@@ -946,6 +946,33 @@ app.post("/api/thanks", requirePay, requireAuth, async (c) => {
   }
 });
 
+app.post("/api/user-sends/failure", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  const body = await c.req.json<{ kind?: string; target?: string; detail?: string }>();
+  const kind = body.kind;
+  if (kind !== "title" && kind !== "comment" && kind !== "guestbook") {
+    return c.json({ error: "missing_fields" }, 400);
+  }
+  const detail = String(body.detail ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 240);
+  if (!detail) return c.json({ error: "missing_fields" }, 400);
+  const target = String(body.target ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
+  ringDoorAlarm({
+    kind: "user-send-failed",
+    handle: user.handle,
+    walletAddress: user.walletAddress,
+    surface: kind,
+    target,
+    detail,
+  });
+  return c.json({ ok: true });
+});
+
 app.post("/api/thanks/send", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
   const body = await c.req.json<{ toWallet?: string; titleId?: string; txHash?: string }>();

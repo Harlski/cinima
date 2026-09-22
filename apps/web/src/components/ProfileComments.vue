@@ -1,7 +1,9 @@
 <template>
-  <section v-if="items.length" class="profile-comments">
-    <h2>Comments</h2>
+  <section class="profile-comments">
+    <h2 v-if="showHeading">Comments</h2>
+    <p v-if="loaded && !items.length" class="profile-section-empty">No Comments yet.</p>
     <CommentFeedGrouped
+      v-if="items.length"
       :items="items"
       :own-wallet="ownWallet"
       :thank-busy-id="null"
@@ -37,9 +39,13 @@ import { acceptedWaitLabel } from "@/lib/acceptedWait";
 import { useAuthStore } from "@/stores/auth";
 import { useUserSendStore } from "@/stores/userSend";
 
-const props = defineProps<{
-  walletAddress: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    walletAddress: string;
+    showHeading?: boolean;
+  }>(),
+  { showHeading: true }
+);
 
 const router = useRouter();
 const { request } = useApi();
@@ -48,6 +54,7 @@ const authStore = useAuthStore();
 const items = ref<CommentFeedItem[]>([]);
 const hasMore = ref(false);
 const loadingMore = ref(false);
+const loaded = ref(false);
 
 const ownWallet = computed(() => authStore.user?.walletAddress ?? null);
 
@@ -62,11 +69,14 @@ async function loadPage(offset: number, append: boolean) {
 async function reload() {
   items.value = [];
   hasMore.value = false;
+  loaded.value = false;
   try {
     await loadPage(0, false);
   } catch {
     items.value = [];
     hasMore.value = false;
+  } finally {
+    loaded.value = true;
   }
 }
 

@@ -153,10 +153,29 @@ export function isUserSendNoteId(value: string): value is UserSendNoteId {
   return USER_SEND_NOTES.some((note) => note.id === value);
 }
 
-/** Paid notes that fit a Handle, not a Title or Comment. */
-export const GUESTBOOK_THANKS_NOTE_IDS = ["great-taste", "thanks-cinima"] as const;
+/** Paid notes that fit a Handle. Also offered on title and comment Send Custom Message. */
+const GUESTBOOK_SHARED_NOTE_IDS = ["great-taste", "thanks-cinima"] as const;
 
-export type GuestbookThanksNoteId = (typeof GUESTBOOK_THANKS_NOTE_IDS)[number];
+/** Profile-only notes. Absent from title and comment Send Custom Message. */
+const GUESTBOOK_EXTRA_NOTES = [
+  { id: "taste-overlaps", label: "Your taste overlaps mine" },
+  { id: "love-favorites", label: "Love your favorites" },
+  { id: "sharp-eye", label: "A sharp eye for titles" },
+  { id: "good-ones", label: "You pick the good ones" },
+  { id: "shelf-gift", label: "Your shelf is a gift" },
+  { id: "found-you", label: "Glad I found you here" },
+  { id: "cinema-with-you", label: "Cinema is better with you" },
+  { id: "trust-favorites", label: "I trust your favorites" },
+  { id: "curate-beautifully", label: "You curate beautifully" },
+  { id: "thanks-company", label: "Thanks for the company" },
+] as const;
+
+export type GuestbookThanksNoteId =
+  | (typeof GUESTBOOK_SHARED_NOTE_IDS)[number]
+  | (typeof GUESTBOOK_EXTRA_NOTES)[number]["id"];
+
+/** A note on Send Custom Message: title and comment catalog, or a profile note. */
+export type SendNoteId = UserSendNoteId | GuestbookThanksNoteId;
 
 export const DEFAULT_GUESTBOOK_THANKS_NOTE_ID: GuestbookThanksNoteId = "great-taste";
 
@@ -164,14 +183,22 @@ export const DEFAULT_GUESTBOOK_THANKS_NOTE_ID: GuestbookThanksNoteId = "great-ta
 export const GUESTBOOK_PREVIEW_LIMIT = 5;
 
 export function isGuestbookThanksNoteId(value: string): value is GuestbookThanksNoteId {
-  return (GUESTBOOK_THANKS_NOTE_IDS as readonly string[]).includes(value);
+  return (
+    (GUESTBOOK_SHARED_NOTE_IDS as readonly string[]).includes(value) ||
+    GUESTBOOK_EXTRA_NOTES.some((note) => note.id === value)
+  );
 }
 
 export function guestbookThanksNotes(): { id: GuestbookThanksNoteId; label: string }[] {
-  return GUESTBOOK_THANKS_NOTE_IDS.map((id) => ({
+  const shared = GUESTBOOK_SHARED_NOTE_IDS.map((id) => ({
     id,
     label: userSendNoteLabel(id),
   }));
+  const extra = GUESTBOOK_EXTRA_NOTES.map((note) => ({
+    id: note.id,
+    label: note.label,
+  }));
+  return [...shared, ...extra];
 }
 
 /** Catalog note inside a Pay memo. Null when the memo is not a profile note. */
@@ -188,7 +215,7 @@ export function guestbookNoteIdFromMemo(memo: string): GuestbookThanksNoteId | n
 
 export function defaultUserSendNoteId(
   kind?: "title" | "comment" | "guestbook"
-): UserSendNoteId {
+): SendNoteId {
   if (kind === "guestbook") return DEFAULT_GUESTBOOK_THANKS_NOTE_ID;
   return DEFAULT_USER_SEND_NOTE_ID;
 }
@@ -198,36 +225,47 @@ export function defaultPaidUserSendNoteId(kind: "title" | "comment"): UserSendNo
   return kind === "comment" ? "loved-take" : "thanks-rec";
 }
 
-export function userSendNoteLuna(id: UserSendNoteId): number {
+export function userSendNoteLuna(id: SendNoteId): number {
   return id === "thanks" ? 0 : USER_SEND_LUNA;
 }
 
-export function userSendNoteCostLabel(id: UserSendNoteId): string {
+export function userSendNoteCostLabel(id: SendNoteId): string {
   return userSendNoteLuna(id) > 0 ? USER_SEND_COST_LABEL : USER_SEND_FREE_LABEL;
 }
 
-export function userSendNoteLabel(id: UserSendNoteId): string {
+export function userSendNoteLabel(id: SendNoteId): string {
   const note = USER_SEND_NOTES.find((row) => row.id === id);
-  return note?.label ?? USER_SEND_NOTES[0]!.label;
+  if (note) return note.label;
+  const extra = GUESTBOOK_EXTRA_NOTES.find((row) => row.id === id);
+  return extra?.label ?? USER_SEND_NOTES[0]!.label;
 }
+
+/** Attribution kept whole on a named User Send memo. The Handle is what shrinks. */
+const USER_SEND_MEMO_SUFFIX = " on Cinima.app";
 
 export function userSendMemo(noteLabel: string): string {
   const text = String(noteLabel ?? "").trim() || USER_SEND_NOTES[0]!.label;
   return truncateMemo(text);
 }
 
-export function userSendMemoForNote(id: UserSendNoteId, senderName?: string): string {
+export function userSendMemoForNote(id: SendNoteId, senderName?: string): string {
   const label = userSendNoteLabel(id);
   const name = String(senderName ?? "").trim();
   if (!name) return userSendMemo(label);
-  return truncateMemo(`${label} - ${name}`);
+  return fitMemo(`${label} - `, name, USER_SEND_MEMO_SUFFIX);
+}
+
+function catalogNoteLabels(): string[] {
+  const labels = [
+    ...USER_SEND_NOTES.map((note) => note.label),
+    ...GUESTBOOK_EXTRA_NOTES.map((note) => note.label),
+  ];
+  return [...new Set(labels)].sort((a, b) => b.length - a.length);
 }
 
 export function isUserSendMemo(memo: string): boolean {
   const text = String(memo ?? "");
-  const notes = [...USER_SEND_NOTES].sort((a, b) => b.label.length - a.label.length);
-  return notes.some((note) => {
-    const label = userSendNoteLabel(note.id);
+  return catalogNoteLabels().some((label) => {
     if (text === userSendMemo(label)) return true;
     const prefix = `${label} - `;
     return text.startsWith(prefix) && text.slice(prefix.length).trim().length > 0;

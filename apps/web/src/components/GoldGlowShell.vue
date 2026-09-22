@@ -2,7 +2,7 @@
   <div
     class="gold-glow-shell"
     :class="{
-      'gold-glow-shell--soft': useSoft,
+      'gold-glow-shell--soft': showHalo,
       'gold-glow-shell--strong': strong,
     }"
     :style="shellStyle"
@@ -31,15 +31,19 @@ const props = withDefaults(
     soft?: boolean;
     /** Thicker rim and brighter bloom (Guided tour targets). */
     strong?: boolean;
+    /** Blurred fill behind the rim. Off leaves the outline only. */
+    halo?: boolean;
   }>(),
   {
     radius: "12px",
     soft: true,
     strong: false,
+    halo: true,
   }
 );
 
 const useSoft = computed(() => props.soft || props.strong);
+const showHalo = computed(() => props.halo && useSoft.value);
 
 const shellStyle = computed(() => ({
   "--gold-glow-radius": props.radius,

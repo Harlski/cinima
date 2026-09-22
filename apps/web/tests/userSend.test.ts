@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
+import { PAY_CANCELLED_MESSAGE, PAY_FAILED_MESSAGE } from "../src/lib/nimiqPay";
 import { useUserSendStore } from "../src/stores/userSend";
 
-const { request } = vi.hoisted(() => ({
+const { request, pay } = vi.hoisted(() => ({
   request: vi.fn(async (path: string) => {
     if (String(path).includes("/thanks") && !String(path).includes("/send")) {
       return { created: true, earnedAchievements: ["bravo"] };
@@ -16,18 +17,26 @@ const { request } = vi.hoisted(() => ({
     }
     return { ok: true, sent: true };
   }),
+  pay: {
+    demo: true,
+    inPay: false,
+    send: vi.fn(async () => "hash"),
+  },
 }));
 
 vi.mock("@/composables/useApi", () => ({
   useApi: () => ({ request }),
 }));
 
-vi.mock("@/lib/nimiqPay", () => ({
-  demoEnabledOutsidePay: () => true,
-  isNimiqPay: () => false,
-  payUserMessage: (err: unknown) => (err instanceof Error ? err.message : "Send failed"),
-  sendPayTransaction: vi.fn(),
-}));
+vi.mock("@/lib/nimiqPay", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/lib/nimiqPay")>();
+  return {
+    ...actual,
+    demoEnabledOutsidePay: () => pay.demo,
+    isNimiqPay: () => pay.inPay,
+    sendPayTransaction: (opts: unknown) => pay.send(opts),
+  };
+});
 
 const COMMENT = {
   kind: "comment" as const,
@@ -53,6 +62,10 @@ describe("Send Custom Message", () => {
     });
     setActivePinia(createPinia());
     request.mockClear();
+    pay.demo = true;
+    pay.inPay = false;
+    pay.send.mockReset();
+    pay.send.mockResolvedValue("hash");
   });
 
   it("opens without sending Thanks", () => {
@@ -99,6 +112,59 @@ describe("Send Custom Message", () => {
     expect(send.lastThanked).toEqual(TITLE);
     expect(send.lastAttached).toEqual(TITLE);
     expect(request.mock.calls.some(([path]) => path === "/thanks/send")).toBe(true);
+  });
+
+  it("keeps profile-only notes on Guestbook thanks", () => {
+    const send = useUserSendStore();
+    send.offer(TITLE);
+    send.selectNote("cinema-with-you");
+    expect(send.noteId).toBe("thanks");
+
+    send.offer({
+      kind: "guestbook",
+      toWallet: "NQ05PEERGUEST",
+      handle: "ada",
+    });
+    expect(send.noteId).toBe("great-taste");
+    send.selectNote("cinema-with-you");
+    expect(send.noteId).toBe("cinema-with-you");
+    send.selectNote("thanks");
+    expect(send.noteId).toBe("cinema-with-you");
+  });
+
+  it("shows Oops and reports the host error when Pay fails", async () => {
+    pay.demo = false;
+    pay.inPay = true;
+    pay.send.mockRejectedValue(new Error("Insufficient funds"));
+    const send = useUserSendStore();
+    send.offer(TITLE);
+    send.selectNote("thanks-rec");
+
+    await expect(send.confirm()).resolves.toBe(false);
+
+    expect(send.error).toBe(PAY_FAILED_MESSAGE);
+    expect(send.pending).toEqual(TITLE);
+    const report = request.mock.calls.find(([path]) => path === "/user-sends/failure");
+    expect(report?.[1]).toMatchObject({ method: "POST" });
+    expect(JSON.parse(String(report?.[1]?.body))).toEqual({
+      kind: "title",
+      target: "nic",
+      detail: "Insufficient funds",
+    });
+  });
+
+  it("shows Cancelled and does not report a dismissed Pay sheet", async () => {
+    pay.demo = false;
+    pay.inPay = true;
+    pay.send.mockRejectedValue(new Error("User cancelled"));
+    const send = useUserSendStore();
+    send.offer(TITLE);
+    send.selectNote("thanks-rec");
+
+    await expect(send.confirm()).resolves.toBe(false);
+
+    expect(send.error).toBe(PAY_CANCELLED_MESSAGE);
+    expect(request.mock.calls.some(([path]) => path === "/user-sends/failure")).toBe(false);
   });
 
   it("skips Thanks in Cue lab preview", async () => {

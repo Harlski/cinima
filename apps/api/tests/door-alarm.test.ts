@@ -261,6 +261,29 @@ describe("Door alarm copy", () => {
     ).toBe("Ping sent to alice: Cinima.app - come back");
   });
 
+  it("names a failed User Send and the host error", () => {
+    expect(
+      doorAlarmLine({
+        kind: "user-send-failed",
+        handle: "alice",
+        walletAddress: "NQ05USAGETESTWALLET000000000000001",
+        surface: "title",
+        target: "nic",
+        detail: "Insufficient funds",
+      })
+    ).toBe("alice's User Send failed during Thanks to nic: Insufficient funds");
+    expect(
+      doorAlarmLine({
+        kind: "user-send-failed",
+        handle: "alice",
+        walletAddress: "NQ05USAGETESTWALLET000000000000001",
+        surface: "guestbook",
+        target: "",
+        detail: "memo_mismatch",
+      })
+    ).toBe("alice's User Send failed during Guestbook thanks: memo_mismatch");
+  });
+
   it("names a Join grant after it broadcasts", () => {
     expect(
       doorAlarmLine({

@@ -372,6 +372,14 @@ a.nq-pill-orange:hover {
     0 0 44px rgba(255, 255, 255, 0.2);
 }
 
+/* Closing wrap only: CINIMA wordmark gold (--gold / #e5c158). */
+.tour-done > .tour-done-card {
+  box-shadow:
+    0 0 0 1px var(--gold, #e5c158),
+    0 0 18px color-mix(in oklch, var(--gold, #e5c158) 42%, transparent),
+    0 0 44px color-mix(in oklch, var(--gold, #e5c158) 20%, transparent);
+}
+
 .confirm-modal > .nq-card::before,
 .send-nim-modal > .nq-card::before,
 .peek-modal > .nq-card::before,

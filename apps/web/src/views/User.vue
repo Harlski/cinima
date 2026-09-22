@@ -57,24 +57,33 @@
         </template>
       </UserCard>
 
-      <GuestbookList
-        :items="profile.guestbook"
-        :can-open-all="profile.isSelf && profile.guestbook.length >= GUESTBOOK_PREVIEW_LIMIT"
-      />
-
       <ActivityHeatmap
         v-if="ACTIVITY_UI_VISIBLE"
         :days="profile.heatmap"
         title="Activity"
       />
 
-      <ProfileTaste
-        :favorites="profile.favorites"
-        :recommends="profile.recommends || []"
-        @select="(title) => goToTitle(title.id)"
-      />
-
-      <ProfileComments :wallet-address="profile.walletAddress" />
+      <ProfileSectionTabs>
+        <template #likes>
+          <ProfileTaste
+            :favorites="profile.favorites"
+            :recommends="profile.recommends || []"
+            @select="(title) => goToTitle(title.id)"
+          />
+        </template>
+        <template #posts>
+          <ProfileComments :wallet-address="profile.walletAddress" :show-heading="false" />
+        </template>
+        <template #thanks>
+          <GuestbookList
+            v-if="profile.guestbook.length"
+            :items="profile.guestbook"
+            :can-open-all="profile.isSelf && profile.guestbook.length >= GUESTBOOK_PREVIEW_LIMIT"
+            :show-heading="false"
+          />
+          <p v-else class="profile-section-empty">No Thanks yet.</p>
+        </template>
+      </ProfileSectionTabs>
     </div>
   </div>
 </template>
@@ -88,6 +97,7 @@ import ActivityHeatmap from "@/components/ActivityHeatmap.vue";
 import GuestbookList from "@/components/GuestbookList.vue";
 import LoadingWait from "@/components/LoadingWait.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
+import ProfileSectionTabs from "@/components/ProfileSectionTabs.vue";
 import ProfileTaste from "@/components/ProfileTaste.vue";
 import ProfileComments from "@/components/ProfileComments.vue";
 import TourSpotlight from "@/components/TourSpotlight.vue";

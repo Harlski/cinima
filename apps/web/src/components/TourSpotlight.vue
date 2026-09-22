@@ -1,11 +1,11 @@
 <template>
   <GoldGlowShell
-    v-if="active"
+    v-if="outlined"
     :radius="radius"
-    :soft="false"
+    :class="{ 'tour-spotlight-fit': fit }"
     :strong="strong"
-    class="tour-spotlight"
-    :class="{ 'tour-spotlight--fit': fit }"
+    :soft="false"
+    :halo="halo"
   >
     <slot />
   </GoldGlowShell>
@@ -15,48 +15,52 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import GoldGlowShell from "@/components/GoldGlowShell.vue";
-import { useGuidedTourStore } from "@/stores/guidedTour";
 import type { TourSpotlightId } from "@/lib/guidedTour";
+import { useGuidedTourStore } from "@/stores/guidedTour";
 
 const props = withDefaults(
   defineProps<{
-    /** Spotlight id; when null/undefined, never glows. */
+    /** Spotlight id; the rim shows only while this id is the active tour target. */
     id?: TourSpotlightId | null;
     radius?: string;
     /** Stretch to fill a flex parent (bottom tabs). */
     fit?: boolean;
-    /** Bloom around small pills. Tabs and title cards keep the rim only. */
+    /** Thicker rim for small pills. */
     strong?: boolean;
+    /** Interior wash. Off except where a step asks for the glow. */
+    halo?: boolean;
   }>(),
   {
     id: null,
     radius: "12px",
     fit: false,
     strong: true,
+    halo: false,
   }
 );
 
 const tour = useGuidedTourStore();
-const active = computed(() =>
-  props.id ? tour.isSpotlight(props.id) : false
+
+/** Rim only, so the active target reads as the thing to tap. */
+const outlined = computed(
+  () => props.id != null && tour.isSpotlight(props.id)
 );
 </script>
 
 <style scoped>
-.tour-spotlight {
-  z-index: 4;
+.tour-spotlight-fit {
+  flex: 1;
+  min-width: 0;
 }
 
-.tour-spotlight--fit {
-  flex: 1;
+.tour-spotlight-fit :deep(.gold-glow-content) {
   display: flex;
-  min-width: 0;
-  align-self: stretch;
+  width: 100%;
+  height: 100%;
 }
 
-.tour-spotlight--fit :deep(.gold-glow-content) {
+.tour-spotlight-fit :deep(.tab) {
   flex: 1;
-  display: flex;
-  min-width: 0;
+  width: 100%;
 }
 </style>

@@ -44,11 +44,6 @@
         </template>
       </UserCard>
 
-      <GuestbookList
-        :items="receivedPreview"
-        :can-open-all="receivedItems.length > GUESTBOOK_PREVIEW_LIMIT"
-      />
-
       <ActivityHeatmap
         v-if="ACTIVITY_UI_VISIBLE && heatmap.length"
         :days="heatmap"
@@ -79,13 +74,31 @@
         </div>
       </div>
 
-      <ProfileTaste
-        :favorites="favorites"
-        :recommends="recommends"
-        @select="(title) => goToTitle(title.id)"
-      />
-
-      <ProfileComments v-if="user?.walletAddress" :wallet-address="user.walletAddress" />
+      <ProfileSectionTabs>
+        <template #likes>
+          <ProfileTaste
+            :favorites="favorites"
+            :recommends="recommends"
+            @select="(title) => goToTitle(title.id)"
+          />
+        </template>
+        <template #posts>
+          <ProfileComments
+            v-if="user?.walletAddress"
+            :wallet-address="user.walletAddress"
+            :show-heading="false"
+          />
+        </template>
+        <template #thanks>
+          <GuestbookList
+            v-if="receivedPreview.length"
+            :items="receivedPreview"
+            :can-open-all="receivedItems.length > GUESTBOOK_PREVIEW_LIMIT"
+            :show-heading="false"
+          />
+          <p v-else class="profile-section-empty">No Thanks yet.</p>
+        </template>
+      </ProfileSectionTabs>
 
       <div class="tour-replay">
         <button
@@ -182,6 +195,7 @@ import NqIcon from "@/components/NqIcon.vue";
 import LoadingWait from "@/components/LoadingWait.vue";
 import ActivityHeatmap from "@/components/ActivityHeatmap.vue";
 import TmdbAttribution from "@/components/TmdbAttribution.vue";
+import ProfileSectionTabs from "@/components/ProfileSectionTabs.vue";
 import ProfileTaste from "@/components/ProfileTaste.vue";
 import ProfileComments from "@/components/ProfileComments.vue";
 import UserCard from "@/components/UserCard.vue";

@@ -19,42 +19,61 @@
       {{ emptyCopy }}
     </p>
     <div v-else class="mosaic">
-      <button
-        v-for="(row, index) in rows"
-        :key="row.title.id"
-        type="button"
-        class="cell"
-        :class="{
-          'cell--hero': index === 0,
-          'cell--tour-glow': showTourPosterGlow && index === 0,
-        }"
-        :aria-label="`${row.title.title}, ${recommendCountLabel(row.recommendCount)}`"
-        :data-tour="
-          tourFirstPoster && index === 0
-            ? TOUR_SPOTLIGHT.communityRecommendPoster
-            : undefined
-        "
-        @click="$emit('select', row.title)"
-      >
-        <TourSpotlight
+      <template v-for="(row, index) in rows" :key="row.title.id">
+        <div
           v-if="tourFirstPoster && index === 0"
-          :id="TOUR_SPOTLIGHT.communityRecommendPoster"
-          radius="12px"
-          class="cell-tour-glow"
-        />
-        <div class="poster">
-          <RecommendBadge :size="32" :count="row.recommendCount" />
-          <PosterImg
-            v-if="row.title.posterUrl"
-            :src="row.title.posterUrl"
-            :alt="row.title.title"
-          />
-          <div v-else class="fallback">{{ row.title.title }}</div>
+          class="cell-spot cell-spot--hero"
+        >
+          <TourSpotlight
+            :id="TOUR_SPOTLIGHT.communityRecommendPoster"
+            radius="12px"
+          >
+            <button
+              type="button"
+              class="cell"
+              :aria-label="`${row.title.title}, ${recommendCountLabel(row.recommendCount)}`"
+              :data-tour="TOUR_SPOTLIGHT.communityRecommendPoster"
+              @click="$emit('select', row.title)"
+            >
+              <div class="poster">
+                <RecommendBadge :size="32" :count="row.recommendCount" />
+                <PosterImg
+                  v-if="row.title.posterUrl"
+                  :src="row.title.posterUrl"
+                  :alt="row.title.title"
+                />
+                <div v-else class="fallback">{{ row.title.title }}</div>
+              </div>
+              <p class="caption">
+                {{ row.title.title }}
+              </p>
+            </button>
+          </TourSpotlight>
         </div>
-        <p v-if="index === 0" class="caption">
-          {{ row.title.title }}
-        </p>
-      </button>
+        <button
+          v-else
+          type="button"
+          class="cell"
+          :class="{
+            'cell--hero': index === 0,
+          }"
+          :aria-label="`${row.title.title}, ${recommendCountLabel(row.recommendCount)}`"
+          @click="$emit('select', row.title)"
+        >
+          <div class="poster">
+            <RecommendBadge :size="32" :count="row.recommendCount" />
+            <PosterImg
+              v-if="row.title.posterUrl"
+              :src="row.title.posterUrl"
+              :alt="row.title.title"
+            />
+            <div v-else class="fallback">{{ row.title.title }}</div>
+          </div>
+          <p v-if="index === 0" class="caption">
+            {{ row.title.title }}
+          </p>
+        </button>
+      </template>
     </div>
   </section>
 </template>
@@ -72,7 +91,6 @@ import {
   type MosaicMediaFilter,
 } from "@/lib/communityRecommends";
 import { TOUR_SPOTLIGHT } from "@/lib/guidedTour";
-import { useGuidedTourStore } from "@/stores/guidedTour";
 
 const props = withDefaults(
   defineProps<{
@@ -87,7 +105,6 @@ defineEmits<{
   select: [title: TitleSummary];
 }>();
 
-const tour = useGuidedTourStore();
 const filter = ref<MosaicMediaFilter>("all");
 const chips = [
   { id: "all" as const, label: "All" },
@@ -105,11 +122,6 @@ const emptyCopy = computed(() => {
   if (filter.value === "tv") return "No TV Recommends yet.";
   return "No community Recommends yet.";
 });
-const showTourPosterGlow = computed(
-  () =>
-    Boolean(props.tourFirstPoster) &&
-    tour.isSpotlight(TOUR_SPOTLIGHT.communityRecommendPoster)
-);
 </script>
 
 <style scoped>
@@ -179,25 +191,23 @@ const showTourPosterGlow = computed(
   -webkit-tap-highlight-color: transparent;
 }
 
-.cell--hero {
+.cell--hero,
+.cell-spot--hero {
   grid-column: span 2;
   grid-row: span 2;
 }
 
-.cell--tour-glow {
-  z-index: 5;
+.cell-spot {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
 }
 
-.cell-tour-glow {
-  position: absolute;
-  inset: -2px;
-  z-index: 3;
-  pointer-events: none;
-  border-radius: 14px;
-}
-
-.cell :deep(.cell-tour-glow .gold-glow-content) {
-  display: none;
+.cell-spot :deep(.gold-glow-shell),
+.cell-spot :deep(.gold-glow-content),
+.cell-spot .cell {
+  width: 100%;
+  height: 100%;
 }
 
 .poster {

@@ -8,6 +8,7 @@ import {
   GUIDED_TOUR_STEPS,
   TOUR_CREATOR_WALLET,
   TOUR_SPOTLIGHT,
+  SEARCH_BAR_HINT,
   advanceTourNext,
   shouldOfferRecommendCue,
   armForceGuidedTour,
@@ -47,6 +48,7 @@ import {
   tourStepAt,
   tourStepPrimaryLabel,
   shouldHideForYouPassCoach,
+  showForYouPassSwipeArrow,
   tourCoachContinueLabel,
   tourCoachShowsActionText,
   tourCoachShowsContinue,
@@ -100,7 +102,7 @@ const EXPECTED_WALKTHROUGH: readonly {
     showsPrimary: true,
     primaryLabel: "Next",
     coach: "top",
-    spotlights: [TOUR_SPOTLIGHT.tabSearch],
+    spotlights: [TOUR_SPOTLIGHT.searchField],
     routeName: "search",
   },
   {
@@ -137,7 +139,7 @@ const EXPECTED_WALKTHROUGH: readonly {
     showsPrimary: true,
     primaryLabel: "Next",
     coach: "top",
-    spotlights: [TOUR_SPOTLIGHT.tabWatchlist, TOUR_SPOTLIGHT.deckWatchlist],
+    spotlights: [TOUR_SPOTLIGHT.tabWatchlist],
     routeName: "my-list",
   },
   {
@@ -296,6 +298,11 @@ describe("Guided tour step contracts", () => {
     );
     const clear = GUIDED_TOUR_STEPS.find((s) => s.id === "clear-profile");
     expect(clear?.actionText).toBe("Tap Favorited, then confirm.");
+    const search = GUIDED_TOUR_STEPS.find((s) => s.id === "search");
+    expect(search?.body).toBe("Search for movie and TV titles to see ratings.");
+    expect(SEARCH_BAR_HINT).toBe(
+      "What did you last watch? Search and add it to your favorites?"
+    );
     const forYou = GUIDED_TOUR_STEPS.find((s) => s.id === "for-you");
     expect(forYou?.action).toBe("pass");
     expect(forYou?.body).toBe(
@@ -516,6 +523,24 @@ describe("Guided tour step machine", () => {
     expect(state.stepIndex).toBe(before);
   });
 
+  it("keeps the For You swipe arrow over the center card for the whole step", () => {
+    expect(
+      showForYouPassSwipeArrow({ stepId: "for-you", awaitingRefill: false })
+    ).toBe(true);
+    expect(
+      showForYouPassSwipeArrow({ stepId: "for-you", awaitingRefill: true })
+    ).toBe(false);
+    expect(
+      showForYouPassSwipeArrow({ stepId: "following-find", awaitingRefill: false })
+    ).toBe(false);
+    const discover = fs.readFileSync(
+      path.join(srcRoot, "views/Discover.vue"),
+      "utf8"
+    );
+    expect(discover).toContain("showForYouPassSwipeArrow");
+    expect(discover).not.toContain("suggestions.value.length === 1");
+  });
+
   it("hides the For You coach while the next five land", () => {
     expect(
       shouldHideForYouPassCoach({ stepId: "for-you", awaitingRefill: true })
@@ -731,6 +756,52 @@ describe("Guided tour +10 NIM offer", () => {
     expect(host).toMatch(/tour-done-card[\s\S]*Done\s*<\/button>/);
     expect(host).toMatch(
       /\.tour-done-card > p\.tour-wrap-nim \{[\s\S]*?font-size:\s*0\.78rem/
+    );
+  });
+
+  it("Done on the last step goes to Search with a gold bobbing lookup hint", () => {
+    const host = fs.readFileSync(
+      path.join(srcRoot, "components/GuidedTourHost.vue"),
+      "utf8"
+    );
+    const onPrimary = host.slice(
+      host.indexOf("function onPrimary()"),
+      host.indexOf("\nwatch(")
+    );
+    expect(onPrimary).toMatch(
+      /finishingLastStep[\s\S]*id === "tour-done"[\s\S]*tour\.next\(\)[\s\S]*router\.push\(\{\s*name:\s*"search"\s*\}\)/
+    );
+    expect(onPrimary).not.toContain("tour.skip(");
+    expect(onPrimary).not.toContain('name: "discover"');
+    expect(host).toMatch(
+      /\.tour-done-card\s*\{[\s\S]*?0 0 0 1px var\(--gold,\s*#e5c158\)/
+    );
+    expect(host).toMatch(
+      /\.tour-coach-card\s*\{[\s\S]*?0 0 0 1px rgba\(255,\s*255,\s*255,\s*0\.2\)/
+    );
+
+    const shared = fs.readFileSync(
+      path.join(srcRoot, "assets/style.css"),
+      "utf8"
+    );
+    expect(shared).toMatch(
+      /\.tour-done > \.tour-done-card\s*\{[\s\S]*?0 0 0 1px var\(--gold,\s*#e5c158\)/
+    );
+
+    const search = fs.readFileSync(
+      path.join(srcRoot, "views/Search.vue"),
+      "utf8"
+    );
+    expect(search).toContain("SEARCH_BAR_HINT");
+    expect(search).toMatch(/@keyframes\s+search-hint-bob/);
+    expect(search).toMatch(
+      /\.search-hint--pinned\s*\{[\s\S]*?animation:\s*search-hint-bob/
+    );
+    expect(search).toMatch(
+      /\.search-hint--pinned\s*\{[\s\S]*?border-color:\s*var\(--gold,\s*#e5c158\)/
+    );
+    expect(search).toMatch(
+      /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*?\.search-hint--pinned\s*\{[\s\S]*?animation:\s*none/
     );
   });
 });
@@ -960,56 +1031,132 @@ describe("Guided tour spotlight targets in source", () => {
     expect(host).not.toContain("0 10px 32px rgba(0, 0, 0, 0.45)");
   });
 
-  it("uses a strong gold glow so Add to Watchlist reads as the tap target", () => {
+  it("coaches Search on the search field with the ratings copy", () => {
+    const step = GUIDED_TOUR_STEPS[1];
+    expect(step?.id).toBe("search");
+    expect(`${GUIDED_TOUR_STEPS.indexOf(step!) + 1} / ${GUIDED_TOUR_STEPS.length}`).toBe(
+      "2 / 15"
+    );
+    expect([...step!.spotlights]).toEqual([TOUR_SPOTLIGHT.searchField]);
+    expect(tourCoachPlacement(step)).toBe("top");
+    expect(step?.body).toBe("Search for movie and TV titles to see ratings.");
+    const searchView = fs.readFileSync(
+      path.join(srcRoot, "views/Search.vue"),
+      "utf8"
+    );
+    expect(searchView).toContain('TourSpotlight :id="TOUR_SPOTLIGHT.searchField"');
+    expect(searchView).toContain(`:data-tour="TOUR_SPOTLIGHT.searchField"`);
+    expect(searchView).toContain("SEARCH_BAR_HINT");
+    expect(searchView).toContain('role="tooltip"');
+    expect(searchView).toContain(".search-box:hover .search-hint");
+    expect(searchView).toContain(".search-box:focus-within .search-hint");
+    expect(searchView).toContain(".search-field-wrap :deep(.gold-glow-shell)");
+    expect(searchView).toMatch(
+      /\.search-field-wrap :deep\(\.gold-glow-shell\)[\s\S]*?box-sizing:\s*content-box/
+    );
+    expect(searchView).toContain(".search-field-wrap :deep(.gold-glow-content)");
+  });
+
+  it("never paints an interior wash on tour targets", () => {
     const spotlight = fs.readFileSync(
       path.join(srcRoot, "components/TourSpotlight.vue"),
       "utf8"
     );
-    expect(spotlight).toMatch(/strong:\s*true/);
-    expect(spotlight).toMatch(/:soft="false"/);
-    const title = fs.readFileSync(
-      path.join(srcRoot, "views/TitleDetail.vue"),
+    expect(spotlight).toContain("halo: false");
+    expect(spotlight).toContain(':halo="halo"');
+    expect(spotlight).toContain(':soft="false"');
+    expect(spotlight).toContain("tour.isSpotlight(props.id)");
+    const mosaic = fs.readFileSync(
+      path.join(srcRoot, "components/CommunityRecommendsMosaic.vue"),
       "utf8"
     );
-    expect(title).toMatch(/TourSpotlight :id="TOUR_SPOTLIGHT.titleWatchlist"/);
-    expect(title).not.toMatch(
-      /TourSpotlight :id="TOUR_SPOTLIGHT.titleWatchlist"[^>]*:strong="false"/
-    );
+    expect(mosaic).not.toContain("GoldGlowShell");
+    expect(mosaic).not.toContain("cell-tour-glow");
+    expect(mosaic).not.toContain("posterHalo");
+    expect(mosaic).toContain("TOUR_SPOTLIGHT.communityRecommendPoster");
   });
 
-  it("keeps a rim on Discover and the For You card without outlining For You", () => {
+  it("outlines the active target on each tour step, including Favorited", () => {
+    const step = GUIDED_TOUR_STEPS.find((s) => s.id === "clear-profile");
+    expect(step).toBeTruthy();
+    expect(`${GUIDED_TOUR_STEPS.indexOf(step!) + 1} / ${GUIDED_TOUR_STEPS.length}`).toBe(
+      "14 / 15"
+    );
+    expect([...step!.spotlights]).toEqual([TOUR_SPOTLIGHT.titleFavorite]);
+    const spotlight = fs.readFileSync(
+      path.join(srcRoot, "components/TourSpotlight.vue"),
+      "utf8"
+    );
+    expect(spotlight).toContain("props.id != null && tour.isSpotlight(props.id)");
+    expect(spotlight).toContain("GoldGlowShell");
+    const actionSteps = GUIDED_TOUR_STEPS.filter((s) => s.advance === "action");
+    expect(actionSteps.map((s) => s.id)).toEqual([
+      "recommends-open",
+      "add-watchlist",
+      "favorite-required",
+      "recommend-required",
+      "remove-watchlist",
+      "for-you",
+      "following-find",
+      "creator-profile",
+      "clear-profile",
+    ]);
+    for (const action of actionSteps) {
+      expect(action.spotlights.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("outlines the For You pass card and keeps the swipe arrow", () => {
     const forYou = GUIDED_TOUR_STEPS.find((s) => s.id === "for-you");
     expect([...forYou!.spotlights]).toEqual([
       TOUR_SPOTLIGHT.tabDiscover,
       TOUR_SPOTLIGHT.forYouPassCard,
     ]);
-    const shell = fs.readFileSync(
-      path.join(srcRoot, "views/AppShell.vue"),
-      "utf8"
-    );
-    expect(shell).toMatch(
-      /TourSpotlight :id="TOUR_SPOTLIGHT.tabDiscover"[^>]*:strong="false"/
-    );
     const picker = fs.readFileSync(
       path.join(srcRoot, "components/TitleDeckPicker.vue"),
       "utf8"
     );
-    expect(picker).toMatch(
-      /TOUR_SPOTLIGHT.forYouPassCard[\s\S]*?:strong="false"/
-    );
+    expect(picker).toContain("TOUR_SPOTLIGHT.forYouPassCard");
+    expect(picker).toContain("pass-swipe-arrow");
+    expect(picker).not.toContain("for-you-tour-glow");
+    expect(picker).not.toContain("GoldGlowShell");
   });
 
-  it("keeps Find people movies/TV counts on the card surface in front of the Creator glow", () => {
+  it("keeps Find people movies/TV counts on the Creator row", () => {
     const find = fs.readFileSync(
       path.join(srcRoot, "components/FindPeopleSheet.vue"),
       "utf8"
     );
-    const glowContent = find.slice(find.indexOf(".person-row--tour-glow :deep(.gold-glow-content)"));
-    expect(glowContent).toMatch(/background:\s*var\(--bg-surface/);
     expect(find).toContain("movieFavoriteCount }} movies");
+    expect(find).not.toContain("Thanks received");
+    expect(find).toContain("min-width: 0");
   });
 
-  it("does not clip Add to Watchlist glow inside the title column", () => {
+  it("paints the Creator Find people glow outside the row (12 / 15)", () => {
+    const step = GUIDED_TOUR_STEPS.find((s) => s.id === "creator-profile");
+    expect(step).toBeTruthy();
+    expect(`${GUIDED_TOUR_STEPS.indexOf(step!) + 1} / ${GUIDED_TOUR_STEPS.length}`).toBe(
+      "12 / 15"
+    );
+    expect([...step!.spotlights]).toEqual([TOUR_SPOTLIGHT.findPeopleCreator]);
+    const find = fs.readFileSync(
+      path.join(srcRoot, "components/FindPeopleSheet.vue"),
+      "utf8"
+    );
+    expect(find).toContain("TOUR_SPOTLIGHT.findPeopleCreator");
+    expect(find).toMatch(/TourSpotlight[\s\S]*?\bhalo\b/);
+    expect(find).toMatch(/\.find-dialog--tour-glow\s*\{[^}]*overflow:\s*visible/);
+    expect(find).toMatch(
+      /\.find-dialog--tour-glow\s+\.people-list\s*\{[^}]*overflow:\s*visible/
+    );
+    expect(find).toMatch(/\.person-row--tour-glow\s*\{[^}]*overflow:\s*visible/);
+    const glowContent = find.slice(
+      find.indexOf(".person-row--tour-glow :deep(.gold-glow-content)")
+    );
+    expect(glowContent).toMatch(/background:\s*var\(--bg-surface/);
+  });
+
+  it("does not clip Add to Watchlist inside the title column", () => {
     const title = fs.readFileSync(
       path.join(srcRoot, "views/TitleDetail.vue"),
       "utf8"

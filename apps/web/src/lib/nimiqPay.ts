@@ -12,6 +12,9 @@ export type ProviderError = { error: { type?: string; message?: string } };
 
 export const PAY_CANCELLED_MESSAGE = "Cancelled";
 
+/** Shown when a User Send fails for any reason other than the person closing Pay. */
+export const PAY_FAILED_MESSAGE = "Oops, something went wrong";
+
 /** Attach failed because Pay broadcast from a different wallet than the Cinima session. */
 export const WRONG_SEND_PAYER_MESSAGE =
   "Pay sent from a different wallet than the one signed into Cinima. In the Pay sheet, pick that wallet. 1 NIM already left the other wallet.";
@@ -72,7 +75,7 @@ export function isPayCancelled(err: unknown): boolean {
   return false;
 }
 
-/** Copy for the Send dialog: Cancelled vs a real failure string. */
+/** Copy for catalog payments: Cancelled vs a real failure string. */
 export function payUserMessage(err: unknown, fallback = "Send failed"): string {
   if (isPayCancelled(err)) return PAY_CANCELLED_MESSAGE;
   const { message, type } = payErrorParts(err);
@@ -81,6 +84,26 @@ export function payUserMessage(err: unknown, fallback = "Send failed"): string {
   }
   if (message === "pay_failed" || message === "provider_error") return fallback;
   return message || type || fallback;
+}
+
+/** Technical detail for a creator notice. Never shown in the Send dialog. */
+export function payErrorDetail(err: unknown): string {
+  const { type, message, code } = payErrorParts(err);
+  const bits: string[] = [];
+  if (type) bits.push(type);
+  if (message && message !== type) bits.push(message);
+  if (code != null) bits.push(String(code));
+  const text = bits.join(": ").replace(/\s+/g, " ").trim();
+  return (text || "unknown").slice(0, 240);
+}
+
+/**
+ * Send dialog copy for a User Send.
+ * Closing Pay stays Cancelled. Every other failure is one line, with the host or API text kept for the notice.
+ */
+export function userSendFailure(err: unknown): { copy: string; detail: string | null } {
+  if (isPayCancelled(err)) return { copy: PAY_CANCELLED_MESSAGE, detail: null };
+  return { copy: PAY_FAILED_MESSAGE, detail: payErrorDetail(err) };
 }
 
 function throwPayFailure(err: unknown): never {

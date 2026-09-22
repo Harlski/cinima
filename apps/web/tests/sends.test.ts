@@ -52,6 +52,7 @@ import {
   userSendMemoForNote,
   userSendMemoOrDefault,
   userSendNoteCostLabel,
+  userSendNoteLabel,
   userSendNoteLuna,
   USER_SEND_NOTES,
   watchlistPingMemo,
@@ -98,13 +99,19 @@ describe("Send memos", () => {
     expect(userSendMemoForNote("thanks")).toBe("Thanks");
     expect(userSendMemoForNote("thanks-rec")).toBe("Thanks for the rec");
     expect(userSendMemoForNote("loved-take")).toBe("Loved this take");
-    expect(userSendMemoForNote("loved-take", "alice")).toBe("Loved this take - alice");
-    expect(userSendMemoForNote("thanks-rec", "alice")).toBe("Thanks for the rec - alice");
+    expect(userSendMemoForNote("loved-take", "alice")).toBe(
+      "Loved this take - alice on Cinima.app"
+    );
+    expect(userSendMemoForNote("thanks-rec", "alice")).toBe(
+      "Thanks for the rec - alice on Cinima.app"
+    );
     expect(isUserSendMemo("Thanks")).toBe(true);
     expect(isUserSendMemo("Thanks for the rec")).toBe(true);
     expect(isUserSendMemo("Loved this take")).toBe(true);
     expect(isUserSendMemo("Loved this take - alice")).toBe(true);
-    expect(isUserSendMemo("Thanks for the rec - alice")).toBe(true);
+    expect(isUserSendMemo("Loved this take - alice on Cinima.app")).toBe(true);
+    expect(isUserSendMemo("Thanks for the rec - alice on Cinima.app")).toBe(true);
+    expect(isUserSendMemo("Cinema is better with you - ada on Cinima.app")).toBe(true);
     expect(isUserSendMemo("alice thanked you on Cinima")).toBe(false);
     expect(isUserSendMemo("alice sent 1 NIM on Cinima")).toBe(false);
     expect(USER_SEND_LUNA).toBe(100_000);
@@ -124,11 +131,17 @@ describe("Send memos", () => {
     expect(userSendMemoOrDefault("demo-user-send", "title")).toBe("Thanks for the rec");
     expect(userSendMemoOrDefault("demo-user-send", "comment")).toBe("Loved this take");
     expect(userSendMemoOrDefault("Thanks for the rec", "comment")).toBe("Thanks for the rec");
-    expect(userSendMemoOrDefault("Loved this take - alice", "comment")).toBe("Loved this take - alice");
-    expect(isUserSendMemo("Thanks - alice")).toBe(true);
-    expect(new TextEncoder().encode(userSendMemoForNote("loved-take", "a".repeat(80))).length).toBeLessThanOrEqual(
-      SEND_MEMO_MAX_BYTES
+    expect(userSendMemoOrDefault("Loved this take - alice", "comment")).toBe(
+      "Loved this take - alice"
     );
+    expect(userSendMemoOrDefault("Loved this take - alice on Cinima.app", "comment")).toBe(
+      "Loved this take - alice on Cinima.app"
+    );
+    expect(isUserSendMemo("Thanks - alice")).toBe(true);
+    const longLoved = userSendMemoForNote("loved-take", "a".repeat(80));
+    expect(new TextEncoder().encode(longLoved).length).toBeLessThanOrEqual(SEND_MEMO_MAX_BYTES);
+    expect(longLoved.startsWith("Loved this take - ")).toBe(true);
+    expect(longLoved.endsWith(" on Cinima.app")).toBe(true);
     expect(
       nimiqWatchTxUrl("0xF6AB3B34E0569E6E5733820D90C8A5BF98EADC317E398464A9A405423B5E5D37")
     ).toBe("https://nimiq.watch/#f6ab3b34e0569e6e5733820d90c8a5bf98eadc317e398464a9a405423b5e5d37");
@@ -137,6 +150,10 @@ describe("Send memos", () => {
       expect(new TextEncoder().encode(userSendMemoForNote(note.id)).length).toBeLessThanOrEqual(
         SEND_MEMO_MAX_BYTES
       );
+      const named = userSendMemoForNote(note.id, "a".repeat(80));
+      expect(new TextEncoder().encode(named).length).toBeLessThanOrEqual(SEND_MEMO_MAX_BYTES);
+      expect(named.startsWith(`${note.label} - `)).toBe(true);
+      expect(named.endsWith(" on Cinima.app")).toBe(true);
     }
   });
 
@@ -223,7 +240,38 @@ describe("Send memos", () => {
     expect(guestbookThanksNotes().map((note) => note.label)).toEqual([
       "You have great taste",
       "Thanks on Cinima",
+      "Your taste overlaps mine",
+      "Love your favorites",
+      "A sharp eye for titles",
+      "You pick the good ones",
+      "Your shelf is a gift",
+      "Glad I found you here",
+      "Cinema is better with you",
+      "I trust your favorites",
+      "You curate beautifully",
+      "Thanks for the company",
     ]);
+    expect(new Set(guestbookThanksNotes().map((note) => note.label)).size).toBe(12);
+    expect(USER_SEND_NOTES.map((note) => note.label)).toEqual([
+      "Thanks",
+      "Thanks for the rec",
+      "Loved this take",
+      "Going on my Watchlist",
+      "You have great taste",
+      "Thanks on Cinima",
+    ]);
+    for (const note of guestbookThanksNotes()) {
+      expect(userSendNoteLuna(note.id)).toBe(USER_SEND_LUNA);
+      expect(userSendNoteCostLabel(note.id)).toBe("1 NIM");
+      expect(userSendNoteLabel(note.id)).toBe(note.label);
+      expect(guestbookNoteIdFromMemo(`${note.label} - ada`)).toBe(note.id);
+      expect(guestbookNoteIdFromMemo(`${note.label} - ada on Cinima.app`)).toBe(note.id);
+      const named = userSendMemoForNote(note.id, "a".repeat(80));
+      expect(new TextEncoder().encode(named).length).toBeLessThanOrEqual(SEND_MEMO_MAX_BYTES);
+      expect(named.startsWith(`${note.label} - `)).toBe(true);
+      expect(named.endsWith(" on Cinima.app")).toBe(true);
+      expect(new TextEncoder().encode(note.label).length).toBeLessThanOrEqual(29);
+    }
     expect(defaultUserSendNoteId("guestbook")).toBe("great-taste");
     expect(guestbookNoteIdFromMemo("You have great taste - ada")).toBe("great-taste");
     expect(guestbookNoteIdFromMemo("Thanks")).toBeNull();

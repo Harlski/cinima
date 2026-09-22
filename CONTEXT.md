@@ -129,7 +129,7 @@ A user’s directed signal that another user’s Comment was useful. Binary per 
 _Avoid_: like, kudos, title Thanks as the same mark, unlike
 
 **Guestbook thanks**:
-A user’s directed signal that another Handle was worth thanking, with no Title. Once per thanker and thankee. Distinct from Thanks and Comment Thanks. Opens Send Custom Message with the paid profile notes only ("You have great taste", "Thanks on Cinima"); the free Thanks note is not offered. Does not attach a Reward. Does not count toward Bravo, Encore, Thanks received, or Presence heatmap. The Guestbook row appears only after the User Send succeeds: thanker Identicon, the chosen note as the visible line, no title. Not now, cancel, or a failed payment sends no Guestbook thanks.
+A user’s directed signal that another Handle was worth thanking, with no Title. Once per thanker and thankee. Distinct from Thanks and Comment Thanks. Opens Send Custom Message with the paid profile notes only; the free Thanks note is not offered. Does not attach a Reward. Does not count toward Bravo, Encore, Thanks received, or Presence heatmap. The Guestbook row appears only after the User Send succeeds: thanker Identicon, the chosen note as the visible line, no title. Not now, cancel, or a failed payment sends no Guestbook thanks.
 _Avoid_: title Thanks, Comment Thanks, profile gift, free-text memo, free Thanks note, Reward
 
 **Thank all**:
@@ -177,7 +177,7 @@ A short modal for one followee: Identicon, Handle, Movie and TV Recommends only,
 _Avoid_: profile page, Favorites in the peek, stories, heatmap
 
 **Find people**:
-The Following strip entry (black-and-white hexagon with +) that opens a centered list of Handles the viewer does not already follow, with Favorite counts by media type and Thanks received, so the viewer can follow or open a Public Profile.
+The Following strip entry (black-and-white hexagon with +) that opens a centered list of Handles the viewer does not already follow, with Favorite counts by media type, so the viewer can follow or open a Public Profile.
 _Avoid_: user search, directory as a top-level tab, invite sheet
 
 **Search**:
@@ -249,7 +249,7 @@ A human opening a Short Share, Public Profile, Title Share, or Watchlist Share. 
 _Avoid_: page view of Landing, crawler hit, impression, click as a generic term
 
 **Door alarm**:
-Creator-only Telegram notices of live usage: sign-in, search, title view, Favorite, Recommend, Watchlist add and leave, Comment, Thanks, Comment Thanks, Guestbook thanks, Thank all, Follow, Handle, Guided tour complete or skip, share created, Share visit, and a Send after it broadcasts (Reward, Ping, or Join grant). A pager, not a dashboard; Studio remains the pull read. Not part of the public product.
+Creator-only Telegram notices of live usage: sign-in, search, title view, Favorite, Recommend, Watchlist add and leave, Comment, Thanks, Comment Thanks, Guestbook thanks, Thank all, a failed User Send, Follow, Handle, Guided tour complete or skip, share created, Share visit, and a Send after it broadcasts (Reward, Ping, or Join grant). A pager, not a dashboard; Studio remains the pull read. Not part of the public product.
 _Avoid_: webhook log, Slack alert, analytics ping, Studio notification
 
 **Achievement**:

@@ -250,7 +250,7 @@ describe("User Send chain verify", () => {
 
   it("accepts a catalog note that names the thanker's Handle", async () => {
     vi.stubEnv("DEMO_MODE", "false");
-    const memo = "Loved this take - alice";
+    const memo = "Loved this take - alice on Cinima.app";
     vi.stubGlobal(
       "fetch",
       vi.fn(async (_url: string, init?: RequestInit) => {

@@ -20,26 +20,11 @@
           <p>No results found</p>
           <div v-if="titleLookups.length" class="sparse-lookups-stage">
             <h2>Last looked up</h2>
-            <ul class="lookup-list">
-              <li v-for="item in titleLookups" :key="item.id">
-                <button type="button" class="lookup-item" @click="openLookup(item)">
-                  <span class="lookup-poster">
-                    <PosterImg
-                      v-if="item.posterUrl"
-                      :src="item.posterUrl"
-                      :alt="item.title"
-                    />
-                    <span v-else class="lookup-fallback">{{ item.title.charAt(0) }}</span>
-                  </span>
-                  <span class="lookup-text">
-                    <span class="lookup-title">{{ item.title }}</span>
-                    <span class="lookup-meta">
-                      {{ item.year ? `${item.year} · ` : "" }}{{ item.mediaType === "tv" ? "TV" : "Movie" }}
-                    </span>
-                  </span>
-                </button>
-              </li>
-            </ul>
+            <TitleLookupList
+              :items="titleLookups"
+              @open="openLookup"
+              @remove="removeLookup"
+            />
           </div>
         </div>
 
@@ -57,26 +42,11 @@
           />
           <div class="sparse-lookups-stage">
             <h2>Last looked up</h2>
-            <ul class="lookup-list">
-              <li v-for="item in titleLookups" :key="item.id">
-                <button type="button" class="lookup-item" @click="openLookup(item)">
-                  <span class="lookup-poster">
-                    <PosterImg
-                      v-if="item.posterUrl"
-                      :src="item.posterUrl"
-                      :alt="item.title"
-                    />
-                    <span v-else class="lookup-fallback">{{ item.title.charAt(0) }}</span>
-                  </span>
-                  <span class="lookup-text">
-                    <span class="lookup-title">{{ item.title }}</span>
-                    <span class="lookup-meta">
-                      {{ item.year ? `${item.year} · ` : "" }}{{ item.mediaType === "tv" ? "TV" : "Movie" }}
-                    </span>
-                  </span>
-                </button>
-              </li>
-            </ul>
+            <TitleLookupList
+              :items="titleLookups"
+              @open="openLookup"
+              @remove="removeLookup"
+            />
           </div>
         </div>
 
@@ -103,32 +73,17 @@
             <div class="history-head">
               <h2>Last looked up</h2>
             </div>
-            <ul class="lookup-list">
-              <li v-for="item in titleLookups" :key="item.id">
-                <button type="button" class="lookup-item" @click="openLookup(item)">
-                  <span class="lookup-poster">
-                    <PosterImg
-                      v-if="item.posterUrl"
-                      :src="item.posterUrl"
-                      :alt="item.title"
-                    />
-                    <span v-else class="lookup-fallback">{{ item.title.charAt(0) }}</span>
-                  </span>
-                  <span class="lookup-text">
-                    <span class="lookup-title">{{ item.title }}</span>
-                    <span class="lookup-meta">
-                      {{ item.year ? `${item.year} · ` : "" }}{{ item.mediaType === "tv" ? "TV" : "Movie" }}
-                    </span>
-                  </span>
-                </button>
-              </li>
-            </ul>
+            <TitleLookupList
+              :items="titleLookups"
+              @open="openLookup"
+              @remove="removeLookup"
+            />
           </div>
 
+          <template v-if="history.length">
           <div class="history-head">
             <h2>Recent searches</h2>
             <button
-              v-if="history.length"
               type="button"
               class="clear-btn"
               @click="clearHistory"
@@ -137,11 +92,7 @@
             </button>
           </div>
 
-          <div v-if="history.length === 0" class="history-empty">
-            Your recent searches will show up here
-          </div>
-
-          <ul v-else ref="historyListEl" class="history-list">
+          <ul ref="historyListEl" class="history-list">
             <li v-for="item in historyOldestFirst" :key="item" class="history-item">
               <button type="button" class="history-query" @click="runHistory(item)">
                 <NqIcon name="sand-clock" :size="18" class="history-ico" />
@@ -157,6 +108,7 @@
               </button>
             </li>
           </ul>
+          </template>
         </div>
 
         <form class="search-bar" @submit.prevent="onSubmit">
@@ -179,30 +131,46 @@
               {{ option.label }}
             </button>
           </div>
-          <div class="search-box">
-            <NqIcon name="magnifying-glass" :size="20" class="search-ico" />
-            <input
-              ref="searchInputEl"
-              v-model="searchQuery"
-              @input="onFieldEvent"
-              @search.prevent="onFieldEvent"
-              @change="onFieldEvent"
-              type="search"
-              enterkeyhint="search"
-              autocomplete="off"
-              placeholder="Search movies & TV shows..."
-              class="search-input"
-              autofocus
-            />
-            <button
-              v-if="searchQuery"
-              type="button"
-              class="search-clear"
-              aria-label="Clear search"
-              @click="clearQuery"
-            >
-              <NqIcon name="cross" :size="14" />
-            </button>
+          <div class="search-field-wrap">
+            <TourSpotlight :id="TOUR_SPOTLIGHT.searchField" radius="999px">
+              <div
+                class="search-box"
+                :data-tour="TOUR_SPOTLIGHT.searchField"
+              >
+                <NqIcon name="magnifying-glass" :size="20" class="search-ico" />
+                <input
+                  ref="searchInputEl"
+                  v-model="searchQuery"
+                  @input="onFieldEvent"
+                  @search.prevent="onFieldEvent"
+                  @change="onFieldEvent"
+                  type="search"
+                  enterkeyhint="search"
+                  autocomplete="off"
+                  placeholder="Search movies & TV shows..."
+                  class="search-input"
+                  :aria-describedby="searchHintId"
+                  autofocus
+                />
+                <button
+                  v-if="searchQuery"
+                  type="button"
+                  class="search-clear"
+                  aria-label="Clear search"
+                  @click="clearQuery"
+                >
+                  <NqIcon name="cross" :size="14" />
+                </button>
+                <span
+                  :id="searchHintId"
+                  class="search-hint"
+                  :class="{ 'search-hint--pinned': hintPinned }"
+                  role="tooltip"
+                >
+                  {{ SEARCH_BAR_HINT }}
+                </span>
+              </div>
+            </TourSpotlight>
           </div>
         </form>
       </div>
@@ -231,8 +199,12 @@ import { useWatchlistStore } from "@/stores/watchlist";
 import { useCatalogStore } from "@/stores/catalog";
 import TitleCard from "@/components/TitleCard.vue";
 import TitleActionDialogs from "@/components/TitleActionDialogs.vue";
+import TitleLookupList from "@/components/TitleLookupList.vue";
+import TourSpotlight from "@/components/TourSpotlight.vue";
 import NqIcon from "@/components/NqIcon.vue";
 import LoadingWait from "@/components/LoadingWait.vue";
+import { SEARCH_BAR_HINT, TOUR_SPOTLIGHT } from "@/lib/guidedTour";
+import { searchHintPinned } from "@/lib/searchChrome";
 import {
   clearSearchHistory,
   loadSearchHistory,
@@ -242,6 +214,7 @@ import {
 import {
   loadTitleLookups,
   pushTitleLookup,
+  removeTitleLookup,
   type TitleLookup,
 } from "@/lib/searchTitleLookups";
 import { parseSearchQuery, searchRouteQuery } from "@/lib/searchQuery";
@@ -267,7 +240,6 @@ import {
   type SearchSortKey,
 } from "@/lib/searchSort";
 import type { TitleSummary } from "@cinima/shared";
-import PosterImg from "@/components/PosterImg.vue";
 import { useTitleActionConfirm } from "@/composables/useTitleActionConfirm";
 import { useTitleFlightStore } from "@/stores/titleFlight";
 
@@ -275,6 +247,7 @@ const route = useRoute();
 const router = useRouter();
 const favoritesStore = useFavoritesStore();
 const watchlistStore = useWatchlistStore();
+const searchHintId = "search-bar-hint";
 const catalogStore = useCatalogStore();
 const titleFlight = useTitleFlightStore();
 const {
@@ -326,6 +299,13 @@ const wait = computed(() =>
   })
 );
 const showHistory = computed(() => wait.value === "history");
+const hintPinned = computed(() =>
+  searchHintPinned({
+    showingHistory: showHistory.value,
+    recentSearchCount: history.value.length,
+    lookupCount: titleLookups.value.length,
+  })
+);
 const showSparseLookups = computed(
   () =>
     !!searchQuery.value.trim() &&
@@ -593,6 +573,10 @@ const goToTitle = async (titleId: string) => {
   await router.push({ name: "title", params: { id: titleId } });
 };
 
+const removeLookup = (item: TitleLookup) => {
+  titleLookups.value = removeTitleLookup(item.id);
+};
+
 const openLookup = async (item: TitleLookup) => {
   titleLookups.value = pushTitleLookup(item);
   await catalogStore.recordSearchOpen(item.id);
@@ -701,11 +685,107 @@ onUnmounted(() => {
   color: var(--text-primary);
 }
 
+.search-field-wrap {
+  width: 100%;
+}
+
+/* Shell keeps content-box so bleed padding sits outside the bar; border-box
+ * would shrink the field by the tour glow bleed and break full-width Search. */
+.search-field-wrap :deep(.gold-glow-shell) {
+  display: block;
+  width: 100%;
+  box-sizing: content-box;
+}
+
+.search-field-wrap :deep(.gold-glow-content) {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .search-box {
   position: relative;
   display: flex;
   align-items: center;
   width: 100%;
+}
+
+.search-hint {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.45rem);
+  z-index: 2;
+  width: min(22rem, calc(100vw - 2.5rem));
+  padding: 0.45rem 0.7rem;
+  border-radius: 0.55rem;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  transform: translateX(-50%);
+  box-shadow: 0 8px 18px color-mix(in oklch, var(--colors-neutral) 18%, transparent);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.15s ease,
+    visibility 0.15s ease;
+}
+
+.search-hint::before {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--border);
+}
+
+.search-hint::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-1px);
+  border: 6px solid transparent;
+  border-top-color: var(--bg-surface);
+}
+
+.search-hint--pinned,
+.search-box:hover .search-hint,
+.search-box:focus-within .search-hint {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* CINIMA wordmark gold (--gold / --colors-gold, #e5c158). */
+.search-hint--pinned {
+  color: var(--gold, #e5c158);
+  border-color: var(--gold, #e5c158);
+  animation: search-hint-bob 2.8s ease-in-out infinite;
+}
+
+.search-hint--pinned::before {
+  border-top-color: var(--gold, #e5c158);
+}
+
+@keyframes search-hint-bob {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-0.35rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-hint--pinned {
+    animation: none;
+  }
 }
 
 .search-ico {
@@ -826,74 +906,6 @@ onUnmounted(() => {
   text-align: left;
 }
 
-.lookup-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  width: 100%;
-}
-
-.lookup-item {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.45rem 0.55rem;
-  border: 0;
-  border-radius: 10px;
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  text-align: left;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.lookup-poster {
-  width: 2.4rem;
-  height: 3.4rem;
-  flex-shrink: 0;
-  overflow: hidden;
-  border-radius: 6px;
-  background: var(--bg-primary);
-}
-
-.lookup-poster :deep(img) {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.lookup-fallback {
-  display: grid;
-  place-content: center;
-  width: 100%;
-  height: 100%;
-  font-weight: 700;
-  color: var(--text-secondary);
-}
-
-.lookup-text {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.lookup-title {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 600;
-}
-
-.lookup-meta {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-}
-
 .lookups {
   display: flex;
   flex-direction: column;
@@ -949,12 +961,6 @@ onUnmounted(() => {
   padding: 0.25rem 0.15rem;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-}
-
-.history-empty {
-  padding: 0.35rem 0.25rem 0.15rem;
-  color: var(--text-secondary);
-  font-size: 0.9rem;
 }
 
 .history-list {

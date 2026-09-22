@@ -59,6 +59,10 @@ export function pushTitleLookup(title: TitleLookup): TitleLookup[] {
   return writeStore(next);
 }
 
+export function removeTitleLookup(id: string): TitleLookup[] {
+  return writeStore(readStore().filter((item) => item.id !== id));
+}
+
 export function clearTitleLookups(): TitleLookup[] {
   memory = [];
   if (canUseLocalStorage()) {

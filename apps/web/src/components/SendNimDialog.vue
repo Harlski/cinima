@@ -144,7 +144,7 @@ import {
   nimiqWatchTxUrl,
   userSendNoteCostLabel,
   userSendNoteLabel,
-  type UserSendNoteId,
+  type SendNoteId,
 } from "@cinima/shared";
 import NqIcon from "@/components/NqIcon.vue";
 import { acceptedWaitLabel } from "@/lib/acceptedWait";
@@ -203,7 +203,7 @@ function toggleNoteList() {
   openNoteList();
 }
 
-function chooseNote(id: UserSendNoteId) {
+function chooseNote(id: SendNoteId) {
   if (busy.value) return;
   store.selectNote(id);
   noteOpen.value = false;

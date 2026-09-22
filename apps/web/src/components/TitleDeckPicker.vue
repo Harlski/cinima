@@ -115,7 +115,7 @@
     <div class="dock">
       <p v-if="allowPass && deckItems.length && !tourPassSpotlight" class="pass-hint">Swipe a card up to Pass</p>
       <div
-        v-if="tourPassSpotlight"
+        v-if="tourPassSpotlight && selected"
         class="pass-swipe-arrow"
         aria-hidden="true"
       >
@@ -157,19 +157,24 @@
           role="option"
           :aria-selected="index === selectedIndex"
           :data-for-you-slot="allowPass ? index : undefined"
-          :data-tour="tourPassSpotlight ? TOUR_SPOTLIGHT.forYouPassCard : undefined"
+          :data-tour="
+            tourPassSpotlight && index === selectedIndex
+              ? TOUR_SPOTLIGHT.forYouPassCard
+              : undefined
+          "
           @pointerdown="onWrapPointerDown(index, $event)"
           @pointermove="onWrapPointerMove($event)"
           @pointerup="onWrapPointerUp($event)"
           @pointercancel="onWrapPointerUp($event)"
         >
           <TourSpotlight
-            v-if="tourPassSpotlight"
-            :id="TOUR_SPOTLIGHT.forYouPassCard"
-            radius="12px"
-            :strong="false"
-            class="for-you-tour-glow"
-          />
+            :id="
+              tourPassSpotlight && index === selectedIndex
+                ? TOUR_SPOTLIGHT.forYouPassCard
+                : null
+            "
+            radius="10px"
+          >
           <button
             type="button"
             class="strip-poster"
@@ -195,6 +200,7 @@
               item.title.title.slice(0, 1)
             }}</span>
           </button>
+          </TourSpotlight>
           <button
             v-if="index === selectedIndex && !isRefillPending(index) && !passOnly"
             type="button"
@@ -1245,13 +1251,6 @@ function onResize() {
 
 .poster-wrap--passable {
   touch-action: none;
-}
-
-.for-you-tour-glow {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 2;
 }
 
 .pass-swipe-arrow {

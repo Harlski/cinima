@@ -28,7 +28,13 @@ export type DoorAlarmEvent =
   | ({ kind: "tour-skipped" } & DoorAlarmActor)
   | ({ kind: "sent-reward"; memo: string } & DoorAlarmActor)
   | ({ kind: "sent-ping"; memo: string } & DoorAlarmActor)
-  | ({ kind: "sent-join"; memo: string } & DoorAlarmActor);
+  | ({ kind: "sent-join"; memo: string } & DoorAlarmActor)
+  | ({
+      kind: "user-send-failed";
+      surface: "title" | "comment" | "guestbook";
+      target: string;
+      detail: string;
+    } & DoorAlarmActor);
 
 export type DoorAlarmSender = {
   send(line: string): void | Promise<void>;
@@ -107,6 +113,16 @@ export function doorAlarmLine(event: DoorAlarmEvent): string {
       return `Ping sent to ${who}: ${event.memo}`;
     case "sent-join":
       return `Join grant sent to ${who}`;
+    case "user-send-failed": {
+      const during =
+        event.surface === "comment"
+          ? "Comment Thanks"
+          : event.surface === "guestbook"
+            ? "Guestbook thanks"
+            : "Thanks";
+      const to = event.target ? ` to ${event.target}` : "";
+      return `${who}'s User Send failed during ${during}${to}: ${event.detail}`;
+    }
   }
 }
 

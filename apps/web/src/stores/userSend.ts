@@ -6,16 +6,17 @@ import {
   displayName,
   formatWallet,
   isGuestbookThanksNoteId,
+  isUserSendNoteId,
   userSendMemoForNote,
   userSendNoteLuna,
   type AchievementKind,
-  type UserSendNoteId,
+  type SendNoteId,
 } from "@cinima/shared";
 import {
   demoEnabledOutsidePay,
   isNimiqPay,
-  payUserMessage,
   sendPayTransaction,
+  userSendFailure,
 } from "@/lib/nimiqPay";
 import { useApi } from "@/composables/useApi";
 import { useAuthStore } from "@/stores/auth";
@@ -50,7 +51,7 @@ export const useUserSendStore = defineStore("userSend", () => {
   const { request } = useApi();
 
   const previewing = ref(false);
-  const noteId = ref<UserSendNoteId>(defaultUserSendNoteId("title"));
+  const noteId = ref<SendNoteId>(defaultUserSendNoteId("title"));
   /** Paid User Send hash held until the Guestbook row is written. */
   const heldHash = ref<string | null>(null);
 
@@ -63,8 +64,12 @@ export const useUserSendStore = defineStore("userSend", () => {
     noteId.value = defaultUserSendNoteId(next.kind);
   }
 
-  function selectNote(id: UserSendNoteId) {
-    if (pending.value?.kind === "guestbook" && !isGuestbookThanksNoteId(id)) return;
+  function selectNote(id: SendNoteId) {
+    if (pending.value?.kind === "guestbook") {
+      if (!isGuestbookThanksNoteId(id)) return;
+    } else if (!isUserSendNoteId(id)) {
+      return;
+    }
     noteId.value = id;
   }
 
@@ -174,12 +179,27 @@ export const useUserSendStore = defineStore("userSend", () => {
       showReceipt(txHash);
       return true;
     } catch (err) {
-      const message = payUserMessage(err);
-      if (message === "already_thanked") {
+      if (err instanceof Error && err.message === "already_thanked") {
         heldHash.value = null;
         error.value = "You already thanked this Handle.";
-      } else {
-        error.value = message;
+        return false;
+      }
+      const failure = userSendFailure(err);
+      error.value = failure.copy;
+      if (failure.detail) {
+        const target = (current.handle || current.toWallet).slice(0, 80);
+        try {
+          await request("/user-sends/failure", {
+            method: "POST",
+            body: JSON.stringify({
+              kind: current.kind,
+              target,
+              detail: failure.detail,
+            }),
+          });
+        } catch {
+          // The dialog already shows Oops. The notice is best-effort.
+        }
       }
       return false;
     } finally {

@@ -3,6 +3,7 @@ import {
   clearTitleLookups,
   loadTitleLookups,
   pushTitleLookup,
+  removeTitleLookup,
 } from "../src/lib/searchTitleLookups";
 
 const sample = {
@@ -29,6 +30,16 @@ describe("searchTitleLookups", () => {
       "Three",
       "Two",
     ]);
+  });
+
+  it("removes one lookup and keeps the rest", () => {
+    pushTitleLookup({ ...sample, id: "tmdb:movie:1", title: "One" });
+    pushTitleLookup({ ...sample, id: "tmdb:movie:2", title: "Two" });
+
+    expect(removeTitleLookup("tmdb:movie:2").map((t) => t.title)).toEqual([
+      "One",
+    ]);
+    expect(loadTitleLookups().map((t) => t.id)).toEqual(["tmdb:movie:1"]);
   });
 
   it("moves a repeated lookup to the front", () => {

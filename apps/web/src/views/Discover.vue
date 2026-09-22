@@ -256,6 +256,7 @@ import {
   TOUR_SPOTLIGHT,
   communityRecommendsForTour,
   isTourCreatorWallet,
+  showForYouPassSwipeArrow,
   tourAllowsTitleNavigation,
   tourAllowsUserNavigation,
 } from "@/lib/guidedTour";
@@ -293,11 +294,11 @@ const forYouRefilling = computed(() => forYouMotion.refills.length > 0);
 const passBusy = ref(false);
 const tour = useGuidedTourStore();
 const tourForYouPassStep = computed(() => tour.active && tour.step?.id === "for-you");
-const tourForYouPassGlow = computed(
-  () =>
-    tourForYouPassStep.value &&
-    suggestions.value.length === 1 &&
-    !tour.forYouPassAwaitingRefill
+const tourForYouPassGlow = computed(() =>
+  showForYouPassSwipeArrow({
+    stepId: tour.step?.id,
+    awaitingRefill: tour.forYouPassAwaitingRefill,
+  })
 );
 const tourFeedTabGlow = computed(
   () =>

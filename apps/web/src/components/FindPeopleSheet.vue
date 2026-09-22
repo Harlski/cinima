@@ -39,6 +39,7 @@
                   : null
               "
               radius="12px"
+              halo
             >
               <button
                 type="button"
@@ -54,8 +55,7 @@
                 <div class="person-meta">
                   <strong>{{ displayName(person.handle, person.walletAddress) }}</strong>
                   <span>
-                    {{ person.movieFavoriteCount }} movies · {{ person.tvFavoriteCount }} TV ·
-                    {{ person.thanksReceived }} Thanks received
+                    {{ person.movieFavoriteCount }} movies · {{ person.tvFavoriteCount }} TV
                   </span>
                 </div>
               </button>
@@ -196,20 +196,25 @@ defineEmits<{
   display: flex;
   align-items: center;
   gap: 0.55rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .person-row :deep(.gold-glow-shell) {
   flex: 1;
   min-width: 0;
+  max-width: 100%;
   display: flex;
 }
 
 .person-row :deep(.gold-glow-content) {
   flex: 1;
   min-width: 0;
+  width: 100%;
   display: flex;
 }
 
+/* Solid fill so the soft bloom stays outside the row, not an interior wash. */
 .person-row--tour-glow :deep(.gold-glow-content) {
   background: var(--bg-surface, var(--colors-neutral-50));
   border-radius: 12px;
@@ -251,6 +256,9 @@ defineEmits<{
   font-size: 0.78rem;
   color: var(--text-secondary);
   line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .follow-btn {

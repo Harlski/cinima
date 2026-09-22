@@ -7,7 +7,6 @@
     :class="{
       'poster-slider--rows': !fit && rowCount > 1,
       'poster-slider--fit': fit,
-      'poster-slider--tour-glow': showTourPosterGlow,
     }"
     :style="gridVars"
     role="list"
@@ -19,7 +18,6 @@
       class="media-item"
       :class="{
         'is-selected': isSelected(title.id),
-        'is-tour-glow': showTourPosterGlow && index === 0,
       }"
       role="listitem"
       :aria-label="title.title"
@@ -32,12 +30,6 @@
       "
       @click="$emit('select', title)"
     >
-      <TourSpotlight
-        v-if="tourFirstPoster && index === 0"
-        :id="TOUR_SPOTLIGHT.communityRecommendPoster"
-        radius="10px"
-        class="media-tour-glow"
-      />
       <RecommendBadge v-if="showGold(title)" />
       <PosterImg v-if="title.posterUrl" :src="title.posterUrl" alt="" />
       <div v-else class="poster-placeholder">
@@ -52,9 +44,7 @@ import { computed, onUnmounted, ref, watch } from "vue";
 import type { TitleSummary } from "@cinima/shared";
 import PosterImg from "@/components/PosterImg.vue";
 import RecommendBadge from "@/components/RecommendBadge.vue";
-import TourSpotlight from "@/components/TourSpotlight.vue";
 import { TOUR_SPOTLIGHT } from "@/lib/guidedTour";
-import { useGuidedTourStore } from "@/stores/guidedTour";
 import {
   posterFitLayout,
   posterSliderItemSlot,
@@ -88,13 +78,6 @@ const props = withDefaults(
 defineEmits<{
   select: [title: TitleSummary];
 }>();
-
-const tour = useGuidedTourStore();
-const showTourPosterGlow = computed(
-  () =>
-    Boolean(props.tourFirstPoster) &&
-    tour.isSpotlight(TOUR_SPOTLIGHT.communityRecommendPoster)
-);
 
 const rootEl = ref<HTMLElement | null>(null);
 const rowCount = ref(1);
@@ -255,12 +238,6 @@ function showGold(title: TitleSummary): boolean {
   justify-content: stretch;
 }
 
-.poster-slider--tour-glow {
-  overflow: visible;
-  padding: 1.25rem;
-  margin: -1.25rem;
-}
-
 .poster-slider--fit .media-item {
   flex: unset;
   width: 100%;
@@ -284,26 +261,9 @@ function showGold(title: TitleSummary): boolean {
   -webkit-tap-highlight-color: transparent;
 }
 
-.media-item.is-tour-glow {
-  overflow: visible;
-  z-index: 5;
-}
-
 .media-item.is-selected {
   border-color: var(--gold);
   box-shadow: 0 0 0 1px var(--gold);
-}
-
-.media-item :deep(.media-tour-glow) {
-  position: absolute;
-  inset: -2px;
-  z-index: 3;
-  pointer-events: none;
-  border-radius: 12px;
-}
-
-.media-item :deep(.media-tour-glow .gold-glow-content) {
-  display: none;
 }
 
 .media-item img {

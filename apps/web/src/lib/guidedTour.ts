@@ -13,6 +13,7 @@ export const TOUR_SPOTLIGHT = {
   tabWatchlist: "tab-watchlist",
   tabSearch: "tab-search",
   tabDiscover: "tab-discover",
+  searchField: "search-field",
   discoverTabForYou: "discover-tab-for-you",
   discoverTabRecommends: "discover-tab-recommends",
   discoverTabFollowing: "discover-tab-following",
@@ -29,6 +30,10 @@ export const TOUR_SPOTLIGHT = {
   userFavorites: "user-favorites",
   userFollow: "user-follow",
 } as const;
+
+/** Quiet hover/focus prompt on the Search screen field (and Search tour step body). */
+export const SEARCH_BAR_HINT =
+  "What did you last watch? Search and add it to your favorites?";
 
 export type TourSpotlightId =
   (typeof TOUR_SPOTLIGHT)[keyof typeof TOUR_SPOTLIGHT];
@@ -258,8 +263,9 @@ export const GUIDED_TOUR_STEPS: readonly TourStepDef[] = [
     id: "search",
     title: "Search",
     body: "Search for movie and TV titles to see ratings.",
-    spotlights: [TOUR_SPOTLIGHT.tabSearch],
+    spotlights: [TOUR_SPOTLIGHT.searchField],
     routeName: "search",
+    coachPlacement: "top",
     advance: "next",
     primaryLabel: "Next",
   },
@@ -301,7 +307,7 @@ export const GUIDED_TOUR_STEPS: readonly TourStepDef[] = [
     id: "watchlist-added",
     title: "On your Watchlist",
     body: "There it is! Now you won't forget to watch it.",
-    spotlights: [TOUR_SPOTLIGHT.tabWatchlist, TOUR_SPOTLIGHT.deckWatchlist],
+    spotlights: [TOUR_SPOTLIGHT.tabWatchlist],
     routeName: "my-list",
     advance: "next",
     primaryLabel: "Next",
@@ -591,6 +597,14 @@ export function shouldHideForYouPassCoach(input: {
   awaitingRefill: boolean;
 }): boolean {
   return input.stepId === "for-you" && input.awaitingRefill;
+}
+
+/** Orange swipe arrow over the center card for the whole For You step (10/15). */
+export function showForYouPassSwipeArrow(input: {
+  stepId: string | undefined;
+  awaitingRefill: boolean;
+}): boolean {
+  return input.stepId === "for-you" && !input.awaitingRefill;
 }
 
 /**
