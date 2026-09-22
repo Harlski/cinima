@@ -112,7 +112,7 @@
           <button
             type="button"
             class="nq-pill-secondary nq-pill-lg"
-            :disabled="busy"
+            :disabled="busy || !!heldHash"
             @click="onCancel"
           >
             Not now
@@ -140,6 +140,7 @@ import {
   USER_SEND_CTA,
   USER_SEND_NOTES,
   USER_SEND_SUB,
+  guestbookThanksNotes,
   nimiqWatchTxUrl,
   userSendNoteCostLabel,
   userSendNoteLabel,
@@ -151,12 +152,14 @@ import { PAY_CANCELLED_MESSAGE } from "@/lib/nimiqPay";
 import { useUserSendStore } from "@/stores/userSend";
 
 const store = useUserSendStore();
-const { pending, busy, error, noteId, receiptHash } = storeToRefs(store);
+const { pending, busy, error, noteId, receiptHash, heldHash } = storeToRefs(store);
 
 const userSendCta = USER_SEND_CTA;
 const userSendSub = USER_SEND_SUB;
 const cancelledCopy = PAY_CANCELLED_MESSAGE;
-const notes = USER_SEND_NOTES;
+const notes = computed(() =>
+  pending.value?.kind === "guestbook" ? guestbookThanksNotes() : [...USER_SEND_NOTES]
+);
 const costLabel = computed(() => userSendNoteCostLabel(noteId.value));
 const watchUrl = computed(() => (receiptHash.value ? nimiqWatchTxUrl(receiptHash.value) : null));
 const watchLabel = NIMIQ_WATCH_LINK_LABEL;
@@ -182,7 +185,7 @@ function optionId(index: number) {
 }
 
 function currentNoteIndex() {
-  const index = notes.findIndex((note) => note.id === noteId.value);
+  const index = notes.value.findIndex((note) => note.id === noteId.value);
   return index < 0 ? 0 : index;
 }
 
@@ -223,7 +226,7 @@ function onNoteKeydown(event: KeyboardEvent) {
       openNoteList();
       return;
     }
-    highlightIndex.value = Math.min(highlightIndex.value + 1, notes.length - 1);
+    highlightIndex.value = Math.min(highlightIndex.value + 1, notes.value.length - 1);
     return;
   }
   if (event.key === "ArrowUp") {
@@ -237,7 +240,7 @@ function onNoteKeydown(event: KeyboardEvent) {
   }
   if ((event.key === "Enter" || event.key === " ") && noteOpen.value) {
     event.preventDefault();
-    const note = notes[highlightIndex.value];
+    const note = notes.value[highlightIndex.value];
     if (note) chooseNote(note.id);
   }
 }

@@ -336,7 +336,25 @@ export type ReceivedJoinItem = {
   sendNim: number;
 };
 
-export type ReceivedItem = ReceivedThanksItem | ReceivedJoinItem;
+export type ReceivedGuestbookItem = {
+  kind: "guestbook";
+  id: number;
+  fromWallet: string;
+  fromHandle: string | null;
+  sendMemo: string;
+  createdAt: string;
+  sendTxHash: string;
+  rewardNim: 0;
+  sendNim: number;
+};
+
+export type ReceivedItem = ReceivedThanksItem | ReceivedGuestbookItem | ReceivedJoinItem;
+
+/** Signed-in profile of a Handle. Guestbook stays off Public Profile. */
+export type HandleProfile = PublicProfile & {
+  guestbook: ReceivedItem[];
+  guestbookThanked: boolean;
+};
 
 export type ReceivedThanksResponse = {
   items: ReceivedItem[];

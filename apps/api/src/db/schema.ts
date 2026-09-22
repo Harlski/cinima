@@ -163,6 +163,23 @@ export const thanks = sqliteTable(
   (t) => [uniqueIndex("thanks_unique").on(t.fromWallet, t.toWallet, t.titleId)]
 );
 
+export const guestbookThanks = sqliteTable(
+  "guestbook_thanks",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    fromWallet: text("from_wallet").notNull(),
+    toWallet: text("to_wallet").notNull(),
+    sendTxHash: text("send_tx_hash").notNull(),
+    sendTxAt: integer("send_tx_at", { mode: "timestamp_ms" }).notNull(),
+    sendMemo: text("send_memo").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [
+    uniqueIndex("guestbook_thanks_pair").on(t.fromWallet, t.toWallet),
+    uniqueIndex("guestbook_thanks_tx").on(t.sendTxHash),
+  ]
+);
+
 export const commentThanks = sqliteTable(
   "comment_thanks",
   {

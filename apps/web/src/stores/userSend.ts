@@ -5,6 +5,7 @@ import {
   defaultUserSendNoteId,
   displayName,
   formatWallet,
+  isGuestbookThanksNoteId,
   userSendMemoForNote,
   userSendNoteLuna,
   type AchievementKind,
@@ -32,6 +33,11 @@ export type PendingUserSend =
       toWallet: string;
       handle: string | null;
       commentId: number;
+    }
+  | {
+      kind: "guestbook";
+      toWallet: string;
+      handle: string | null;
     };
 
 export const useUserSendStore = defineStore("userSend", () => {
@@ -45,21 +51,25 @@ export const useUserSendStore = defineStore("userSend", () => {
 
   const previewing = ref(false);
   const noteId = ref<UserSendNoteId>(defaultUserSendNoteId("title"));
+  /** Paid User Send hash held until the Guestbook row is written. */
+  const heldHash = ref<string | null>(null);
 
   function offer(next: PendingUserSend, opts?: { preview?: boolean }) {
     pending.value = next;
     error.value = null;
     receiptHash.value = null;
     previewing.value = !!opts?.preview;
+    heldHash.value = null;
     noteId.value = defaultUserSendNoteId(next.kind);
   }
 
   function selectNote(id: UserSendNoteId) {
+    if (pending.value?.kind === "guestbook" && !isGuestbookThanksNoteId(id)) return;
     noteId.value = id;
   }
 
   function cancel() {
-    if (busy.value) return;
+    if (busy.value || heldHash.value) return;
     pending.value = null;
     receiptHash.value = null;
     error.value = null;
@@ -102,6 +112,7 @@ export const useUserSendStore = defineStore("userSend", () => {
       });
       return data.earnedAchievements;
     }
+    if (current.kind !== "comment") return;
     const data = await request<{ earnedAchievements?: AchievementKind[] }>(
       `/comments/${current.commentId}/thanks`,
       { method: "POST" }
@@ -121,6 +132,18 @@ export const useUserSendStore = defineStore("userSend", () => {
     busy.value = true;
     error.value = null;
     try {
+      if (current.kind === "guestbook") {
+        const txHash = heldHash.value ?? (await payTo(current.toWallet));
+        heldHash.value = txHash;
+        await request(`/users/${encodeURIComponent(current.toWallet)}/guestbook`, {
+          method: "POST",
+          body: JSON.stringify({ txHash, noteId: noteId.value }),
+        });
+        heldHash.value = null;
+        lastAttached.value = current;
+        showReceipt(txHash);
+        return true;
+      }
       const earnedAchievements = await landThanks(current);
       if (earnedAchievements?.length) {
         useMarqueeStore().enqueue(earnedAchievements);
@@ -141,7 +164,7 @@ export const useUserSendStore = defineStore("userSend", () => {
             txHash,
           }),
         });
-      } else {
+      } else if (current.kind === "comment") {
         await request(`/comments/${current.commentId}/thanks/send`, {
           method: "POST",
           body: JSON.stringify({ txHash }),
@@ -151,7 +174,13 @@ export const useUserSendStore = defineStore("userSend", () => {
       showReceipt(txHash);
       return true;
     } catch (err) {
-      error.value = payUserMessage(err);
+      const message = payUserMessage(err);
+      if (message === "already_thanked") {
+        heldHash.value = null;
+        error.value = "You already thanked this Handle.";
+      } else {
+        error.value = message;
+      }
       return false;
     } finally {
       busy.value = false;
@@ -166,6 +195,7 @@ export const useUserSendStore = defineStore("userSend", () => {
     busy,
     error,
     noteId,
+    heldHash,
     offer,
     selectNote,
     cancel,

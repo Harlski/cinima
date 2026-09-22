@@ -11,6 +11,8 @@ import {
   type EpisodeCell,
   type GatePayload,
   type MeResponse,
+  GUESTBOOK_PREVIEW_LIMIT,
+  type HandleProfile,
   type PublicProfile,
   type SessionUser,
   type TitleShare,
@@ -120,6 +122,7 @@ import {
   removeFromWatchlist,
   WatchlistError,
 } from "./services/watchlist.js";
+import { addGuestbookThanks, hasGuestbookThanks } from "./services/guestbook.js";
 import {
   addThanks,
   attachTitleThanksSend,
@@ -430,7 +433,7 @@ app.post("/api/me/join-overlay", requirePay, requireAuth, async (c) => {
 
 app.get("/api/me/received", requirePay, requireAuth, async (c) => {
   const user = c.get("user");
-  const items = await listReceivedThanks(user.walletAddress);
+  const items = await listReceivedThanks(user.walletAddress, 500);
   return c.json({ items });
 });
 
@@ -1073,7 +1076,7 @@ app.get("/api/users/:wallet", requirePay, requireAuth, async (c) => {
   const user = await db.query.users.findFirst({ where: eq(schema.users.walletAddress, walletAddress) });
   if (!user) return c.json({ error: "not_found" }, 404);
   const counts = await followCounts(walletAddress);
-  const response: PublicProfile = {
+  const response: HandleProfile = {
     handle: user.handle || walletAddress.slice(0, 8).toLowerCase(),
     walletAddress: user.walletAddress,
     favorites: await listFavorites(walletAddress),
@@ -1085,8 +1088,37 @@ app.get("/api/users/:wallet", requirePay, requireAuth, async (c) => {
     heatmap: await activityHeatmap(walletAddress),
     xHandle: user.xHandle ?? null,
     achievementCount: await achievementCount(walletAddress),
+    guestbook: await listReceivedThanks(walletAddress, GUESTBOOK_PREVIEW_LIMIT),
+    guestbookThanked: await hasGuestbookThanks(me, walletAddress),
   };
   return c.json(response);
+});
+
+app.post("/api/users/:wallet/guestbook", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  const toWallet = normalizeWallet(c.req.param("wallet"));
+  const body = await c.req.json<{ txHash?: string; noteId?: string }>();
+  if (!body.txHash || !body.noteId) return c.json({ error: "missing_fields" }, 400);
+  try {
+    const result = await addGuestbookThanks({
+      from: user.walletAddress,
+      to: toWallet,
+      txHash: body.txHash,
+      noteId: body.noteId,
+    });
+    ringDoorAlarm({
+      kind: "guestbook-thanked",
+      handle: user.handle,
+      walletAddress: user.walletAddress,
+      note: result.sendMemo,
+    });
+    return c.json({ ok: true, sendMemo: result.sendMemo, sendTxHash: result.sendTxHash });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "thanks_failed";
+    if (code === "not_found") return c.json({ error: code }, 404);
+    if (code === "already_thanked") return c.json({ error: code }, 409);
+    return c.json({ error: code }, 400);
+  }
 });
 
 app.get("/api/users/:wallet/credits", requirePay, requireAuth, async (c) => {

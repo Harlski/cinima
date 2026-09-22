@@ -44,6 +44,11 @@
         </template>
       </UserCard>
 
+      <GuestbookList
+        :items="receivedPreview"
+        :can-open-all="receivedItems.length > GUESTBOOK_PREVIEW_LIMIT"
+      />
+
       <ActivityHeatmap
         v-if="ACTIVITY_UI_VISIBLE && heatmap.length"
         :days="heatmap"
@@ -81,59 +86,6 @@
       />
 
       <ProfileComments v-if="user?.walletAddress" :wallet-address="user.walletAddress" />
-
-      <section v-if="receivedItems.length" class="received">
-        <h2>{{ receivedHeading }}</h2>
-        <ul class="received-list">
-          <li
-            v-for="item in receivedItems"
-            :key="`${item.kind}-${item.id}`"
-            class="received-event"
-          >
-            <RouterLink
-              v-if="item.kind !== 'join'"
-              class="received-who"
-              :to="{ name: 'user', params: { wallet: item.fromWallet } }"
-              :aria-label="displayName(item.fromHandle, item.fromWallet)"
-            >
-              <Identicon :address="item.fromWallet" :size="32" alt="" />
-            </RouterLink>
-            <div class="received-body">
-              <RouterLink
-                v-if="item.kind !== 'join'"
-                class="received-title"
-                :to="{ name: 'title', params: { id: item.titleId } }"
-              >
-                {{ item.titleName }}
-              </RouterLink>
-              <p v-if="item.kind === 'join'" class="received-title">{{ receivedHow(item.kind) }}</p>
-              <p v-else class="received-how">{{ receivedHow(item.kind) }}</p>
-              <button
-                v-if="item.kind !== 'join' && item.sendMemo"
-                type="button"
-                class="received-memo"
-                :class="{ 'is-open': isMemoOpen(item) }"
-                :aria-expanded="isMemoOpen(item)"
-                @click="toggleMemo(item)"
-              >
-                {{ item.sendMemo }}
-              </button>
-            </div>
-            <span v-if="nimWatchParts(item).length" class="received-nim">
-              <template v-for="(part, i) in nimWatchParts(item)" :key="i">
-                <a
-                  v-if="part.href"
-                  class="received-nim-link"
-                  :href="part.href ?? undefined"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >{{ part.label }}</a>
-                <span v-else>{{ part.label }}</span>
-              </template>
-            </span>
-          </li>
-        </ul>
-      </section>
 
       <div class="tour-replay">
         <button
@@ -222,10 +174,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import { useRouter, RouterLink } from "vue-router";
+import { useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
 import { useAuthStore } from "@/stores/auth";
-import Identicon from "@/components/Identicon.vue";
+import GuestbookList from "@/components/GuestbookList.vue";
 import NqIcon from "@/components/NqIcon.vue";
 import LoadingWait from "@/components/LoadingWait.vue";
 import ActivityHeatmap from "@/components/ActivityHeatmap.vue";
@@ -238,10 +190,8 @@ import { useMarqueeStore } from "@/stores/marquee";
 import { studioEntryVisible } from "@/lib/studio";
 import {
   ACTIVITY_UI_VISIBLE,
-  RECEIVED_LIST_HEADING,
+  GUESTBOOK_PREVIEW_LIMIT,
   displayName,
-  receivedHow,
-  receivedNimWatchParts,
   type HeatmapDay,
   type MeResponse,
   type PublicProfile,
@@ -275,8 +225,9 @@ const shareOpen = ref(false);
 const handleBusy = ref(false);
 const xBusy = ref(false);
 const receivedItems = ref<ReceivedItem[]>([]);
-const receivedHeading = RECEIVED_LIST_HEADING;
-const openMemos = ref(new Set<string>());
+const receivedPreview = computed(() =>
+  receivedItems.value.slice(0, GUESTBOOK_PREVIEW_LIMIT)
+);
 
 const showStudio = computed(() => studioEntryVisible(user.value?.walletAddress));
 
@@ -285,31 +236,6 @@ const publicProfileTo = computed(() => {
   if (!handle) return null;
   return { name: "public" as const, params: { username: handle } };
 });
-
-function memoKey(item: ReceivedItem) {
-  return `${item.kind}-${item.id}`;
-}
-
-function isMemoOpen(item: ReceivedItem) {
-  return openMemos.value.has(memoKey(item));
-}
-
-function toggleMemo(item: ReceivedItem) {
-  const key = memoKey(item);
-  const next = new Set(openMemos.value);
-  if (next.has(key)) next.delete(key);
-  else next.add(key);
-  openMemos.value = next;
-}
-
-function nimWatchParts(item: ReceivedItem) {
-  return receivedNimWatchParts({
-    rewardNim: item.rewardNim,
-    sendNim: item.sendNim,
-    rewardTxHash: item.kind === "join" ? null : item.rewardTxHash,
-    sendTxHash: item.sendTxHash,
-  });
-}
 
 const sharePreview = computed(() => {
   if (!shareUrl.value || !user.value?.handle) return null;
@@ -485,135 +411,6 @@ onUnmounted(() => {
 
 .handle-prompt p {
   margin: 0 0 0.75rem;
-}
-
-.received {
-  padding: 0 1rem;
-}
-
-.received h2 {
-  margin: 0 0 0.65rem;
-  font-size: 1.1rem;
-}
-
-.received-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.received-event {
-  display: flex;
-  gap: 0.6rem;
-  align-items: center;
-  padding: 0.45rem 0.65rem;
-  line-height: 1.25;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 0.6rem;
-}
-
-.received-event :deep(.identicon) {
-  flex-shrink: 0;
-}
-
-.received-who {
-  display: flex;
-  flex-shrink: 0;
-  border-radius: 50%;
-  line-height: 0;
-  color: inherit;
-  text-decoration: none;
-}
-
-.received-who:hover {
-  text-decoration: none;
-}
-
-.received-body {
-  min-width: 0;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.12rem;
-}
-
-.received-title {
-  margin: 0;
-  font-weight: 650;
-  font-size: 0.88rem;
-  line-height: 1.25;
-  color: var(--text-primary);
-  text-decoration: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.received-how {
-  margin: 0;
-  font-size: 0.78rem;
-  line-height: 1.3;
-  color: var(--text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.received-memo {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--text-secondary);
-  font: inherit;
-  font-size: 0.78rem;
-  line-height: 1.3;
-  text-align: left;
-  cursor: pointer;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
-  overflow: hidden;
-}
-
-.received-memo.is-open {
-  display: block;
-  -webkit-line-clamp: unset;
-  line-clamp: unset;
-  overflow: visible;
-  white-space: normal;
-}
-
-.received-nim {
-  flex-shrink: 0;
-  align-self: center;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.12rem;
-  font-size: 0.78rem;
-  font-weight: 700;
-  line-height: 1.3;
-  color: var(--gold, #e5c158);
-  white-space: nowrap;
-}
-
-.received-nim-link {
-  color: inherit;
-  font: inherit;
-  font-weight: inherit;
-  text-decoration: none;
-}
-
-.received-nim-link:hover,
-.received-nim-link:focus-visible {
-  text-decoration: underline;
 }
 
 .tour-replay,

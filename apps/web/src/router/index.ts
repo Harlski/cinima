@@ -5,6 +5,7 @@ import MyList from "../views/MyList.vue";
 import Search from "../views/Search.vue";
 import Activity from "../views/Activity.vue";
 import Me from "../views/Me.vue";
+import Guestbook from "../views/Guestbook.vue";
 import TitleDetail from "../views/TitleDetail.vue";
 import User from "../views/User.vue";
 import PublicProfile from "../views/PublicProfile.vue";
@@ -56,6 +57,7 @@ export const router = createRouter({
           beforeEnter: () => (ACTIVITY_UI_VISIBLE ? true : { name: "discover" }),
         },
         { path: "me", name: "me", component: Me },
+        { path: "guestbook", name: "guestbook", component: Guestbook },
         { path: "credits/:wallet", name: "credits", component: () => import("../views/Credits.vue") },
         { path: "studio", name: "studio", component: () => import("../views/Studio.vue") },
         ...(import.meta.env.DEV

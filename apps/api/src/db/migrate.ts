@@ -101,6 +101,17 @@ const statements = [
     send_memo TEXT,
     created_at INTEGER NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS guestbook_thanks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    from_wallet TEXT NOT NULL,
+    to_wallet TEXT NOT NULL,
+    send_tx_hash TEXT NOT NULL,
+    send_tx_at INTEGER NOT NULL,
+    send_memo TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS guestbook_thanks_pair ON guestbook_thanks(from_wallet, to_wallet)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS guestbook_thanks_tx ON guestbook_thanks(send_tx_hash)`,
   `CREATE TABLE IF NOT EXISTS follows (
     follower_wallet TEXT NOT NULL,
     followee_wallet TEXT NOT NULL,

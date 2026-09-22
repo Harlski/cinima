@@ -11,7 +11,7 @@ import {
 } from "@cinima/shared";
 import { and, desc, eq, gt, or, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { commentThanks, comments, sends, thanks, titles, users } from "../db/schema.js";
+import { commentThanks, comments, guestbookThanks, sends, thanks, titles, users } from "../db/schema.js";
 import { lastPresenceAt } from "./sends.js";
 import { HEARTBEAT_MAX_GAP_MS } from "./usage.js";
 
@@ -105,6 +105,21 @@ export async function listReceivedThanks(
     .orderBy(desc(commentThanks.createdAt))
     .limit(limit);
 
+  const guestbookRows = await db
+    .select({
+      id: guestbookThanks.id,
+      fromWallet: guestbookThanks.fromWallet,
+      fromHandle: users.handle,
+      sendMemo: guestbookThanks.sendMemo,
+      createdAt: guestbookThanks.createdAt,
+      sendTxHash: guestbookThanks.sendTxHash,
+    })
+    .from(guestbookThanks)
+    .leftJoin(users, eq(guestbookThanks.fromWallet, users.walletAddress))
+    .where(eq(guestbookThanks.toWallet, wallet))
+    .orderBy(desc(guestbookThanks.createdAt))
+    .limit(limit);
+
   const joinRows = await db
     .select({
       id: sends.id,
@@ -147,6 +162,17 @@ export async function listReceivedThanks(
       sendTxHash: r.sendTxHash,
       rewardNim: r.rewardStatus === "sent" && r.rewardTxHash ? REWARD_NIM : 0,
       sendNim: r.sendTxHash ? USER_SEND_NIM : 0,
+    })),
+    ...guestbookRows.map((r) => ({
+      kind: "guestbook" as const,
+      id: r.id,
+      fromWallet: r.fromWallet,
+      fromHandle: r.fromHandle,
+      sendMemo: r.sendMemo,
+      createdAt: r.createdAt.toISOString(),
+      sendTxHash: r.sendTxHash,
+      rewardNim: 0 as const,
+      sendNim: USER_SEND_NIM,
     })),
     ...joinRows.map((r) => ({
       kind: "join" as const,
@@ -227,6 +253,18 @@ export async function returnDigestSince(
       )
     );
 
+  const guestbookDigestRows = await db
+    .select({
+      id: guestbookThanks.id,
+      fromWallet: guestbookThanks.fromWallet,
+      fromHandle: users.handle,
+      sendMemo: guestbookThanks.sendMemo,
+      createdAt: guestbookThanks.createdAt,
+    })
+    .from(guestbookThanks)
+    .leftJoin(users, eq(guestbookThanks.fromWallet, users.walletAddress))
+    .where(and(eq(guestbookThanks.toWallet, wallet), gt(guestbookThanks.createdAt, since)));
+
   const hits: DigestThankerHit[] = [];
   for (const r of titleRows) {
     const hit = digestHitFromThanks(
@@ -245,6 +283,16 @@ export async function returnDigestSince(
       r.sendTxHash ? USER_SEND_NIM : 0
     );
     if (hit) hits.push(hit);
+  }
+  for (const r of guestbookDigestRows) {
+    hits.push({
+      walletAddress: r.fromWallet,
+      handle: r.fromHandle,
+      titleId: `guestbook:${r.id}`,
+      titleName: r.sendMemo,
+      nim: USER_SEND_NIM,
+      at: r.createdAt.getTime(),
+    });
   }
 
   const [rewardRow] = await db
@@ -283,8 +331,12 @@ export async function returnDigestSince(
 
   const thanksCount =
     titleRows.filter((r) => r.createdAt.getTime() > sinceMs).length +
-    commentRows.filter((r) => r.createdAt.getTime() > sinceMs).length;
-  const userSends = Number(extraTitleSends[0]?.n || 0) + Number(extraCommentSends[0]?.n || 0);
+    commentRows.filter((r) => r.createdAt.getTime() > sinceMs).length +
+    guestbookDigestRows.length;
+  const userSends =
+    Number(extraTitleSends[0]?.n || 0) +
+    Number(extraCommentSends[0]?.n || 0) +
+    guestbookDigestRows.length;
   const nimReceived = Number(rewardRow?.n || 0) * REWARD_NIM + userSends * USER_SEND_NIM;
 
   return {

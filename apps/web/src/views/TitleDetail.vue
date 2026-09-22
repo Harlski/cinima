@@ -734,6 +734,7 @@ watch(
       );
       return;
     }
+    if (thanked.kind !== "comment") return;
     comments.value = comments.value.map((c) =>
       c.id === thanked.commentId
         ? {
@@ -762,11 +763,12 @@ watch(
       suggesters.value = suggesters.value.map((s) =>
         s.walletAddress === attached.toWallet ? { ...s, sent: true } : s
       );
-    } else {
-      comments.value = comments.value.map((c) =>
-        c.id === attached.commentId ? { ...c, sent: true } : c
-      );
+      return;
     }
+    if (attached.kind !== "comment") return;
+    comments.value = comments.value.map((c) =>
+      c.id === attached.commentId ? { ...c, sent: true } : c
+    );
   }
 );
 

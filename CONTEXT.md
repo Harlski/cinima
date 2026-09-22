@@ -13,8 +13,8 @@ The Nimiq wallet face that stands in for a Handle when a portrait is needed: pro
 _Avoid_: avatar, profile photo, gravatar
 
 **Public Profile**:
-The unauthenticated share page for a Handle: identity, Recommends, Favorites, and Achievement count. Favorites on Public Profile, Me, and other Handles' profiles are Favorite-only; Recommended titles appear under Recommends, not again under Favorites. Achievement count is visible here; Credits are not. Comments are not.
-_Avoid_: Feed, Followee peek, heatmap, Me, User page, Watchlist on Public Profile, Comments
+The unauthenticated share page for a Handle: identity, Recommends, Favorites, and Achievement count. Favorites on Public Profile, Me, and other Handles' profiles are Favorite-only; Recommended titles appear under Recommends, not again under Favorites. Achievement count is visible here; Credits are not. Comments are not. Guestbook is not.
+_Avoid_: Feed, Followee peek, heatmap, Me, User page, Watchlist on Public Profile, Comments, Guestbook
 
 **Title Share**:
 The unauthenticated share page for one Handle plus one Title. It tells the recipient that the Handle wants them to check out that Title. Identicon and Handle open Public Profile; Explore CINIMA is the page CTA.
@@ -128,6 +128,10 @@ _Avoid_: tip, like, kudos, shout-out, Comment Thanks as the same mark
 A user’s directed signal that another user’s Comment was useful. Binary per thanker and Comment. Distinct from Thanks. Counts toward Bravo, Encore, Thanks received, and Presence heatmap. Opens Send Custom Message first; the mark lands when they confirm a note. Not now sends no Comment Thanks.
 _Avoid_: like, kudos, title Thanks as the same mark, unlike
 
+**Guestbook thanks**:
+A user’s directed signal that another Handle was worth thanking, with no Title. Once per thanker and thankee. Distinct from Thanks and Comment Thanks. Opens Send Custom Message with the paid profile notes only ("You have great taste", "Thanks on Cinima"); the free Thanks note is not offered. Does not attach a Reward. Does not count toward Bravo, Encore, Thanks received, or Presence heatmap. The Guestbook row appears only after the User Send succeeds: thanker Identicon, the chosen note as the visible line, no title. Not now, cancel, or a failed payment sends no Guestbook thanks.
+_Avoid_: title Thanks, Comment Thanks, profile gift, free-text memo, free Thanks note, Reward
+
 **Thank all**:
 One action that sends Thanks to every remaining peer who Favorited a title (including those who Recommended it). On title detail it appears when peers remain unthanked. After a Watchlist leave, the Watchlist leave Thank all cue offers the same action. The Handle list opens from Title taste counts. Individual per-peer Thanks are offered in that list, not as a second Favorited count on the page. Thank all does not open Send Custom Message.
 _Avoid_: mass tip, blast, thank everyone as a separate mark, User Send on Thank all
@@ -189,7 +193,7 @@ An outgoing NIM transfer from the Sender wallet to a Handle's wallet, with a mem
 _Avoid_: notification, tip, payout, treasury transfer, like, User Send
 
 **User Send**:
-A 1 NIM transfer the thanker approves in Nimiq Pay to the thankee, with an optional custom memo picked from a fixed list. Pay may broadcast from a hop wallet rather than the signed-in address. UI: Send Custom Message. Paid note on one-to-one Thanks or Comment Thanks; the Free Thanks note lands the mark with no NIM. Custom-message NIM goes to them, not Cinima. At most one successful User Send per Thanks. Cancel or fail after the mark has landed leaves Thanks in place. A successful User Send has a Nimiq Watch confirmation.
+A 1 NIM transfer the thanker approves in Nimiq Pay to the thankee, with an optional custom memo picked from a fixed list. Pay may broadcast from a hop wallet rather than the signed-in address. UI: Send Custom Message. Paid note on one-to-one Thanks, Comment Thanks, or Guestbook thanks. The free Thanks note lands a Thanks or Comment Thanks with no NIM. Guestbook thanks has no free note. Custom-message NIM goes to them, not Cinima. At most one successful User Send per Thanks, Comment Thanks, or Guestbook thanks. Cancel or fail after the mark has landed leaves Thanks or Comment Thanks in place. A Guestbook thanks is not written until the User Send succeeds. A successful User Send has a Nimiq Watch confirmation.
 _Avoid_: tip, gift, Reward, Send, profile gift, payment to Cinima, free-text memo
 
 **Nimiq Watch confirmation**:
@@ -197,11 +201,11 @@ The public chain page for a broadcast Send or User Send. Studio sent Sends, Gues
 _Avoid_: explorer, blockchain receipt, tx as a product term
 
 **Received list**:
-The Me Guestbook of what this Handle received: Thanks (thanker Identicon, title, a line naming Thanks or Comment Thanks, User Send note, and NIM when present) and the Join grant (the line "Joined Cinima" and +10 NIM; no thanker Identicon, no title). Each +NIM amount opens that Send or User Send's Nimiq Watch confirmation when a chain hash exists.
-_Avoid_: Activity, notifications, inbox as a tab, Marquee, thanker Handle on the card, a peer Identicon on the Join grant row
+The Guestbook of what this Handle received: Thanks (thanker Identicon, title, a line naming Thanks or Comment Thanks, User Send note, and NIM when present), Guestbook thanks (thanker Identicon, the note as the visible line, no title), and the Join grant (the line "Joined Cinima" and +10 NIM; no thanker Identicon, no title). The same Guestbook is on Me and on other Handles' profiles, which show the newest five entries. The owner can open the full list. Not on Public Profile. Each +NIM amount opens that Send or User Send's Nimiq Watch confirmation when a chain hash exists.
+_Avoid_: Activity, notifications, inbox as a tab, Marquee, thanker Handle on the card, a peer Identicon on the Join grant row, a separate public list
 
 **Return digest**:
-The panel on return Presence when Thanks or NIM arrived since last Presence: up to eight thanker Identicons (tap one for that Handle's peek: Handle, then each Title they Thanked, title left and NIM right; Reward and User Send on the same Title add together; social-only Titles omit NIM; one peek at a time), then +{x} NIM received, then Continue into the app. Join grant NIM is not this NIM. Not Marquee. Skip during Favorites onboarding and the Guided tour walkthrough. After Welcome, this panel shows before a pending Join overlay and Tour Offer.
+The panel on return Presence when Thanks or NIM arrived since last Presence: up to eight thanker Identicons (tap one for that Handle's peek: Handle, then each Title they Thanked, title left and NIM right; Reward and User Send on the same Title add together; social-only Titles omit NIM; one peek at a time). A Guestbook thanks shows as its note, with its NIM. Then +{x} NIM received, then Continue into the app. Join grant NIM is not this NIM. Not Marquee. Skip during Favorites onboarding and the Guided tour walkthrough. After Welcome, this panel shows before a pending Join overlay and Tour Offer.
 _Avoid_: login modal, notification, Activity, Marquee, received cue, Join overlay, username popup
 
 **Reward**:
@@ -245,7 +249,7 @@ A human opening a Short Share, Public Profile, Title Share, or Watchlist Share. 
 _Avoid_: page view of Landing, crawler hit, impression, click as a generic term
 
 **Door alarm**:
-Creator-only Telegram notices of live usage: sign-in, search, title view, Favorite, Recommend, Watchlist add and leave, Comment, Thanks, Comment Thanks, Thank all, Follow, Handle, Guided tour complete or skip, share created, Share visit, and a Send after it broadcasts (Reward, Ping, or Join grant). A pager, not a dashboard; Studio remains the pull read. Not part of the public product.
+Creator-only Telegram notices of live usage: sign-in, search, title view, Favorite, Recommend, Watchlist add and leave, Comment, Thanks, Comment Thanks, Guestbook thanks, Thank all, Follow, Handle, Guided tour complete or skip, share created, Share visit, and a Send after it broadcasts (Reward, Ping, or Join grant). A pager, not a dashboard; Studio remains the pull read. Not part of the public product.
 _Avoid_: webhook log, Slack alert, analytics ping, Studio notification
 
 **Achievement**:

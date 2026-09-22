@@ -20,6 +20,7 @@ export type DoorAlarmEvent =
   | ({ kind: "commented"; title: string } & DoorAlarmActor)
   | ({ kind: "thanked"; title: string } & DoorAlarmActor)
   | ({ kind: "comment-thanked"; title: string } & DoorAlarmActor)
+  | ({ kind: "guestbook-thanked"; note: string } & DoorAlarmActor)
   | ({ kind: "thanked-all"; title: string } & DoorAlarmActor)
   | ({ kind: "followed"; followee: string } & DoorAlarmActor)
   | ({ kind: "set-handle" } & DoorAlarmActor)
@@ -88,6 +89,8 @@ export function doorAlarmLine(event: DoorAlarmEvent): string {
       return `${who} sent Thanks for ${event.title}`;
     case "comment-thanked":
       return `${who} sent Comment Thanks on ${event.title}`;
+    case "guestbook-thanked":
+      return `${who} sent Guestbook thanks: ${event.note}`;
     case "thanked-all":
       return `${who} thanked all on ${event.title}`;
     case "followed":

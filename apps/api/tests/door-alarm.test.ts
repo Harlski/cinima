@@ -168,6 +168,17 @@ describe("Door alarm copy", () => {
     ).toBe("alice sent Thanks for Fight Club");
   });
 
+  it("names Guestbook thanks", () => {
+    expect(
+      doorAlarmLine({
+        kind: "guestbook-thanked",
+        handle: "alice",
+        walletAddress: "NQ05USAGETESTWALLET000000000000001",
+        note: "You have great taste",
+      })
+    ).toBe("alice sent Guestbook thanks: You have great taste");
+  });
+
   it("names Comment Thanks", () => {
     expect(
       doorAlarmLine({

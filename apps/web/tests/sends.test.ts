@@ -29,6 +29,8 @@ import {
   creatorPingMemo,
   decideSystemPing,
   defaultUserSendNoteId,
+  guestbookNoteIdFromMemo,
+  guestbookThanksNotes,
   isQuiet,
   isReturnPresence,
   isUserSendMemo,
@@ -213,7 +215,19 @@ describe("Send memos", () => {
     expect(receivedThanksHow("comment")).toBe("Thanked your comment");
     expect(receivedHow("join")).toBe("Joined Cinima");
     expect(receivedHow("title")).toBe("Thanked your recommendation");
+    expect(receivedHow("guestbook")).toBe("Thanked you");
     expect(receivedNimLabel(0, 10)).toBe("+10 NIM");
+  });
+
+  it("offers only paid profile notes for Guestbook thanks", () => {
+    expect(guestbookThanksNotes().map((note) => note.label)).toEqual([
+      "You have great taste",
+      "Thanks on Cinima",
+    ]);
+    expect(defaultUserSendNoteId("guestbook")).toBe("great-taste");
+    expect(guestbookNoteIdFromMemo("You have great taste - ada")).toBe("great-taste");
+    expect(guestbookNoteIdFromMemo("Thanks")).toBeNull();
+    expect(guestbookNoteIdFromMemo("Thanks for the rec - ada")).toBeNull();
   });
 
   it("names a 10 NIM Join grant and the returning Join overlay", () => {

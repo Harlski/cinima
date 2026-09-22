@@ -23,29 +23,44 @@
         @open-credits="openCredits"
       >
         <template v-if="!profile.isSelf" #actions>
-          <TourSpotlight :id="TOUR_SPOTLIGHT.userFollow" radius="999px">
+          <div class="profile-actions">
             <button
+              v-if="showGuestbookThanks"
               type="button"
-              :class="profile.isFollowing ? 'nq-pill-secondary' : 'nq-pill-blue'"
-              class="follow-action"
-              :disabled="followBusy"
-              :aria-busy="followBusy"
-              :data-tour="TOUR_SPOTLIGHT.userFollow"
-              @click="toggleFollow"
+              class="nq-pill-secondary thanks-action"
+              @click="thankProfile"
             >
-              <span v-if="followBusy" aria-hidden="true">
-                <NqSpinner :size="16" label="" />
-              </span>
-              {{
-                acceptedWaitLabel(
-                  profile.isFollowing ? "Following" : "Follow",
-                  followBusy
-                )
-              }}
+              Thanks
             </button>
-          </TourSpotlight>
+            <TourSpotlight :id="TOUR_SPOTLIGHT.userFollow" radius="999px">
+              <button
+                type="button"
+                :class="profile.isFollowing ? 'nq-pill-secondary' : 'nq-pill-blue'"
+                class="follow-action"
+                :disabled="followBusy"
+                :aria-busy="followBusy"
+                :data-tour="TOUR_SPOTLIGHT.userFollow"
+                @click="toggleFollow"
+              >
+                <span v-if="followBusy" aria-hidden="true">
+                  <NqSpinner :size="16" label="" />
+                </span>
+                {{
+                  acceptedWaitLabel(
+                    profile.isFollowing ? "Following" : "Follow",
+                    followBusy
+                  )
+                }}
+              </button>
+            </TourSpotlight>
+          </div>
         </template>
       </UserCard>
+
+      <GuestbookList
+        :items="profile.guestbook"
+        :can-open-all="profile.isSelf && profile.guestbook.length >= GUESTBOOK_PREVIEW_LIMIT"
+      />
 
       <ActivityHeatmap
         v-if="ACTIVITY_UI_VISIBLE"
@@ -68,8 +83,9 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useApi } from "@/composables/useApi";
-import { ACTIVITY_UI_VISIBLE, displayName } from "@cinima/shared";
+import { ACTIVITY_UI_VISIBLE, GUESTBOOK_PREVIEW_LIMIT, displayName } from "@cinima/shared";
 import ActivityHeatmap from "@/components/ActivityHeatmap.vue";
+import GuestbookList from "@/components/GuestbookList.vue";
 import LoadingWait from "@/components/LoadingWait.vue";
 import NqSpinner from "@/components/NqSpinner.vue";
 import ProfileTaste from "@/components/ProfileTaste.vue";
@@ -79,25 +95,50 @@ import UserCard from "@/components/UserCard.vue";
 import { TOUR_SPOTLIGHT } from "@/lib/guidedTour";
 import { acceptedWaitLabel } from "@/lib/acceptedWait";
 import { useMarqueeStore } from "@/stores/marquee";
-import type { AchievementKind, PublicProfile } from "@cinima/shared";
+import { useGuidedTourStore } from "@/stores/guidedTour";
+import { useUserSendStore } from "@/stores/userSend";
+import type { AchievementKind, HandleProfile } from "@cinima/shared";
 
 const route = useRoute();
 const router = useRouter();
 const { request } = useApi();
+const tour = useGuidedTourStore();
+const userSend = useUserSendStore();
 
 const wallet = computed(() => decodeURIComponent(String(route.params.wallet || "")));
 const loading = ref(true);
 const followBusy = ref(false);
-const profile = ref<PublicProfile | null>(null);
+const profile = ref<HandleProfile | null>(null);
+const showGuestbookThanks = computed(
+  () => !!profile.value && !profile.value.isSelf && !profile.value.guestbookThanked && !tour.active
+);
 
-const loadProfile = async () => {
-  loading.value = true;
+const loadProfile = async (opts?: { quiet?: boolean }) => {
+  if (!opts?.quiet) loading.value = true;
   try {
-    profile.value = await request<PublicProfile>(`/users/${encodeURIComponent(wallet.value)}`);
+    profile.value = await request<HandleProfile>(`/users/${encodeURIComponent(wallet.value)}`);
   } finally {
     loading.value = false;
   }
 };
+
+function thankProfile() {
+  if (!profile.value || !showGuestbookThanks.value) return;
+  userSend.offer({
+    kind: "guestbook",
+    toWallet: profile.value.walletAddress,
+    handle: profile.value.handle,
+  });
+}
+
+watch(
+  () => userSend.lastAttached,
+  (sent) => {
+    if (!sent || sent.kind !== "guestbook") return;
+    if (sent.toWallet !== profile.value?.walletAddress) return;
+    void loadProfile({ quiet: true });
+  }
+);
 
 const toggleFollow = async () => {
   if (!profile.value || profile.value.isSelf) return;
@@ -140,7 +181,9 @@ const openCredits = () => {
 };
 
 onMounted(loadProfile);
-watch(wallet, loadProfile);
+watch(wallet, () => {
+  void loadProfile();
+});
 </script>
 
 <style scoped>
@@ -155,7 +198,14 @@ watch(wallet, loadProfile);
   color: var(--text-secondary);
 }
 
-.follow-action {
+.profile-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.follow-action,
+.thanks-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;

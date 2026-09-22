@@ -153,7 +153,43 @@ export function isUserSendNoteId(value: string): value is UserSendNoteId {
   return USER_SEND_NOTES.some((note) => note.id === value);
 }
 
-export function defaultUserSendNoteId(_kind?: "title" | "comment"): UserSendNoteId {
+/** Paid notes that fit a Handle, not a Title or Comment. */
+export const GUESTBOOK_THANKS_NOTE_IDS = ["great-taste", "thanks-cinima"] as const;
+
+export type GuestbookThanksNoteId = (typeof GUESTBOOK_THANKS_NOTE_IDS)[number];
+
+export const DEFAULT_GUESTBOOK_THANKS_NOTE_ID: GuestbookThanksNoteId = "great-taste";
+
+/** Newest Guestbook entries shown on Me and other Handles' profiles. */
+export const GUESTBOOK_PREVIEW_LIMIT = 5;
+
+export function isGuestbookThanksNoteId(value: string): value is GuestbookThanksNoteId {
+  return (GUESTBOOK_THANKS_NOTE_IDS as readonly string[]).includes(value);
+}
+
+export function guestbookThanksNotes(): { id: GuestbookThanksNoteId; label: string }[] {
+  return GUESTBOOK_THANKS_NOTE_IDS.map((id) => ({
+    id,
+    label: userSendNoteLabel(id),
+  }));
+}
+
+/** Catalog note inside a Pay memo. Null when the memo is not a profile note. */
+export function guestbookNoteIdFromMemo(memo: string): GuestbookThanksNoteId | null {
+  const text = String(memo ?? "");
+  const notes = [...guestbookThanksNotes()].sort((a, b) => b.label.length - a.label.length);
+  for (const note of notes) {
+    if (text === note.label) return note.id;
+    const prefix = `${note.label} - `;
+    if (text.startsWith(prefix) && text.slice(prefix.length).trim().length > 0) return note.id;
+  }
+  return null;
+}
+
+export function defaultUserSendNoteId(
+  kind?: "title" | "comment" | "guestbook"
+): UserSendNoteId {
+  if (kind === "guestbook") return DEFAULT_GUESTBOOK_THANKS_NOTE_ID;
   return DEFAULT_USER_SEND_NOTE_ID;
 }
 
@@ -228,7 +264,7 @@ export function studioSendWatchUrl(
 export const RECEIVED_LIST_HEADING = "Guestbook";
 
 export type ReceivedThanksKind = "title" | "comment";
-export type ReceivedItemKind = ReceivedThanksKind | "join";
+export type ReceivedItemKind = ReceivedThanksKind | "guestbook" | "join";
 
 /** One-line why under the title on a Guestbook card. */
 export function receivedThanksHow(kind: ReceivedThanksKind): string {
@@ -242,6 +278,7 @@ export function receivedThanksHow(kind: ReceivedThanksKind): string {
 
 export function receivedHow(kind: ReceivedItemKind): string {
   if (kind === "join") return JOIN_GRANT_HOW;
+  if (kind === "guestbook") return "Thanked you";
   return receivedThanksHow(kind);
 }
 
