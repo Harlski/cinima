@@ -35,6 +35,7 @@ import {
   TOUR_SKIP_NOTICE_TITLE,
   TOUR_SKIP_OFFER,
   TOUR_WRAP_BODY,
+  TOUR_PAYOUTS_PAUSED,
   TOUR_WRAP_NIM,
   TOUR_WRAP_TITLE,
   offerSkipLastChance,
@@ -44,6 +45,7 @@ import {
   tourOfferAt,
   tourOfferBodySegments,
   tourOfferCopy,
+  tourWrapNim,
   withTourCommunityFallback,
   tourStepAt,
   tourStepPrimaryLabel,
@@ -726,6 +728,24 @@ describe("Guided tour +10 NIM offer", () => {
     expect(TOUR_SKIP_OFFER.acceptLabel).toBe("Keep going");
   });
 
+  it("says NIM payouts paused on the last-chance and wrap while payouts are paused", () => {
+    expect(TOUR_PAYOUTS_PAUSED).toBe("NIM payouts paused");
+    expect(tourWrapNim(false)).toBe("+10 NIM is on its way");
+    expect(tourWrapNim(true)).toBe("NIM payouts paused");
+    expect(tourOfferBodySegments("skip", 0, true)).toEqual([
+      { text: "NIM payouts paused" },
+      { text: "You'll feel at home in <60 seconds", italic: true },
+    ]);
+    expect(tourOfferCopy("skip", 0, true)).toEqual({
+      title: "The tour is quick",
+      body: "NIM payouts paused\nYou'll feel at home in <60 seconds",
+      acceptLabel: "Keep going",
+      declineLabel: "Skip anyway",
+    });
+    expect(tourOfferCopy("start", 0, true).body.includes("+10 NIM")).toBe(false);
+    expect(tourOfferCopy("start", 0, true).body.includes("NIM payouts paused")).toBe(false);
+  });
+
   it("Me replay shows the offer instead of starting the walkthrough cold", () => {
     const me = fs.readFileSync(path.join(srcRoot, "views/Me.vue"), "utf8");
     expect(me).toContain("offerFromMe");
@@ -739,7 +759,7 @@ describe("Guided tour +10 NIM offer", () => {
     );
     expect(host).toContain("offerCopy");
     expect(host).toContain("TOUR_WRAP_TITLE");
-    expect(host).toContain("TOUR_WRAP_NIM");
+    expect(host).toContain("wrapNim");
     expect(host).toContain("tour-wrap-nim");
     expect(host).not.toContain("JOIN_OVERLAY_NIM_LABEL");
     expect(host).not.toContain("showOfferNim");

@@ -91,10 +91,12 @@ describe("Join grant HTTP API", () => {
     app = (await import("../src/app.js")).app;
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     setSendChain(null);
     doorLines.length = 0;
     resetDoorAlarmSender();
+    const { setNimPayoutsPaused } = await import("../src/services/payouts.js");
+    await setNimPayoutsPaused(false);
   });
 
   async function verify(demoWallet: string) {
@@ -262,6 +264,81 @@ describe("Join grant HTTP API", () => {
     const meBody = (await me.json()) as { achievementCount: number; pendingJoinOverlay?: boolean };
     expect(meBody.pendingJoinOverlay).toBe(true);
     expect(meBody.achievementCount).toBe(1);
+  });
+
+  it("spends the Join grant without sending NIM while payouts are paused", async () => {
+    const { setNimPayoutsPaused } = await import("../src/services/payouts.js");
+    await setNimPayoutsPaused(true);
+    const chain = createMemoryChain();
+    setSendChain(chain);
+
+    const wallet = "NQ05JOINGRANTPAUSEDWALLET000000001";
+    const res = await verify(wallet);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      token: string;
+      pendingJoinOverlay?: boolean;
+      nimPayoutsPaused: boolean;
+    };
+    expect(body.nimPayoutsPaused).toBe(true);
+    expect(body.pendingJoinOverlay ?? false).toBe(false);
+
+    const headers = {
+      Authorization: `Bearer ${body.token}`,
+      "X-Cinima-Demo": "1",
+    };
+    const me = await app.fetch(new Request("http://test/api/me", { headers }));
+    const meBody = (await me.json()) as {
+      achievementCount: number;
+      nimPayoutsPaused: boolean;
+      pendingJoinOverlay?: boolean;
+    };
+    expect(meBody.nimPayoutsPaused).toBe(true);
+    expect(meBody.achievementCount).toBe(1);
+    expect(meBody.pendingJoinOverlay ?? false).toBe(false);
+
+    const received = await app.fetch(new Request("http://test/api/me/received", { headers }));
+    const receivedBody = (await received.json()) as {
+      items: { kind: string; sendNim: number }[];
+    };
+    const join = receivedBody.items.find((row) => row.kind === "join");
+    expect(join).toMatchObject({ kind: "join", sendNim: 0 });
+
+    expect(await processQueue()).toEqual({ sent: 0, failed: 0 });
+    expect(chain.sent).toEqual([]);
+
+    await setNimPayoutsPaused(false);
+    const again = await verify(wallet);
+    expect(again.status).toBe(200);
+    await processQueue();
+    expect(chain.sent.some((tx) => tx.to === wallet)).toBe(false);
+
+    const { eq } = await import("drizzle-orm");
+    const rows = await db
+      .select()
+      .from(schema.sends)
+      .where(eq(schema.sends.toWallet, wallet));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ status: "failed", error: "payouts_paused", kind: "join" });
+  });
+
+  it("does not broadcast a queued Send while payouts are paused", async () => {
+    const { setNimPayoutsPaused } = await import("../src/services/payouts.js");
+    const chain = createMemoryChain();
+    setSendChain(chain);
+    const { eq } = await import("drizzle-orm");
+    await db
+      .update(schema.sends)
+      .set({ status: "queued", attempts: 0, error: null, txHash: null, sentAt: null })
+      .where(eq(schema.sends.toWallet, CREATOR_WALLET));
+    await setNimPayoutsPaused(true);
+    expect(await processQueue()).toEqual({ sent: 0, failed: 0 });
+    expect(chain.sent).toEqual([]);
+    const [row] = await db
+      .select({ status: schema.sends.status })
+      .from(schema.sends)
+      .where(eq(schema.sends.toWallet, CREATOR_WALLET));
+    expect(row?.status).toBe("queued");
   });
 
   it("names a Join grant after it broadcasts", async () => {

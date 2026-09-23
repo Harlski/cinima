@@ -155,6 +155,7 @@ import {
   takeUnseenAchievements,
 } from "./services/achievements.js";
 import { ackJoinOverlay, grantJoinIfNeeded, joinOverlayIsPending } from "./services/joinGrant.js";
+import { nimPayoutsPaused, setNimPayoutsPaused } from "./services/payouts.js";
 import { proxyStudio } from "./lib/studioProxy.js";
 import {
   queueCreatorPings,
@@ -376,6 +377,7 @@ app.post("/api/auth/verify", requirePay, async (c) => {
       token,
       user: await sessionUserFor(walletAddress),
       pendingJoinOverlay: join.overlay,
+      nimPayoutsPaused: await nimPayoutsPaused(),
     });
   } catch (err) {
     console.error("[auth/verify]", err);
@@ -421,6 +423,7 @@ app.get("/api/me", requirePay, requireAuth, async (c) => {
     achievementCount: await achievementCount(user.walletAddress),
     unseenAchievements: unseen,
     pendingJoinOverlay,
+    nimPayoutsPaused: await nimPayoutsPaused(),
   };
   return c.json(response);
 });
@@ -1021,6 +1024,17 @@ app.post("/api/thanks/all", requirePay, requireAuth, async (c) => {
     rewarded,
     earnedAchievements,
   });
+});
+
+app.post("/api/payouts", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  if (!isCreatorWallet(user.walletAddress)) {
+    return c.json({ error: "not_found" }, 404);
+  }
+  const body = await c.req.json<{ paused?: boolean }>();
+  if (typeof body.paused !== "boolean") return c.json({ error: "missing_fields" }, 400);
+  await setNimPayoutsPaused(body.paused);
+  return c.json({ nimPayoutsPaused: body.paused });
 });
 
 app.post("/api/sends/self", requirePay, requireAuth, async (c) => {

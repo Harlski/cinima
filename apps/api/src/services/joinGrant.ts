@@ -8,7 +8,10 @@ import {
 import { and, eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { achievements, sends, users } from "../db/schema.js";
+import { nimPayoutsPaused } from "./payouts.js";
 import { enqueueSend } from "./sends.js";
+
+const PAYOUTS_PAUSED_ERROR = "payouts_paused";
 
 export async function grantJoinIfNeeded(
   walletRaw: string,
@@ -34,19 +37,53 @@ export async function grantJoinIfNeeded(
     return { granted: false, overlay: user.joinOverlayPendingAt != null };
   }
 
-  const queued = await enqueueSend({
-    kind: "join",
-    source: "join",
-    toWallet: wallet,
-    luna: JOIN_GRANT_LUNA,
-    memo: JOIN_GRANT_MEMO,
-    idempotencyKey: key,
-    at,
-  });
-  if (!queued.queued) {
-    return { granted: false, overlay: user.joinOverlayPendingAt != null };
+  const paused = await nimPayoutsPaused();
+  if (paused) {
+    await db
+      .insert(sends)
+      .values({
+        kind: "join",
+        source: "join",
+        fromWallet: null,
+        toWallet: wallet,
+        luna: JOIN_GRANT_LUNA,
+        memo: JOIN_GRANT_MEMO,
+        status: "failed",
+        error: PAYOUTS_PAUSED_ERROR,
+        idempotencyKey: key,
+        thanksId: null,
+        createdAt: at,
+        attempts: 0,
+      })
+      .onConflictDoNothing();
+  } else {
+    const queued = await enqueueSend({
+      kind: "join",
+      source: "join",
+      toWallet: wallet,
+      luna: JOIN_GRANT_LUNA,
+      memo: JOIN_GRANT_MEMO,
+      idempotencyKey: key,
+      at,
+    });
+    if (!queued.queued) {
+      return { granted: false, overlay: user.joinOverlayPendingAt != null };
+    }
   }
 
+  await awardJoinedTheCrew(wallet, at);
+
+  if (opts.returning) {
+    await db
+      .update(users)
+      .set({ joinOverlayPendingAt: at })
+      .where(eq(users.walletAddress, wallet));
+  }
+
+  return { granted: !paused, overlay: opts.returning };
+}
+
+async function awardJoinedTheCrew(wallet: string, at: Date): Promise<void> {
   const earnedKinds = await db
     .select({ kind: achievements.kind })
     .from(achievements)
@@ -65,15 +102,6 @@ export async function grantJoinIfNeeded(
       /* unique */
     }
   }
-
-  if (opts.returning) {
-    await db
-      .update(users)
-      .set({ joinOverlayPendingAt: at })
-      .where(eq(users.walletAddress, wallet));
-  }
-
-  return { granted: true, overlay: opts.returning };
 }
 
 export async function ackJoinOverlay(walletRaw: string): Promise<void> {

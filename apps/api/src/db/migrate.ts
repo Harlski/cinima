@@ -393,6 +393,10 @@ export async function migrate() {
   await client.execute(
     `UPDATE watchlist SET sort_order = -created_at WHERE sort_order IS NULL`
   );
+  await client.execute(`CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  )`);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

@@ -151,6 +151,13 @@ export const TOUR_SKIP_OFFER_BODY_SEGMENTS: readonly TourOfferBodyPart[] = [
   { text: "You'll feel at home in <60 seconds", italic: true },
 ];
 
+export const TOUR_PAYOUTS_PAUSED = "NIM payouts paused";
+
+export const TOUR_SKIP_OFFER_PAUSED_BODY_SEGMENTS: readonly TourOfferBodyPart[] = [
+  { text: TOUR_PAYOUTS_PAUSED },
+  { text: "You'll feel at home in <60 seconds", italic: true },
+];
+
 export const TOUR_SKIP_OFFER: TourOfferCopy = {
   title: "The tour is quick",
   body: joinTourOfferBody(TOUR_SKIP_OFFER_BODY_SEGMENTS),
@@ -163,6 +170,10 @@ export const TOUR_WRAP_BODY =
   "You're set! Start browsing & come back anytime you need something new to watch.";
 export const TOUR_WRAP_NIM = "+10 NIM is on its way";
 
+export function tourWrapNim(payoutsPaused: boolean): string {
+  return payoutsPaused ? TOUR_PAYOUTS_PAUSED : TOUR_WRAP_NIM;
+}
+
 export function pickTourOfferIndex(random: () => number = Math.random): number {
   const n = TOUR_OFFER_VARIANTS.length;
   return Math.min(n - 1, Math.max(0, Math.floor(random() * n)));
@@ -174,16 +185,32 @@ export function tourOfferAt(index: number): TourOfferCopy {
   return TOUR_OFFER_VARIANTS[i]!;
 }
 
-export function tourOfferCopy(kind: TourOfferKind, index: number): TourOfferCopy {
-  if (kind === "skip") return TOUR_SKIP_OFFER;
+export function tourSkipOfferBodySegments(
+  payoutsPaused: boolean
+): readonly TourOfferBodyPart[] {
+  return payoutsPaused ? TOUR_SKIP_OFFER_PAUSED_BODY_SEGMENTS : TOUR_SKIP_OFFER_BODY_SEGMENTS;
+}
+
+export function tourOfferCopy(
+  kind: TourOfferKind,
+  index: number,
+  payoutsPaused = false
+): TourOfferCopy {
+  if (kind === "skip") {
+    return {
+      ...TOUR_SKIP_OFFER,
+      body: joinTourOfferBody(tourSkipOfferBodySegments(payoutsPaused)),
+    };
+  }
   return tourOfferAt(index);
 }
 
 export function tourOfferBodySegments(
   kind: TourOfferKind,
-  _index: number
+  _index: number,
+  payoutsPaused = false
 ): readonly TourOfferBodyPart[] {
-  if (kind === "skip") return TOUR_SKIP_OFFER_BODY_SEGMENTS;
+  if (kind === "skip") return tourSkipOfferBodySegments(payoutsPaused);
   return TOUR_OFFER_BODY_SEGMENTS;
 }
 

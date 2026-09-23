@@ -15,6 +15,12 @@ import { commentThanks, comments, guestbookThanks, sends, thanks, titles, users 
 import { lastPresenceAt } from "./sends.js";
 import { HEARTBEAT_MAX_GAP_MS } from "./usage.js";
 
+/** Guestbook shows +10 NIM only while a Join grant is still going out or already sent. */
+function joinGrantVisibleNim(status: string): number {
+  if (status === "queued" || status === "sending" || status === "sent") return JOIN_GRANT_NIM;
+  return 0;
+}
+
 function previewComment(body: string): string {
   const text = String(body ?? "").trim();
   if (text.length <= 80) return text;
@@ -180,7 +186,7 @@ export async function listReceivedThanks(
       createdAt: r.createdAt.toISOString(),
       sendTxHash: r.status === "sent" ? r.sendTxHash : null,
       rewardNim: 0 as const,
-      sendNim: JOIN_GRANT_NIM,
+      sendNim: joinGrantVisibleNim(r.status),
     })),
   ];
 

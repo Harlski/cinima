@@ -22,6 +22,7 @@ import {
   shouldHideForYouPassCoach,
   tourOfferCopy,
   tourOfferBodySegments,
+  tourWrapNim,
   tourResolutionSyncPath,
   tourStepAt,
   type TourAction,
@@ -60,12 +61,14 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
   const offering = computed(
     () => runtime.value.phase === "offer" || runtime.value.phase === "skip-offer"
   );
+  const payoutsPaused = computed(() => useAuthStore().nimPayoutsPaused);
   const offerCopy = computed(() =>
-    tourOfferCopy(offerKind.value, offerIndex.value)
+    tourOfferCopy(offerKind.value, offerIndex.value, payoutsPaused.value)
   );
   const offerBodySegments = computed(() =>
-    tourOfferBodySegments(offerKind.value, offerIndex.value)
+    tourOfferBodySegments(offerKind.value, offerIndex.value, payoutsPaused.value)
   );
+  const wrapNim = computed(() => tourWrapNim(payoutsPaused.value));
   const discoverTab = computed(() => stepDiscoverTab(runtime.value));
   const filterFindPeopleToCreator = computed(() =>
     stepWantsCreatorFilter(runtime.value)
@@ -348,6 +351,7 @@ export const useGuidedTourStore = defineStore("guidedTour", () => {
     offering,
     offerCopy,
     offerBodySegments,
+    wrapNim,
     offerKind,
     wrapPreview,
     skipNotice,

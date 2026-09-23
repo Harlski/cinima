@@ -30,6 +30,7 @@ import {
   watchlist,
 } from "../db/schema.js";
 import { config } from "../lib/config.js";
+import { nimPayoutsPaused } from "./payouts.js";
 import { utcDayKey } from "./usage.js";
 import { ringDoorAlarm } from "./doorAlarm.js";
 import {
@@ -87,6 +88,7 @@ export async function enqueueSend(input: {
 }): Promise<{ queued: boolean; id: number | null }> {
   const toWallet = normalizeWallet(input.toWallet);
   if (!toWallet) return { queued: false, id: null };
+  if (await nimPayoutsPaused()) return { queued: false, id: null };
   const fromWallet = input.fromWallet ? normalizeWallet(input.fromWallet) : null;
   const inserted = await db
     .insert(sends)
@@ -515,6 +517,10 @@ export async function processQueue(limit = PROCESS_BATCH): Promise<{ sent: numbe
   const chain = await getSendChain();
   if (!chain.configured()) {
     await writeHeartbeatDue(chain, true);
+    return { sent: 0, failed: 0 };
+  }
+  if (await nimPayoutsPaused()) {
+    await writeHeartbeatDue(chain, false);
     return { sent: 0, failed: 0 };
   }
 

@@ -24,6 +24,7 @@ const TOKEN_KEY = "cinima_token";
 export const useAuthStore = defineStore("auth", () => {
   const token = ref<string | null>(localStorage.getItem(TOKEN_KEY));
   const user = ref<SessionUser | null>(null);
+  const nimPayoutsPaused = ref(false);
   const loading = ref(false);
   const error = ref<string | null>(null);
   const ready = ref(false);
@@ -36,6 +37,7 @@ export const useAuthStore = defineStore("auth", () => {
     try {
       const response = await request<MeResponse>("/me");
       user.value = response.user;
+      nimPayoutsPaused.value = response.nimPayoutsPaused === true;
       if (response.unseenAchievements?.length) {
         useMarqueeStore().enqueue(response.unseenAchievements);
       }
@@ -43,6 +45,7 @@ export const useAuthStore = defineStore("auth", () => {
     } catch {
       token.value = null;
       user.value = null;
+      nimPayoutsPaused.value = false;
       localStorage.removeItem(TOKEN_KEY);
     }
   };
@@ -89,6 +92,7 @@ export const useAuthStore = defineStore("auth", () => {
       });
       token.value = verifyResp.token;
       user.value = verifyResp.user;
+      nimPayoutsPaused.value = verifyResp.nimPayoutsPaused === true;
       localStorage.setItem(TOKEN_KEY, verifyResp.token);
       if (verifyResp.pendingJoinOverlay) useJoinOverlayStore().offer();
     } catch (err) {
@@ -117,6 +121,7 @@ export const useAuthStore = defineStore("auth", () => {
     });
     token.value = verifyResp.token;
     user.value = verifyResp.user;
+    nimPayoutsPaused.value = verifyResp.nimPayoutsPaused === true;
     localStorage.setItem(TOKEN_KEY, verifyResp.token);
     if (verifyResp.pendingJoinOverlay) useJoinOverlayStore().offer();
   };
@@ -144,12 +149,14 @@ export const useAuthStore = defineStore("auth", () => {
   const logout = () => {
     token.value = null;
     user.value = null;
+    nimPayoutsPaused.value = false;
     localStorage.removeItem(TOKEN_KEY);
   };
 
   return {
     token,
     user,
+    nimPayoutsPaused,
     loading,
     error,
     ready,

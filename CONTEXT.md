@@ -145,7 +145,7 @@ The signal that a tap has landed while Cinima is still on the same screen talkin
 _Avoid_: toast, silent dimmed button, Following as a wait label, spinner-only on Continue / Enter / Skip
 
 **Guided tour**:
-An optional walkthrough of Watchlist, Search, community Recommends (always at least one title, a hardcoded fallback when nobody else has Recommended), Watchlist actions, a required Favorite, a required Recommend, taking that title off the profile, For You (one remaining Title, a required Pass, then the next five land, then Continue), and Find people (Creator profile). Offered after Favorites onboarding (after Return digest and Join overlay when those are pending) and again from Me as Using CINIMA (no NIM on that card). Not now and Skip tour both open a last-chance: the tour is quick, +10 NIM on completion (the Join grant, not a second Send). Skip anyway notices that Take the Tour is on Me. Completing shows Think CINIMA, with +10 NIM is on its way in small type, then awards That's a wrap as the first gated Achievement. Completing or skipping it is what opens Achievement earning for good, except Joined the crew (replay does not close the gate).
+An optional walkthrough of Watchlist, Search, community Recommends (always at least one title, a hardcoded fallback when nobody else has Recommended), Watchlist actions, a required Favorite, a required Recommend, taking that title off the profile, For You (one remaining Title, a required Pass, then the next five land, then Continue), and Find people (Creator profile). Offered after Favorites onboarding (after Return digest and Join overlay when those are pending) and again from Me as Using CINIMA (no NIM on that card). Not now and Skip tour both open a last-chance: the tour is quick, +10 NIM on completion (the Join grant, not a second Send). Skip anyway notices that Take the Tour is on Me. Completing shows Think CINIMA, with +10 NIM is on its way in small type, then awards That's a wrap as the first gated Achievement. While NIM payouts are paused, that last-chance and the wrap say "NIM payouts paused" instead of the Join grant. The walkthrough itself is unchanged. Completing or skipping it is what opens Achievement earning for good, except Joined the crew (replay does not close the gate).
 _Avoid_: product tour as a separate product term, tutorial modal stack, skippable Favorite or Recommend as the way to finish the walkthrough, a second 10 NIM Send for finishing the tour
 
 **For You**:
@@ -217,7 +217,7 @@ A Send of 0.0001 NIM whose job is the memo, not the amount. System or Creator. N
 _Avoid_: notification, Door alarm, Marquee, Reward, Join grant
 
 **Join grant**:
-A one-time 10 NIM Send to a wallet for first signing into Cinima in Nimiq Pay. One per wallet, forever; funded by the Sender wallet. The Nimiq Pay memo is "Thanks for joining Cinima! - Creator". Distinct from Reward, Ping, and User Send.
+A one-time 10 NIM Send to a wallet for first signing into Cinima in Nimiq Pay. One per wallet, forever; funded by the Sender wallet. The Nimiq Pay memo is "Thanks for joining Cinima! - Creator". Distinct from Reward, Ping, and User Send. While NIM payouts are paused, signing in still spends that one-time grant (Joined the crew, and the Join overlay for a returning wallet) without a Send, so turning payouts back on does not pay that wallet.
 _Avoid_: signup bonus, airdrop, Reward, tip, device grant, Welcome NIM
 
 **Sender wallet**:
@@ -241,7 +241,7 @@ The wallet that operates Cinima. The guided tour introduces this Handle; Studio 
 _Avoid_: admin, owner, superuser, operator as a product term
 
 **Studio**:
-The Creator-only screen of how people use Cinima: signups, Presence, searches, title views, shares, Share visits, follows, and Sends. Sent Sends with a chain hash open their Nimiq Watch confirmation. The Creator enqueues a Creator Ping from here. Not part of the public product. Entry is at the bottom of Me.
+The Creator-only screen of how people use Cinima: signups, Presence, searches, title views, shares, Share visits, follows, and Sends. Sent Sends with a chain hash open their Nimiq Watch confirmation. The Creator enqueues a Creator Ping from here, and can pause NIM payouts. While paused, the Sender does not broadcast queued Sends and new Sends are not queued. Not part of the public product. Entry is at the bottom of Me.
 _Avoid_: admin dashboard, analytics, backoffice, CMS, Door alarm
 
 **Share visit**:

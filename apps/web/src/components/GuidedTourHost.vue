@@ -149,7 +149,6 @@ import {
   TOUR_CREATOR_WALLET,
   TOUR_SKIP_NOTICE_TITLE,
   TOUR_WRAP_BODY,
-  TOUR_WRAP_NIM,
   TOUR_WRAP_TITLE,
   tourCoachContinueLabel,
   tourCoachPlacement,
@@ -164,7 +163,7 @@ import { useReturnDigestStore } from "@/stores/returnDigest";
 const tour = useGuidedTourStore();
 const digest = useReturnDigestStore();
 const joinOverlay = useJoinOverlayStore();
-const { step, offerCopy, offerBodySegments } = storeToRefs(tour);
+const { step, offerCopy, offerBodySegments, wrapNim } = storeToRefs(tour);
 const router = useRouter();
 
 const holdTourOffer = computed(() =>
@@ -180,7 +179,6 @@ const feedbackChannels = payGateSocial;
 const skipNoticeTitle = TOUR_SKIP_NOTICE_TITLE;
 const wrapTitle = TOUR_WRAP_TITLE;
 const wrapBody = TOUR_WRAP_BODY;
-const wrapNim = TOUR_WRAP_NIM;
 
 const showWrap = computed(
   () => tour.wrapPreview || (tour.active && step.value?.id === "tour-done")

@@ -290,5 +290,42 @@ describe("Studio HTTP API", () => {
     expect(body.people.some((p) => p.handle === "peer" && p.activeMs7d === 45_000)).toBe(
       true
     );
+    expect(body).toMatchObject({ nimPayoutsPaused: false });
+  });
+
+  it("lets the Creator pause NIM payouts from the public API", async () => {
+    const denied = await publicApp.fetch(
+      new Request("http://test/api/payouts", {
+        method: "POST",
+        headers: otherHeaders,
+        body: JSON.stringify({ paused: true }),
+      })
+    );
+    expect(denied.status).toBe(404);
+
+    const paused = await publicApp.fetch(
+      new Request("http://test/api/payouts", {
+        method: "POST",
+        headers: creatorHeaders,
+        body: JSON.stringify({ paused: true }),
+      })
+    );
+    expect(paused.status).toBe(200);
+    expect(await paused.json()).toEqual({ nimPayoutsPaused: true });
+
+    const snap = await studioApp.fetch(
+      new Request("http://test/api/studio", { headers: creatorHeaders })
+    );
+    expect(((await snap.json()) as { nimPayoutsPaused: boolean }).nimPayoutsPaused).toBe(true);
+
+    const resumed = await publicApp.fetch(
+      new Request("http://test/api/payouts", {
+        method: "POST",
+        headers: creatorHeaders,
+        body: JSON.stringify({ paused: false }),
+      })
+    );
+    expect(resumed.status).toBe(200);
+    expect(await resumed.json()).toEqual({ nimPayoutsPaused: false });
   });
 });

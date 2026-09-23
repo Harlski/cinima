@@ -34,6 +34,7 @@ export type AuthVerifyResponse = {
   token: string;
   user: SessionUser;
   pendingJoinOverlay?: boolean;
+  nimPayoutsPaused: boolean;
 };
 
 export type TitleSummary = {
@@ -309,6 +310,7 @@ export type MeResponse = {
   achievementCount: number;
   unseenAchievements: AchievementKind[];
   pendingJoinOverlay?: boolean;
+  nimPayoutsPaused: boolean;
 };
 
 export type ReceivedThanksItem = {
@@ -503,6 +505,7 @@ export type StudioSnapshot = {
   people: StudioPersonRow[];
   sender: StudioSenderStatus;
   recentSends: StudioSendRow[];
+  nimPayoutsPaused: boolean;
 };
 
 export type CreatorPingRequest = {

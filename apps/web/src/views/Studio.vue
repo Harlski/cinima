@@ -202,6 +202,26 @@
 
       <section class="nq-card block">
         <h2>Sends</h2>
+        <div class="payout-row">
+          <p class="lede">
+            {{ snapshot.nimPayoutsPaused ? "NIM payouts paused" : "NIM payouts on" }}
+          </p>
+          <button
+            type="button"
+            class="nq-pill-blue"
+            :disabled="payoutBusy"
+            :aria-busy="payoutBusy"
+            @click="togglePayouts"
+          >
+            {{
+              acceptedWaitLabel(
+                snapshot.nimPayoutsPaused ? "Turn payouts on" : "Pause payouts",
+                payoutBusy
+              )
+            }}
+          </button>
+        </div>
+        <p v-if="payoutError" class="empty">{{ payoutError }}</p>
         <p class="lede sender-balance">
           Sender wallet
           <strong v-if="snapshot.sender.balanceLuna != null">
@@ -386,6 +406,8 @@ const pingMessage = ref("");
 const pingBusy = ref<"send" | "self" | "everyone" | null>(null);
 const pingError = ref<string | null>(null);
 const pingMemo = ref<string | null>(null);
+const payoutBusy = ref(false);
+const payoutError = ref<string | null>(null);
 let pingSuggestTimer: ReturnType<typeof setTimeout> | null = null;
 
 function label(row: StudioPersonRef): string {
@@ -496,6 +518,25 @@ function pickFirstPingSuggestion() {
   }
 }
 
+async function togglePayouts() {
+  if (!snapshot.value || payoutBusy.value) return;
+  payoutBusy.value = true;
+  payoutError.value = null;
+  const paused = !snapshot.value.nimPayoutsPaused;
+  try {
+    await request("/payouts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paused }),
+    });
+    await loadStudio();
+  } catch (err) {
+    payoutError.value = err instanceof Error ? err.message : "Could not update payouts.";
+  } finally {
+    payoutBusy.value = false;
+  }
+}
+
 async function sendPing() {
   pingBusy.value = "send";
   pingError.value = null;
@@ -506,6 +547,10 @@ async function sendPing() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(creatorPingBody(pingSelected.value, pingMessage.value.trim())),
     });
+    if (!result.queued) {
+      pingError.value = "NIM payouts paused";
+      return;
+    }
     pingMemo.value = result.memo;
     pingMessage.value = "";
     pingSelected.value = [];
@@ -532,6 +577,10 @@ async function pingEveryone() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(creatorEveryonePingBody(message)),
     });
+    if (!result.queued) {
+      pingError.value = "NIM payouts paused";
+      return;
+    }
     pingMemo.value =
       result.queuedCount != null ? `Queued ${result.queuedCount}: ${result.memo}` : result.memo;
     pingMessage.value = "";
@@ -554,6 +603,10 @@ async function pingMe() {
     const result = await request<{ queued: boolean; memo: string }>("/sends/self", {
       method: "POST",
     });
+    if (!result.queued) {
+      pingError.value = "NIM payouts paused";
+      return;
+    }
     pingMemo.value = result.memo;
     await loadStudio();
   } catch (err) {
@@ -622,6 +675,17 @@ h1 {
 .stat span {
   font-size: 0.8rem;
   color: var(--text-secondary);
+}
+
+.payout-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.payout-row .lede {
+  margin: 0;
 }
 
 .block {

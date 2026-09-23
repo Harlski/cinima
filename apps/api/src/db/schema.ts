@@ -321,6 +321,12 @@ export const sends = sqliteTable(
   ]
 );
 
+/** Creator switches shared by the API, Studio, and Sender. */
+export const appSettings = sqliteTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+});
+
 /** Sender process heartbeat: configured flag and last known Sender wallet balance. */
 export const senderHeartbeat = sqliteTable("sender_heartbeat", {
   id: integer("id").primaryKey(),
