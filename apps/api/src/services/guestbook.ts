@@ -6,7 +6,7 @@ import {
   userSendNoteLabel,
   type GuestbookThanksNoteId,
 } from "@cinima/shared";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { guestbookThanks, users } from "../db/schema.js";
 import { verifyUserSend } from "./payments.js";
@@ -39,14 +39,6 @@ export async function addGuestbookThanks(opts: {
     where: eq(users.walletAddress, toWallet),
   });
   if (!thankee) throw new Error("not_found");
-
-  const existing = await db.query.guestbookThanks.findFirst({
-    where: and(
-      eq(guestbookThanks.fromWallet, fromWallet),
-      eq(guestbookThanks.toWallet, toWallet)
-    ),
-  });
-  if (existing) throw new Error("already_thanked");
 
   const verified = await verifyUserSend({
     txHash: opts.txHash,
@@ -81,17 +73,4 @@ export async function addGuestbookThanks(opts: {
     }
     throw err;
   }
-}
-
-export async function hasGuestbookThanks(from: string, to: string): Promise<boolean> {
-  const fromWallet = normalizeWallet(from);
-  const toWallet = normalizeWallet(to);
-  if (fromWallet === toWallet) return false;
-  const row = await db.query.guestbookThanks.findFirst({
-    where: and(
-      eq(guestbookThanks.fromWallet, fromWallet),
-      eq(guestbookThanks.toWallet, toWallet)
-    ),
-  });
-  return !!row;
 }

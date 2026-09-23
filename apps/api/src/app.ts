@@ -122,7 +122,7 @@ import {
   removeFromWatchlist,
   WatchlistError,
 } from "./services/watchlist.js";
-import { addGuestbookThanks, hasGuestbookThanks } from "./services/guestbook.js";
+import { addGuestbookThanks } from "./services/guestbook.js";
 import {
   addThanks,
   attachTitleThanksSend,
@@ -1116,7 +1116,6 @@ app.get("/api/users/:wallet", requirePay, requireAuth, async (c) => {
     xHandle: user.xHandle ?? null,
     achievementCount: await achievementCount(walletAddress),
     guestbook: await listReceivedThanks(walletAddress, GUESTBOOK_PREVIEW_LIMIT),
-    guestbookThanked: await hasGuestbookThanks(me, walletAddress),
   };
   return c.json(response);
 });

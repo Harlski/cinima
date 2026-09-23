@@ -110,7 +110,7 @@ const statements = [
     send_memo TEXT NOT NULL,
     created_at INTEGER NOT NULL
   )`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS guestbook_thanks_pair ON guestbook_thanks(from_wallet, to_wallet)`,
+  `CREATE INDEX IF NOT EXISTS guestbook_thanks_to ON guestbook_thanks(to_wallet)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS guestbook_thanks_tx ON guestbook_thanks(send_tx_hash)`,
   `CREATE TABLE IF NOT EXISTS follows (
     follower_wallet TEXT NOT NULL,
@@ -336,6 +336,10 @@ export async function migrate() {
   } catch {
     /* column already exists */
   }
+  await client.execute(`DROP INDEX IF EXISTS guestbook_thanks_pair`);
+  await client.execute(
+    `CREATE INDEX IF NOT EXISTS guestbook_thanks_to ON guestbook_thanks(to_wallet)`
+  );
   try {
     await client.execute(`ALTER TABLE comment_thanks ADD COLUMN send_memo TEXT`);
   } catch {

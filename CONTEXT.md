@@ -129,7 +129,7 @@ A user’s directed signal that another user’s Comment was useful. Binary per 
 _Avoid_: like, kudos, title Thanks as the same mark, unlike
 
 **Guestbook thanks**:
-A user’s directed signal that another Handle was worth thanking, with no Title. Once per thanker and thankee. Distinct from Thanks and Comment Thanks. Opens Send Custom Message with the paid profile notes only; the free Thanks note is not offered. Does not attach a Reward. Does not count toward Bravo, Encore, Thanks received, or Presence heatmap. The Guestbook row appears only after the User Send succeeds: thanker Identicon, the chosen note as the visible line, no title. Not now, cancel, or a failed payment sends no Guestbook thanks.
+A user’s directed signal that another Handle was worth thanking, with no Title. A thanker may thank the same Handle again; each success is its own row. Distinct from Thanks and Comment Thanks. Opens Send Custom Message with the paid profile notes only; the free Thanks note is not offered. Does not attach a Reward. Does not count toward Bravo, Encore, Thanks received, or Presence heatmap. The Guestbook row appears only after the User Send succeeds: thanker Identicon, the chosen note as the visible line, no title. Not now, cancel, or a failed payment sends no Guestbook thanks.
 _Avoid_: title Thanks, Comment Thanks, profile gift, free-text memo, free Thanks note, Reward
 
 **Thank all**:

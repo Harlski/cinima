@@ -353,7 +353,6 @@ export type ReceivedItem = ReceivedThanksItem | ReceivedGuestbookItem | Received
 /** Signed-in profile of a Handle. Guestbook stays off Public Profile. */
 export type HandleProfile = PublicProfile & {
   guestbook: ReceivedItem[];
-  guestbookThanked: boolean;
 };
 
 export type ReceivedThanksResponse = {

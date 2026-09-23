@@ -111,7 +111,16 @@ describe("Guestbook thanks HTTP API", () => {
         body: JSON.stringify({ txHash: "demo:guestbook-paid-2", noteId: "thanks-cinima" }),
       })
     );
-    expect(again.status).toBe(409);
+    expect(again.status).toBe(200);
+
+    const replay = await app.fetch(
+      new Request(`http://test/api/users/${encodeURIComponent(PEER)}/guestbook`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ txHash: "demo:guestbook-paid", noteId: "great-taste" }),
+      })
+    );
+    expect(replay.status).toBe(409);
 
     const received = await app.fetch(
       new Request("http://test/api/me/received", {
@@ -128,8 +137,15 @@ describe("Guestbook thanks HTTP API", () => {
         titleId?: string;
       }[];
     };
-    expect(body.items).toHaveLength(1);
+    expect(body.items).toHaveLength(2);
     expect(body.items[0]).toMatchObject({
+      kind: "guestbook",
+      fromWallet: ME,
+      sendMemo: "Thanks on Cinima",
+      sendNim: 1,
+      rewardNim: 0,
+    });
+    expect(body.items[1]).toMatchObject({
       kind: "guestbook",
       fromWallet: ME,
       sendMemo: "You have great taste",
@@ -190,7 +206,6 @@ describe("Guestbook thanks HTTP API", () => {
     expect(profile.status).toBe(200);
     const profileBody = (await profile.json()) as {
       guestbook: { fromWallet: string; sendMemo: string }[];
-      guestbookThanked: boolean;
     };
     expect(profileBody.guestbook).toHaveLength(5);
     expect(profileBody.guestbook.map((row) => row.fromWallet)).toEqual([
@@ -201,7 +216,6 @@ describe("Guestbook thanks HTTP API", () => {
       extras[0]!.walletAddress,
     ]);
     expect(profileBody.guestbook.every((row) => row.sendMemo === "Thanks on Cinima")).toBe(true);
-    expect(profileBody.guestbookThanked).toBe(true);
 
     const owner = await app.fetch(
       new Request("http://test/api/me/received", {
@@ -209,7 +223,7 @@ describe("Guestbook thanks HTTP API", () => {
       })
     );
     const ownerBody = (await owner.json()) as { items: { kind: string }[] };
-    expect(ownerBody.items.filter((row) => row.kind === "guestbook")).toHaveLength(6);
+    expect(ownerBody.items.filter((row) => row.kind === "guestbook")).toHaveLength(7);
 
     const pub = await app.fetch(
       new Request("http://test/api/public/guestbookpeer", { headers: { Accept: "application/json" } })
@@ -244,8 +258,8 @@ describe("Guestbook thanks HTTP API", () => {
         thankers: { titles: { titleName: string; nim: number }[] }[];
       } | null;
     };
-    expect(body.digest?.thanksCount).toBe(6);
-    expect(body.digest?.nimReceived).toBe(6);
+    expect(body.digest?.thanksCount).toBe(7);
+    expect(body.digest?.nimReceived).toBe(7);
     const notes = body.digest?.thankers.flatMap((thanker) => thanker.titles.map((row) => row.titleName));
     expect(notes).toContain("You have great taste");
     expect(notes).toContain("Thanks on Cinima");

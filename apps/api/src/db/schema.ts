@@ -175,7 +175,7 @@ export const guestbookThanks = sqliteTable(
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   },
   (t) => [
-    uniqueIndex("guestbook_thanks_pair").on(t.fromWallet, t.toWallet),
+    index("guestbook_thanks_to").on(t.toWallet),
     uniqueIndex("guestbook_thanks_tx").on(t.sendTxHash),
   ]
 );

@@ -120,7 +120,7 @@ const loading = ref(true);
 const followBusy = ref(false);
 const profile = ref<HandleProfile | null>(null);
 const showGuestbookThanks = computed(
-  () => !!profile.value && !profile.value.isSelf && !profile.value.guestbookThanked && !tour.active
+  () => !!profile.value && !profile.value.isSelf && !tour.active
 );
 
 const loadProfile = async (opts?: { quiet?: boolean }) => {
