@@ -15,6 +15,14 @@ export const PAY_CANCELLED_MESSAGE = "Cancelled";
 /** Shown when a User Send fails for any reason other than the person closing Pay. */
 export const PAY_FAILED_MESSAGE = "Oops, something went wrong";
 
+/** Tip on Oops when Pay says the transaction value exceeds the balance. */
+export const PAY_SPENDABLE_BALANCE_HINT =
+  "Try again in a few minutes. Nimiq Pay may still be confirming your spendable balance.";
+
+/** Tip on Oops for any other User Send failure. The host text still goes to the creator notice. */
+export const PAY_UNKNOWN_FAILURE_HINT =
+  "Try again soon, this error has been sent to Cinima admin.";
+
 /** Attach failed because Pay broadcast from a different wallet than the Cinima session. */
 export const WRONG_SEND_PAYER_MESSAGE =
   "Pay sent from a different wallet than the one signed into Cinima. In the Pay sheet, pick that wallet. 1 NIM already left the other wallet.";
@@ -97,13 +105,29 @@ export function payErrorDetail(err: unknown): string {
   return (text || "unknown").slice(0, 240);
 }
 
+function isSpendableBalanceFailure(err: unknown): boolean {
+  const { type, message } = payErrorParts(err);
+  return /transaction value exceeds balance/i.test(`${type} ${message}`);
+}
+
 /**
  * Send dialog copy for a User Send.
  * Closing Pay stays Cancelled. Every other failure is one line, with the host or API text kept for the notice.
+ * Every failure carries a short hint for the (i) on that line.
  */
-export function userSendFailure(err: unknown): { copy: string; detail: string | null } {
-  if (isPayCancelled(err)) return { copy: PAY_CANCELLED_MESSAGE, detail: null };
-  return { copy: PAY_FAILED_MESSAGE, detail: payErrorDetail(err) };
+export function userSendFailure(err: unknown): {
+  copy: string;
+  detail: string | null;
+  hint: string | null;
+} {
+  if (isPayCancelled(err)) return { copy: PAY_CANCELLED_MESSAGE, detail: null, hint: null };
+  return {
+    copy: PAY_FAILED_MESSAGE,
+    detail: payErrorDetail(err),
+    hint: isSpendableBalanceFailure(err)
+      ? PAY_SPENDABLE_BALANCE_HINT
+      : PAY_UNKNOWN_FAILURE_HINT,
+  };
 }
 
 function throwPayFailure(err: unknown): never {

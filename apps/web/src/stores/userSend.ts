@@ -13,6 +13,9 @@ import {
   type SendNoteId,
 } from "@cinima/shared";
 import {
+  PAY_FAILED_MESSAGE,
+  PAY_SPENDABLE_BALANCE_HINT,
+  PAY_UNKNOWN_FAILURE_HINT,
   demoEnabledOutsidePay,
   isNimiqPay,
   sendPayTransaction,
@@ -48,6 +51,7 @@ export const useUserSendStore = defineStore("userSend", () => {
   const receiptHash = ref<string | null>(null);
   const busy = ref(false);
   const error = ref<string | null>(null);
+  const errorHint = ref<string | null>(null);
   const { request } = useApi();
 
   const previewing = ref(false);
@@ -55,9 +59,14 @@ export const useUserSendStore = defineStore("userSend", () => {
   /** Paid User Send hash held until the Guestbook row is written. */
   const heldHash = ref<string | null>(null);
 
+  function clearError() {
+    error.value = null;
+    errorHint.value = null;
+  }
+
   function offer(next: PendingUserSend, opts?: { preview?: boolean }) {
     pending.value = next;
-    error.value = null;
+    clearError();
     receiptHash.value = null;
     previewing.value = !!opts?.preview;
     heldHash.value = null;
@@ -77,14 +86,14 @@ export const useUserSendStore = defineStore("userSend", () => {
     if (busy.value || heldHash.value) return;
     pending.value = null;
     receiptHash.value = null;
-    error.value = null;
+    clearError();
     previewing.value = false;
   }
 
   function showReceipt(txHash: string) {
     const hash = String(txHash ?? "").trim();
     pending.value = null;
-    error.value = null;
+    clearError();
     previewing.value = false;
     receiptHash.value = hash || null;
   }
@@ -131,11 +140,11 @@ export const useUserSendStore = defineStore("userSend", () => {
     if (previewing.value) {
       pending.value = null;
       previewing.value = false;
-      error.value = null;
+      clearError();
       return true;
     }
     busy.value = true;
-    error.value = null;
+    clearError();
     try {
       if (current.kind === "guestbook") {
         const txHash = heldHash.value ?? (await payTo(current.toWallet));
@@ -186,6 +195,7 @@ export const useUserSendStore = defineStore("userSend", () => {
       }
       const failure = userSendFailure(err);
       error.value = failure.copy;
+      errorHint.value = failure.hint;
       if (failure.detail) {
         const target = (current.handle || current.toWallet).slice(0, 80);
         try {
@@ -207,6 +217,14 @@ export const useUserSendStore = defineStore("userSend", () => {
     }
   }
 
+  /** Cue lab only. Shows Oops on the open preview, with the matching tip. */
+  function previewFailure(which: "balance" | "timeout") {
+    if (!previewing.value || !pending.value) return;
+    error.value = PAY_FAILED_MESSAGE;
+    errorHint.value =
+      which === "balance" ? PAY_SPENDABLE_BALANCE_HINT : PAY_UNKNOWN_FAILURE_HINT;
+  }
+
   return {
     pending,
     lastAttached,
@@ -214,12 +232,14 @@ export const useUserSendStore = defineStore("userSend", () => {
     receiptHash,
     busy,
     error,
+    errorHint,
     noteId,
     heldHash,
     offer,
     selectNote,
     cancel,
     showReceipt,
+    previewFailure,
     confirm,
   };
 });

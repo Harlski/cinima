@@ -53,6 +53,8 @@ export const CUE_LAB_OVERLAYS = [
   { id: "tour-done", label: "Tour wrap", group: "Guided tour" },
   { id: "confirm", label: "Confirm dialog", group: "Modals" },
   { id: "send-nim", label: "Send Custom Message", group: "Modals" },
+  { id: "send-nim-balance", label: "Send balance", group: "Modals" },
+  { id: "send-nim-timeout", label: "Send timeout", group: "Modals" },
   { id: "send-nim-sent", label: "Send sent", group: "Modals" },
   { id: "watchlist-leave", label: "Watchlist leave", group: "Modals" },
   { id: "watchlist-leave-thank-all", label: "Watchlist leave Thank all", group: "Modals" },

@@ -72,6 +72,8 @@ describe("Cue lab", () => {
       "tour-done",
       "confirm",
       "send-nim",
+      "send-nim-balance",
+      "send-nim-timeout",
       "send-nim-sent",
       "watchlist-leave",
       "watchlist-leave-thank-all",

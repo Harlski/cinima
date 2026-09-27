@@ -46,6 +46,14 @@ describe("overlay scroll trap", () => {
     );
   });
 
+  it("lets a finger drag the rows of a vertical list inside overlay chrome", () => {
+    const css = readFileSync(path.join(webRoot, "src/assets/style.css"), "utf8");
+    // pan-y on the scroller does not apply to the row under the finger.
+    expect(css).toMatch(
+      /\[data-scroll-trap\] textarea,\s*\[data-scroll-trap\] input,\s*\[data-scroll-trap\] \[data-scroll-y\],\s*\[data-scroll-trap\] \[data-scroll-y\] \* \{\s*touch-action:\s*pan-y;/
+    );
+  });
+
   it("traps Guided tour offer, done, and coach card separately", () => {
     const src = readFileSync(
       path.join(webRoot, "src/components/GuidedTourHost.vue"),

@@ -106,7 +106,20 @@
           v-if="error"
           :class="error === cancelledCopy ? 'send-nim-status' : 'send-nim-error'"
         >
-          {{ error }}
+          <span>{{ error }}</span>
+          <span v-if="errorHint" class="send-nim-info-wrap">
+            <button
+              type="button"
+              class="send-nim-info"
+              aria-label="Why this failed"
+              :aria-describedby="errorInfoId"
+            >
+              <NqIcon name="info" :size="16" />
+            </button>
+            <span :id="errorInfoId" class="send-nim-tip" role="tooltip">
+              {{ errorHint }}
+            </span>
+          </span>
         </p>
         <div class="send-nim-actions">
           <button
@@ -152,7 +165,7 @@ import { PAY_CANCELLED_MESSAGE } from "@/lib/nimiqPay";
 import { useUserSendStore } from "@/stores/userSend";
 
 const store = useUserSendStore();
-const { pending, busy, error, noteId, receiptHash, heldHash } = storeToRefs(store);
+const { pending, busy, error, errorHint, noteId, receiptHash, heldHash } = storeToRefs(store);
 
 const userSendCta = USER_SEND_CTA;
 const userSendSub = USER_SEND_SUB;
@@ -169,6 +182,7 @@ const infoCopy =
 const noteOpen = ref(false);
 const highlightIndex = ref(0);
 const infoId = useId();
+const errorInfoId = useId();
 const noteLabelId = useId();
 const noteTriggerId = useId();
 const noteListId = useId();
@@ -369,6 +383,14 @@ async function onSend() {
   font-size: 0.9rem;
   line-height: 1.4;
   color: var(--text-secondary);
+}
+
+.send-nim-error,
+.send-nim-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
 }
 
 .send-nim-error {

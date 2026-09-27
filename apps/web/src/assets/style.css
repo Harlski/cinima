@@ -97,7 +97,9 @@ body {
   font-family: var(--font);
 }
 
-/* Overlay chrome: native pan on children would rubber-band .app-content. */
+/* Overlay chrome: native pan on children would rubber-band .app-content.
+   A vertical scroller opts back into pan-y, including its rows: the finger
+   hits the row, and pan-y on the scroller alone does not reach it. */
 [data-scroll-trap],
 [data-scroll-trap] * {
   touch-action: none;
@@ -106,7 +108,8 @@ body {
 
 [data-scroll-trap] textarea,
 [data-scroll-trap] input,
-[data-scroll-trap] [data-scroll-y] {
+[data-scroll-trap] [data-scroll-y],
+[data-scroll-trap] [data-scroll-y] * {
   touch-action: pan-y;
 }
 

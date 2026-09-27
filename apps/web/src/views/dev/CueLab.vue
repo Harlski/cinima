@@ -429,6 +429,16 @@ function previewOverlay(id: CueLabOverlayId) {
     userSend.offer(cueLabSendPreview(), { preview: true });
     return;
   }
+  if (id === "send-nim-balance") {
+    userSend.offer(cueLabSendPreview(), { preview: true });
+    userSend.previewFailure("balance");
+    return;
+  }
+  if (id === "send-nim-timeout") {
+    userSend.offer(cueLabSendPreview(), { preview: true });
+    userSend.previewFailure("timeout");
+    return;
+  }
   if (id === "send-nim-sent") {
     userSend.showReceipt(CUE_LAB_SEND_TX_HASH);
     return;

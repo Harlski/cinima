@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
-import { PAY_CANCELLED_MESSAGE, PAY_FAILED_MESSAGE } from "../src/lib/nimiqPay";
+import {
+  PAY_CANCELLED_MESSAGE,
+  PAY_FAILED_MESSAGE,
+  PAY_SPENDABLE_BALANCE_HINT,
+  PAY_UNKNOWN_FAILURE_HINT,
+} from "../src/lib/nimiqPay";
 import { useUserSendStore } from "../src/stores/userSend";
 
 const { request, pay } = vi.hoisted(() => ({
@@ -143,6 +148,7 @@ describe("Send Custom Message", () => {
     await expect(send.confirm()).resolves.toBe(false);
 
     expect(send.error).toBe(PAY_FAILED_MESSAGE);
+    expect(send.errorHint).toBe(PAY_UNKNOWN_FAILURE_HINT);
     expect(send.pending).toEqual(TITLE);
     const report = request.mock.calls.find(([path]) => path === "/user-sends/failure");
     expect(report?.[1]).toMatchObject({ method: "POST" });
@@ -164,7 +170,41 @@ describe("Send Custom Message", () => {
     await expect(send.confirm()).resolves.toBe(false);
 
     expect(send.error).toBe(PAY_CANCELLED_MESSAGE);
+    expect(send.errorHint).toBeNull();
     expect(request.mock.calls.some(([path]) => path === "/user-sends/failure")).toBe(false);
+  });
+
+  it("adds the spendable-balance hint when Pay says the value exceeds the balance", async () => {
+    pay.demo = false;
+    pay.inPay = true;
+    pay.send.mockRejectedValue(
+      new Error("Failed to send payment transaction: Transaction value exceeds balance")
+    );
+    const send = useUserSendStore();
+    send.offer(TITLE);
+    send.selectNote("thanks-rec");
+
+    await expect(send.confirm()).resolves.toBe(false);
+
+    expect(send.error).toBe(PAY_FAILED_MESSAGE);
+    expect(send.errorHint).toBe(PAY_SPENDABLE_BALANCE_HINT);
+  });
+
+  it("previews the balance hint and a plain timeout Oops in Cue lab", () => {
+    const send = useUserSendStore();
+    send.offer(TITLE, { preview: true });
+    send.previewFailure("balance");
+    expect(send.error).toBe(PAY_FAILED_MESSAGE);
+    expect(send.errorHint).toBe(PAY_SPENDABLE_BALANCE_HINT);
+
+    send.offer(TITLE, { preview: true });
+    send.previewFailure("timeout");
+    expect(send.error).toBe(PAY_FAILED_MESSAGE);
+    expect(send.errorHint).toBe(PAY_UNKNOWN_FAILURE_HINT);
+
+    send.offer(TITLE);
+    send.previewFailure("balance");
+    expect(send.error).toBeNull();
   });
 
   it("skips Thanks in Cue lab preview", async () => {
