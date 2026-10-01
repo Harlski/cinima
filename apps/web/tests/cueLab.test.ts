@@ -40,6 +40,7 @@ describe("Cue lab", () => {
       "plus-one",
       "cutting-room-floor",
       "jump-cut",
+      "cameras-watching",
     ]);
     expect(cueLabMarqueeKinds()).toEqual([...ACHIEVEMENT_KINDS]);
   });

@@ -15,6 +15,7 @@ const LEARNER = "NQ05ACHIEVEMENTLEARNERWALLET000001";
 const WITHHOLDER = "NQ05ACHIEVEMENTWITHHOLDWALLET0001";
 const CUTTER = "NQ05ACHIEVEMENTCUTTERWALLET000001";
 const SHORT = "NQ05ACHIEVEMENTSHORTWALLET0000001";
+const MOVER = "NQ05ACHIEVEMENTMOVERWALLET0000001";
 const TOKEN = "test-session-token-achievements";
 const PEER_TOKEN = "peer-token";
 const FINISHER_TOKEN = "finisher-token";
@@ -22,6 +23,7 @@ const LEARNER_TOKEN = "learner-token";
 const WITHHOLDER_TOKEN = "withholder-token";
 const CUTTER_TOKEN = "cutter-token";
 const SHORT_TOKEN = "short-token";
+const MOVER_TOKEN = "mover-token";
 const TITLE_ID = "movie:550";
 const SEARCH_TITLE_ID = "tmdb:movie:551";
 const PRIOR_TITLE_ID = "tmdb:movie:552";
@@ -73,6 +75,12 @@ describe("Achievement HTTP API", () => {
     "X-Cinima-Demo": "1",
   };
 
+  const moverHeaders = {
+    Authorization: `Bearer ${MOVER_TOKEN}`,
+    "Content-Type": "application/json",
+    "X-Cinima-Demo": "1",
+  };
+
   beforeAll(async () => {
     await (await import("../src/db/migrate.js")).migrate();
     ({ db } = await import("../src/db/index.js"));
@@ -86,6 +94,7 @@ describe("Achievement HTTP API", () => {
       { walletAddress: WITHHOLDER, handle: "held", lifetimeUnlockedAt: null, createdAt: now },
       { walletAddress: CUTTER, handle: "cutter", lifetimeUnlockedAt: null, createdAt: now },
       { walletAddress: SHORT, handle: "short", lifetimeUnlockedAt: null, createdAt: now },
+      { walletAddress: MOVER, handle: "mover", lifetimeUnlockedAt: null, createdAt: now },
     ]);
     await db.insert(schema.sessions).values([
       {
@@ -127,6 +136,12 @@ describe("Achievement HTTP API", () => {
       {
         token: SHORT_TOKEN,
         walletAddress: SHORT,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        createdAt: now,
+      },
+      {
+        token: MOVER_TOKEN,
+        walletAddress: MOVER,
         expiresAt: new Date(Date.now() + 60 * 60 * 1000),
         createdAt: now,
       },
@@ -445,5 +460,40 @@ describe("Achievement HTTP API", () => {
     expect(
       ((await skip.json()) as { earnedAchievements: string[] }).earnedAchievements
     ).toContain("cutting-room-floor");
+  });
+
+  it("awards Cameras watching once, after the wordmark move and the Guided tour", async () => {
+    const early = await app.fetch(
+      new Request("http://test/api/usage/brand-header-move", {
+        method: "POST",
+        headers: moverHeaders,
+      })
+    );
+    expect(early.status).toBe(200);
+    expect(
+      ((await early.json()) as { earnedAchievements: string[] }).earnedAchievements
+    ).toEqual([]);
+
+    const skip = await app.fetch(
+      new Request("http://test/api/tour/skip", {
+        method: "POST",
+        headers: moverHeaders,
+      })
+    );
+    expect(skip.status).toBe(200);
+    expect(
+      ((await skip.json()) as { earnedAchievements: string[] }).earnedAchievements
+    ).toEqual(["cameras-watching"]);
+
+    const again = await app.fetch(
+      new Request("http://test/api/usage/brand-header-move", {
+        method: "POST",
+        headers: moverHeaders,
+      })
+    );
+    expect(again.status).toBe(200);
+    expect(
+      ((await again.json()) as { earnedAchievements: string[] }).earnedAchievements
+    ).not.toContain("cameras-watching");
   });
 });

@@ -57,12 +57,27 @@ export function createPayFullscreen(deps: {
   }
 }
 
+function markPayFullscreen(on: boolean) {
+  if (typeof document === "undefined") return;
+  document.documentElement.classList.toggle("pay-fullscreen", on);
+}
+
 function readPayFullscreenHost(): PayFullscreenHost | null {
   if (typeof window === "undefined") return null;
-  const host = window.nimiqPay as { requestFullscreen?: unknown } | undefined;
+  const host = window.nimiqPay as {
+    requestFullscreen?: unknown;
+    onFullscreenChange?: (listener: (enabled: boolean) => void) => () => void;
+  } | undefined;
   if (!host || typeof host.requestFullscreen !== "function") return null;
   const requestFullscreen = host.requestFullscreen.bind(host) as () => Promise<void>;
-  return { requestFullscreen };
+  const onFullscreenChange = host.onFullscreenChange?.bind(host);
+  return {
+    requestFullscreen: async () => {
+      await requestFullscreen();
+      markPayFullscreen(true);
+      onFullscreenChange?.((enabled) => markPayFullscreen(enabled));
+    },
+  };
 }
 
 type PortraitLock = {

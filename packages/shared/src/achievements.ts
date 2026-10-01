@@ -21,6 +21,7 @@ export const ACHIEVEMENT_KINDS = [
   "plus-one",
   "cutting-room-floor",
   "jump-cut",
+  "cameras-watching",
 ] as const;
 
 export type AchievementKind = (typeof ACHIEVEMENT_KINDS)[number];
@@ -42,6 +43,7 @@ const TITLES: Record<AchievementKind, string> = {
   "plus-one": "Plus one",
   "cutting-room-floor": "On the cutting room floor",
   "jump-cut": "Jump cut",
+  "cameras-watching": "Cameras watching",
 };
 
 const HOW: Record<AchievementKind, string> = {
@@ -61,6 +63,7 @@ const HOW: Record<AchievementKind, string> = {
   "plus-one": "Followed a Handle",
   "cutting-room-floor": "Passed fifty titles",
   "jump-cut": "Shuffled your Watchlist ten times",
+  "cameras-watching": "Moved Cinima away from device camera",
 };
 
 export function achievementTitle(kind: AchievementKind): string {
@@ -78,7 +81,7 @@ export type CreditRow = {
   earnedAt: string | null;
 };
 
-/** Full catalog: earned rows keep their date; the rest stay locked. */
+/** Full catalog, A-Z by title. Earned rows keep their date; the rest stay locked. */
 export function creditsCatalog(
   earned: readonly { kind: AchievementKind; earnedAt: string }[]
 ): CreditRow[] {
@@ -88,7 +91,7 @@ export function creditsCatalog(
     title: achievementTitle(kind),
     how: achievementHow(kind),
     earnedAt: byKind.get(kind) ?? null,
-  }));
+  })).sort((a, b) => a.title.localeCompare(b.title, "en"));
 }
 
 /** Server-known Guided tour resolution. Skip includes Not now. */
@@ -247,4 +250,12 @@ export function shouldAwardJumpCut(input: {
   flingCount: number;
 }): boolean {
   return !input.alreadyEarned && input.flingCount >= JUMP_CUT_FLINGS;
+}
+
+/** The wordmark was dragged to a different shift in Pay fullscreen. */
+export function shouldAwardCamerasWatching(input: {
+  alreadyEarned: boolean;
+  moved: boolean;
+}): boolean {
+  return !input.alreadyEarned && input.moved;
 }

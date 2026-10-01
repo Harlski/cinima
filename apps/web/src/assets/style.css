@@ -195,6 +195,22 @@ body {
   padding: 0 1rem;
 }
 
+/* Center punch-hole (S22 and most flagships) sits on a centered wordmark. */
+html.pay-fullscreen .app-brand-inner {
+  justify-content: flex-start;
+  padding-left: max(2.25rem, env(safe-area-inset-left, 0px));
+}
+
+html.pay-fullscreen .brand-home {
+  transform: translateX(var(--brand-shift, 0px));
+  cursor: grab;
+  touch-action: none;
+}
+
+html.pay-fullscreen .brand-home:active {
+  cursor: grabbing;
+}
+
 .brand-mark {
   display: inline-flex;
   align-items: center;

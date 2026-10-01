@@ -139,12 +139,26 @@ describe("Pay fullscreen", () => {
   it("asks Nimiq Pay for fullscreen when Cinima opens inside Pay", async () => {
     const requestFullscreen = vi.fn(async () => {});
     const lock = vi.fn(async () => {});
+    const toggle = vi.fn();
+    let onChange: ((enabled: boolean) => void) | undefined;
     vi.stubGlobal("navigator", { userAgent: "Mozilla/5.0 NimiqPay/3.0" });
     vi.stubGlobal("screen", { orientation: { lock } });
-    vi.stubGlobal("window", { nimiqPay: { requestFullscreen } });
+    vi.stubGlobal("document", { documentElement: { classList: { toggle } } });
+    vi.stubGlobal("window", {
+      nimiqPay: {
+        requestFullscreen,
+        onFullscreenChange: (listener: (enabled: boolean) => void) => {
+          onChange = listener;
+          return () => {};
+        },
+      },
+    });
 
     await expect(enterPayFullscreen()).resolves.toBe("entered");
     expect(requestFullscreen).toHaveBeenCalledOnce();
     expect(lock).toHaveBeenCalledWith("portrait");
+    expect(toggle).toHaveBeenCalledWith("pay-fullscreen", true);
+    onChange?.(false);
+    expect(toggle).toHaveBeenCalledWith("pay-fullscreen", false);
   });
 });

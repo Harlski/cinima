@@ -253,7 +253,7 @@ Creator-only Telegram notices of live usage: sign-in, search, title view, Favori
 _Avoid_: webhook log, Slack alert, analytics ping, Studio notification
 
 **Achievement**:
-A named, once-earned credit for a Cinima action that teaches the product or rewards coming back. None are awarded until the Guided tour is completed or skipped, except Joined the crew, which is awarded with the Join grant and does not open that gate. When that gate opens, other actions already taken count. The catalog: Joined the crew (Join grant), Opening night (first Recommend), Full house (all movie and TV Recommend slots filled), Word of mouth (Title Share), What's next (Watchlist Share), Bravo (sent Thanks), Encore (received Thanks), High seas (ten unique title views), Season ticket (second distinct UTC day with Presence), That's a wrap (finished the Guided tour), In the listings (first Search), Save that for later (Watchlist add on a title opened from Search), That's the one (Recommend on a title opened from Search), Plus one (first Follow), On the cutting room floor (fifty unique Passes), Jump cut (ten Watchlist flings).
+A named, once-earned credit for a Cinima action that teaches the product or rewards coming back. None are awarded until the Guided tour is completed or skipped, except Joined the crew, which is awarded with the Join grant and does not open that gate. When that gate opens, other actions already taken count. The catalog: Joined the crew (Join grant), Opening night (first Recommend), Full house (all movie and TV Recommend slots filled), Word of mouth (Title Share), What's next (Watchlist Share), Bravo (sent Thanks), Encore (received Thanks), High seas (ten unique title views), Season ticket (second distinct UTC day with Presence), That's a wrap (finished the Guided tour), In the listings (first Search), Save that for later (Watchlist add on a title opened from Search), That's the one (Recommend on a title opened from Search), Plus one (first Follow), On the cutting room floor (fifty unique Passes), Jump cut (ten Watchlist flings), Cameras watching (dragged the Cinima wordmark to a new place in the brand header, clear of the device camera).
 _Avoid_: badge as a separate product term, XP, streak freeze, daily quest, points economy, learning pathway as a separate product, wishlist
 
 **Achievement count**:
@@ -261,7 +261,7 @@ How many Achievements a Handle has earned. The one-liner on Public Profile, Me, 
 _Avoid_: Achievement points as a separate score, XP, karma
 
 **Credits**:
-The Pay-only screen of the Achievement catalog for a Handle: earned rows with date, still-locked rows with the action that unlocks them. Public Profile shows Achievement count only; Credits are not on the unauthenticated share page. Other Handles' Credits are visible only inside Nimiq Pay.
+The Pay-only screen of the Achievement catalog for a Handle, listed A-Z by name. Each row is the Achievement name with how it is earned underneath. Unearned rows stay dimmed. Public Profile shows Achievement count only; Credits are not on the unauthenticated share page. Other Handles' Credits are visible only inside Nimiq Pay.
 _Avoid_: trophy case, badge wall, activity feed, heatmap, earned-only list
 
 **Marquee**:

@@ -102,6 +102,29 @@ export async function recordSearchOpen(
   return { recorded: true, titleId };
 }
 
+/** One row per wallet: the Cinima wordmark was dragged to a new shift. */
+export async function recordBrandHeaderMove(
+  walletRaw: string,
+  atMs = Date.now()
+): Promise<{ recorded: boolean }> {
+  const walletAddress = normalizeWallet(walletRaw);
+  const existing = await db.query.usageEvents.findFirst({
+    where: and(
+      eq(usageEvents.walletAddress, walletAddress),
+      eq(usageEvents.kind, "brand-header-move")
+    ),
+  });
+  if (existing) return { recorded: false };
+  await db.insert(usageEvents).values({
+    walletAddress,
+    kind: "brand-header-move",
+    query: null,
+    titleId: null,
+    createdAt: new Date(atMs),
+  });
+  return { recorded: true };
+}
+
 export async function recordHeartbeat(
   walletRaw: string,
   atMs = Date.now()

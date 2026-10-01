@@ -19,9 +19,8 @@
         >
           <span class="copy">
             <span class="name">{{ row.title }}</span>
-            <span v-if="!row.earnedAt" class="how">{{ row.how }}</span>
+            <span class="how">{{ row.how }}</span>
           </span>
-          <span class="when">{{ row.earnedAt ? formatWhen(row.earnedAt) : "Locked" }}</span>
         </li>
       </ul>
     </div>
@@ -64,12 +63,6 @@ const countLabel = computed(() => {
   const total = catalog.value.length;
   return n === 1 ? `1 of ${total} Achievements` : `${n} of ${total} Achievements`;
 });
-
-function formatWhen(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toISOString().slice(0, 10);
-}
 
 function goBack() {
   if (creditsBackAction() === "history") {
@@ -159,9 +152,7 @@ h1 {
 
 .rows li {
   display: flex;
-  justify-content: space-between;
   align-items: flex-start;
-  gap: 1rem;
   padding: 0.85rem 1rem;
   background: var(--bg-surface);
   border: 1px solid var(--border);
@@ -186,11 +177,5 @@ h1 {
 .how {
   font-size: 0.88rem;
   color: var(--text-secondary);
-}
-
-.when {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  flex-shrink: 0;
 }
 </style>

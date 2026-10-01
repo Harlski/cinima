@@ -20,6 +20,7 @@ import {
   shouldAwardWhatsNext,
   shouldAwardWordOfMouth,
   shouldAwardJumpCut,
+  shouldAwardCamerasWatching,
   type AchievementKind,
   type GuidedTourResolution,
   normalizeWallet,
@@ -413,6 +414,26 @@ async function evaluatePending(wallet: string, atMs: number): Promise<Achievemen
     if (await insertIfNew(wallet, "jump-cut", atMs)) earned.push("jump-cut");
   }
 
+  const [moveRow] = await db
+    .select({ n: count() })
+    .from(usageEvents)
+    .where(
+      and(
+        eq(usageEvents.walletAddress, normalizeWallet(wallet)),
+        eq(usageEvents.kind, "brand-header-move")
+      )
+    );
+  if (
+    shouldAwardCamerasWatching({
+      alreadyEarned: have.has("cameras-watching"),
+      moved: Number(moveRow?.n || 0) > 0,
+    })
+  ) {
+    if (await insertIfNew(wallet, "cameras-watching", atMs)) {
+      earned.push("cameras-watching");
+    }
+  }
+
   return orderEarnedAchievements(earned);
 }
 
@@ -501,6 +522,13 @@ export async function evaluateAfterPass(
 }
 
 export async function evaluateAfterWatchlistFling(
+  wallet: string,
+  atMs = Date.now()
+): Promise<AchievementKind[]> {
+  return evaluateIfEligible(wallet, atMs);
+}
+
+export async function evaluateAfterBrandHeaderMove(
   wallet: string,
   atMs = Date.now()
 ): Promise<AchievementKind[]> {

@@ -131,11 +131,18 @@ import {
   thankAllSuggesters,
 } from "./services/social.js";
 import { digestForHeartbeat, lastPresenceAt, listReceivedThanks } from "./services/received.js";
-import { recordHeartbeat, recordSearch, recordSearchOpen, recordView } from "./services/usage.js";
+import {
+  recordBrandHeaderMove,
+  recordHeartbeat,
+  recordSearch,
+  recordSearchOpen,
+  recordView,
+} from "./services/usage.js";
 import { recordShareVisit } from "./services/shareVisits.js";
 import { ringDoorAlarm, ringShareVisitDoorAlarm } from "./services/doorAlarm.js";
 import {
   achievementCount,
+  evaluateAfterBrandHeaderMove,
   evaluateAfterFollow,
   evaluateAfterHeartbeat,
   evaluateAfterPass,
@@ -1610,6 +1617,13 @@ app.post("/api/share-visits", async (c) => {
     ringShareVisitDoorAlarm({ handle });
   }
   return c.json({ ok: true });
+});
+
+app.post("/api/usage/brand-header-move", requirePay, requireAuth, async (c) => {
+  const user = c.get("user");
+  await recordBrandHeaderMove(user.walletAddress);
+  const earnedAchievements = await evaluateAfterBrandHeaderMove(user.walletAddress);
+  return c.json({ ok: true, earnedAchievements });
 });
 
 app.post("/api/usage/search", requirePay, requireAuth, async (c) => {

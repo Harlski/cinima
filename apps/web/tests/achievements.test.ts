@@ -25,6 +25,7 @@ import {
   shouldAwardCuttingRoomFloor,
   shouldAwardJoinedTheCrew,
   shouldAwardJumpCut,
+  shouldAwardCamerasWatching,
   shouldMarqueeJoinedTheCrew,
   isTourGatedAchievement,
 } from "@cinima/shared";
@@ -48,6 +49,7 @@ describe("Achievement catalog", () => {
       "plus-one",
       "cutting-room-floor",
       "jump-cut",
+      "cameras-watching",
     ]);
     expect(achievementTitle("joined-the-crew")).toBe("Joined the crew");
     expect(achievementHow("joined-the-crew")).toBe("Joined Cinima");
@@ -69,26 +71,50 @@ describe("Achievement catalog", () => {
     expect(achievementHow("cutting-room-floor")).toBe("Passed fifty titles");
     expect(achievementTitle("jump-cut")).toBe("Jump cut");
     expect(achievementHow("jump-cut")).toBe("Shuffled your Watchlist ten times");
+    expect(achievementTitle("cameras-watching")).toBe("Cameras watching");
+    expect(achievementHow("cameras-watching")).toBe(
+      "Moved Cinima away from device camera"
+    );
   });
 
-  it("lists locked catalog rows plus earned dates", () => {
+  it("lists the catalog alphabetically, with how on every row", () => {
     const rows = creditsCatalog([
       { kind: "opening-night", earnedAt: "2026-09-01T00:00:00.000Z" },
     ]);
-    expect(rows).toHaveLength(16);
+    expect(rows.map((row) => row.title)).toEqual([
+      "Bravo",
+      "Cameras watching",
+      "Encore",
+      "Full house",
+      "High seas",
+      "In the listings",
+      "Joined the crew",
+      "Jump cut",
+      "On the cutting room floor",
+      "Opening night",
+      "Plus one",
+      "Save that for later",
+      "Season ticket",
+      "That's a wrap",
+      "That's the one",
+      "What's next",
+      "Word of mouth",
+    ]);
     expect(rows[0]).toEqual({
-      kind: "joined-the-crew",
-      title: "Joined the crew",
-      how: "Joined Cinima",
+      kind: "bravo",
+      title: "Bravo",
+      how: "Thanked another Handle",
       earnedAt: null,
     });
-    expect(rows[1]).toEqual({
+    expect(rows.find((row) => row.kind === "opening-night")).toEqual({
       kind: "opening-night",
       title: "Opening night",
       how: "Recommended your first title",
       earnedAt: "2026-09-01T00:00:00.000Z",
     });
-    expect(rows.find((row) => row.kind === "bravo")?.earnedAt).toBeNull();
+    expect(rows.find((row) => row.kind === "cameras-watching")?.how).toBe(
+      "Moved Cinima away from device camera"
+    );
   });
 
   it("withholds Achievements until the Guided tour is skipped or completed", () => {
@@ -250,6 +276,13 @@ describe("Achievement catalog", () => {
     expect(shouldAwardJumpCut({ alreadyEarned: false, flingCount: 10 })).toBe(true);
     expect(shouldAwardJumpCut({ alreadyEarned: true, flingCount: 12 })).toBe(false);
     expect(isTourGatedAchievement("jump-cut")).toBe(true);
+  });
+
+  it("awards Cameras watching once the wordmark has been moved", () => {
+    expect(shouldAwardCamerasWatching({ alreadyEarned: false, moved: false })).toBe(false);
+    expect(shouldAwardCamerasWatching({ alreadyEarned: false, moved: true })).toBe(true);
+    expect(shouldAwardCamerasWatching({ alreadyEarned: true, moved: true })).toBe(false);
+    expect(isTourGatedAchievement("cameras-watching")).toBe(true);
   });
 
   it("awards Joined the crew once on a Join grant", () => {
