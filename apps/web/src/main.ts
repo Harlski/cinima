@@ -2,8 +2,11 @@ import { createApp } from "vue";
 import { createPinia } from "pinia";
 import App from "./App.vue";
 import { router } from "./router";
+import { enterPayFullscreen } from "./lib/payFullscreen";
 import "./assets/fonts.css";
 import "./assets/style.css";
+
+void enterPayFullscreen();
 
 const app = createApp(App);
 app.use(createPinia());
