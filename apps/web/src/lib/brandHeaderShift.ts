@@ -10,7 +10,7 @@ export function clampBrandHeaderShift(shift: number, maxShift: number): number {
   return Math.min(value, Math.max(0, Math.round(maxShift)));
 }
 
-/** A released drag earns Cameras watching when the wordmark rests somewhere new. */
+/** A released drag earns Cameras rolling when the wordmark rests somewhere new. */
 export function brandHeaderMoveCommitted(startShift: number, endShift: number): boolean {
   const cap = Number.POSITIVE_INFINITY;
   return clampBrandHeaderShift(startShift, cap) !== clampBrandHeaderShift(endShift, cap);

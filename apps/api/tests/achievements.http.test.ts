@@ -462,7 +462,7 @@ describe("Achievement HTTP API", () => {
     ).toContain("cutting-room-floor");
   });
 
-  it("awards Cameras watching once, after the wordmark move and the Guided tour", async () => {
+  it("awards Cameras rolling once, after the wordmark move and the Guided tour", async () => {
     const early = await app.fetch(
       new Request("http://test/api/usage/brand-header-move", {
         method: "POST",

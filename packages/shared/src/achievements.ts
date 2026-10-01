@@ -43,7 +43,7 @@ const TITLES: Record<AchievementKind, string> = {
   "plus-one": "Plus one",
   "cutting-room-floor": "On the cutting room floor",
   "jump-cut": "Jump cut",
-  "cameras-watching": "Cameras watching",
+  "cameras-watching": "Cameras rolling",
 };
 
 const HOW: Record<AchievementKind, string> = {

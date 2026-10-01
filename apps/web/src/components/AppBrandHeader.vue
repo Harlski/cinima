@@ -199,7 +199,7 @@ async function reportWordmarkMove() {
       useMarqueeStore().enqueue(data.earnedAchievements);
     }
   } catch {
-    /* The wordmark already moved. The next signed-in open can award Cameras watching. */
+    /* The wordmark already moved. The next signed-in open can award Cameras rolling. */
   }
 }
 

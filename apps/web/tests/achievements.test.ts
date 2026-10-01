@@ -71,7 +71,7 @@ describe("Achievement catalog", () => {
     expect(achievementHow("cutting-room-floor")).toBe("Passed fifty titles");
     expect(achievementTitle("jump-cut")).toBe("Jump cut");
     expect(achievementHow("jump-cut")).toBe("Shuffled your Watchlist ten times");
-    expect(achievementTitle("cameras-watching")).toBe("Cameras watching");
+    expect(achievementTitle("cameras-watching")).toBe("Cameras rolling");
     expect(achievementHow("cameras-watching")).toBe(
       "Moved Cinima away from device camera"
     );
@@ -83,7 +83,7 @@ describe("Achievement catalog", () => {
     ]);
     expect(rows.map((row) => row.title)).toEqual([
       "Bravo",
-      "Cameras watching",
+      "Cameras rolling",
       "Encore",
       "Full house",
       "High seas",
@@ -278,7 +278,7 @@ describe("Achievement catalog", () => {
     expect(isTourGatedAchievement("jump-cut")).toBe(true);
   });
 
-  it("awards Cameras watching once the wordmark has been moved", () => {
+  it("awards Cameras rolling once the wordmark has been moved", () => {
     expect(shouldAwardCamerasWatching({ alreadyEarned: false, moved: false })).toBe(false);
     expect(shouldAwardCamerasWatching({ alreadyEarned: false, moved: true })).toBe(true);
     expect(shouldAwardCamerasWatching({ alreadyEarned: true, moved: true })).toBe(false);
